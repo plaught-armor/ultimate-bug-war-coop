@@ -98,6 +98,7 @@ add_library(ubwcoop SHARED
   src/ubw/save_c121.cpp
   src/ubw/player_c99.cpp
   src/ubw/score_c475.cpp
+  src/ubw/waves_c503.cpp
   src/ubw/begin_c138.cpp
   src/ubw/anim_c104.cpp
   src/ubw/player_marker.cpp

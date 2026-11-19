@@ -71,6 +71,22 @@ inline constexpr Symbol FWeakObjectPtr_Get = {"FWeakObjectPtr_Get", 0x015859A0u}
 inline constexpr Symbol ASTEncounterManagerBase_StartEncounter = {"ASTEncounterManagerBase_StartEncounter", 0x05139A30u};
 // ?ActivateCurrentWave@ASTEncounterManagerBase@@QEAAXXZ
 inline constexpr Symbol ASTEncounterManagerBase_ActivateCurrentWave = {"ASTEncounterManagerBase_ActivateCurrentWave", 0x05115220u};
+// ?OnWaveNPCSpawned@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@PEAVASTNonPlayableCharacterBase@@@Z
+inline constexpr Symbol ASTEncounterManagerBase_OnWaveNPCSpawned = {"ASTEncounterManagerBase_OnWaveNPCSpawned", 0x05133060u};
+// ?OnWaveNPCKilled@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@PEAVASTNonPlayableCharacterBase@@@Z
+inline constexpr Symbol ASTEncounterManagerBase_OnWaveNPCKilled = {"ASTEncounterManagerBase_OnWaveNPCKilled", 0x05133020u};
+// ?OnWaveSpawnComplete@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@@Z
+inline constexpr Symbol ASTEncounterManagerBase_OnWaveSpawnComplete = {"ASTEncounterManagerBase_OnWaveSpawnComplete", 0x051330A0u};
+// ?OnWaveEnd@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@@Z
+inline constexpr Symbol ASTEncounterManagerBase_OnWaveEnd = {"ASTEncounterManagerBase_OnWaveEnd", 0x05132DA0u};
+// ?TriggerNextWave@ASTEncounterManagerBase@@AEAAXXZ
+inline constexpr Symbol ASTEncounterManagerBase_TriggerNextWave = {"ASTEncounterManagerBase_TriggerNextWave", 0x0513DFB0u};
+// ?BP_OnEncounterEnded@ASTEncounterManagerBase@@IEAAXXZ
+inline constexpr Symbol ASTEncounterManagerBase_BP_OnEncounterEnded = {"ASTEncounterManagerBase_BP_OnEncounterEnded", 0x050533D0u};
+// ?OnSpawnCancelled@USTEncounterWaveBase@@AEAAXAEBUFSTSpawnResult@@@Z
+inline constexpr Symbol USTEncounterWaveBase_OnSpawnCancelled = {"USTEncounterWaveBase_OnSpawnCancelled", 0x05132970u};
+// ?GetCurrentWaveID@ASTEncounterManagerBase@@QEBAHXZ
+inline constexpr Symbol ASTEncounterManagerBase_GetCurrentWaveID = {"ASTEncounterManagerBase_GetCurrentWaveID", 0x019A1540u};
 // ?PerformSpawn@ASTSpawnerBase@@IEAA?AUFSTSpawnResult@@AEBUFSTSpawnParameters@@@Z
 inline constexpr Symbol ASTSpawnerBase_PerformSpawn = {"ASTSpawnerBase_PerformSpawn", 0x051671F0u};
 // ?QueueSpawnRequest@ASTSpawnerBase@@IEAA?AVFString@@AEBUFSTSpawnParameters@@M@Z

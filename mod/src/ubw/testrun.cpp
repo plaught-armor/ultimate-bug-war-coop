@@ -2138,6 +2138,9 @@ const char* c265_clear_kill(void* world, void* pc, const cmdfile::Cmd& c) {
     }
     log::line("cmd: %u clear kill: %u killed, %u left, %u spared (radius %.0f uu, %u scanned of %u)", c.seq, killed,
               left, spared, c.radius, g_c265_list.count, g_c265_list.total);
+    if (left == 0) {
+        c503_clear_report(c.seq, pawn); // card 503: waves still open with none left in the radius
+    }
     return nullptr;
 }
 

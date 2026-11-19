@@ -2643,6 +2643,21 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_orig_start_encounter)},
     {&offsets::ASTEncounterManagerBase_ActivateCurrentWave, reinterpret_cast<void*>(&detour_activate_current_wave),
      reinterpret_cast<void**>(&g_orig_activate_current_wave)},
+    // card 503 (diag): wave events
+    {&offsets::ASTEncounterManagerBase_OnWaveNPCSpawned, reinterpret_cast<void*>(&detour_c503_spawned),
+     reinterpret_cast<void**>(&g_orig_c503_spawned)},
+    {&offsets::ASTEncounterManagerBase_OnWaveNPCKilled, reinterpret_cast<void*>(&detour_c503_killed),
+     reinterpret_cast<void**>(&g_orig_c503_killed)},
+    {&offsets::ASTEncounterManagerBase_OnWaveSpawnComplete, reinterpret_cast<void*>(&detour_c503_spawn_complete),
+     reinterpret_cast<void**>(&g_orig_c503_spawn_complete)},
+    {&offsets::ASTEncounterManagerBase_OnWaveEnd, reinterpret_cast<void*>(&detour_c503_wave_end),
+     reinterpret_cast<void**>(&g_orig_c503_wave_end)},
+    {&offsets::ASTEncounterManagerBase_TriggerNextWave, reinterpret_cast<void*>(&detour_c503_next_wave),
+     reinterpret_cast<void**>(&g_orig_c503_next_wave)},
+    {&offsets::ASTEncounterManagerBase_BP_OnEncounterEnded, reinterpret_cast<void*>(&detour_c503_encounter_ended),
+     reinterpret_cast<void**>(&g_orig_c503_encounter_ended)},
+    {&offsets::USTEncounterWaveBase_OnSpawnCancelled, reinterpret_cast<void*>(&detour_c503_cancelled),
+     reinterpret_cast<void**>(&g_orig_c503_cancelled)},
     {&offsets::ASTSpawnerBase_PerformSpawn, reinterpret_cast<void*>(&detour_perform_spawn),
      reinterpret_cast<void**>(&g_orig_perform_spawn)},
     {&offsets::ASTSpawnerBase_QueueSpawnRequest, reinterpret_cast<void*>(&detour_queue_spawn),
@@ -3081,8 +3096,8 @@ const HookSpec kHooksUbw[] = {
     {&offsets::USTCommonUtilityLibrary_PlaySoundAtLocationFNameWithAIAwareness, reinterpret_cast<void*>(&detour_c99_sound_fname), reinterpret_cast<void**>(&g_orig_c99_sound_fname), &g_c99_log},
     {&offsets::APlayerCameraManager_GetViewTarget, reinterpret_cast<void*>(&detour_c346_view_target), reinterpret_cast<void**>(&g_orig_c346_view_target)}, // card 346 b31 crash guard
     {&offsets::APlayerCameraManager_StartCameraShake, reinterpret_cast<void*>(&detour_c99_shake), reinterpret_cast<void**>(&g_orig_c99_shake), &g_c99_log},
-    {&offsets::USTFedScoreSubsystem_AddFedScoreText, reinterpret_cast<void*>(&detour_c99_score_text), reinterpret_cast<void**>(&g_orig_c99_score_text), &g_c99_log},
-    {&offsets::USTFedScoreSubsystem_AddFedScore, reinterpret_cast<void*>(&detour_c99_score), reinterpret_cast<void**>(&g_orig_c99_score), &g_c99_log},
+    {&offsets::USTFedScoreSubsystem_AddFedScoreText, reinterpret_cast<void*>(&detour_c99_score_text), reinterpret_cast<void**>(&g_orig_c99_score_text)}, // card 491 b260: always (resupply)
+    {&offsets::USTFedScoreSubsystem_AddFedScore, reinterpret_cast<void*>(&detour_c99_score), reinterpret_cast<void**>(&g_orig_c99_score)}, // card 491 b260: always (resupply)
     {&offsets::ASTPlayerMechBase_HandleInputExitVehicle_Pressed, reinterpret_cast<void*>(&detour_c75_exit_pressed), reinterpret_cast<void**>(&g_orig_c75_exit_pressed), nullptr},
     {&offsets::ASTPlayerController_HandleInputExitVehicle_Pressed, reinterpret_cast<void*>(&detour_c75_pc_exit), reinterpret_cast<void**>(&g_orig_c75_pc_exit), nullptr},
     {&offsets::USTTacticalSupportComponent_HandleTacticalSupportInput, reinterpret_cast<void*>(&detour_c100_tac_input), reinterpret_cast<void**>(&g_orig_c100_tac_input)},
@@ -3424,6 +3439,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::ASTEnemyBase_StaticClass, reinterpret_cast<void**>(&g_enemy_class)},
     {&offsets::UADTargetComponent_FindTargetData, reinterpret_cast<void**>(&g_c103_find)}, // card 103
     {&offsets::ASTTicketManager_RefreshTicketLimits, reinterpret_cast<void**>(&g_c111_refresh)}, // card 111
+    {&offsets::ASTEncounterManagerBase_GetCurrentWaveID, reinterpret_cast<void**>(&g_c503_wave_id)}, // card 503
     {&offsets::ASTEnemyBase_GetSizeForZone, reinterpret_cast<void**>(&g_c122_size)}, // card 122
     {&offsets::UADTargetComponent_StaticClass, reinterpret_cast<void**>(&g_c122_target_class)}, // card 122
     {&offsets::UADHealthComponent_StaticClass, reinterpret_cast<void**>(&g_c130_health_class)}, // card 130 item 12

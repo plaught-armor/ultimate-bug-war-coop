@@ -125,7 +125,11 @@ void door_after_load(const void* world, C137LoadCounts& n) {
 // world_c98.cpp c98_event_kind) runs right after the objective replay, so its scripts' side effects come before
 // "door" (door and collision state), "world" (the state rows), "ext" and the rest, and the final state lands last
 // (c245b256a: an 'F' closure replayed after CollisionOp set BlockingVolume_14..17 back to 1 on the client).
+// Card 491 (b260): "resupply" (each pawn's ResupplyLevel, levels only) goes before "objective", so the score the
+// objective replay adds on the client does not step a pawn copy the host already stepped. Its state is cleared by
+// "score"'s map end (c475_map_end).
 constexpr SyncMech kSyncMechs[] = {
+    {"resupply", nullptr, nullptr, c491_resupply_join_replay, nullptr, nullptr}, // no table: levels are read live
     {"objective", objective_map_end, c49_arm_map, c49_join_replay, nullptr, c49_live},
     {"world events", nullptr, nullptr, c98_replay_events, nullptr, nullptr}, // rows counted by "world"
     {"door", door_map_end, nullptr, c95_replay, door_after_load, c95_live},

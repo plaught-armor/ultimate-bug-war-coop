@@ -1,0 +1,275 @@
+# Card 502 three-instance run (CLIENT2=1): tools/scenarios/c448-c1m1.txt with client2 added (pin, map wait, start
+# press), run FAST=0 so the transport dropship flight boards all three pawns. Proofs in docs/cards/502-four-players.md:
+# host card502 MaxPlayers row, card399 board rows for 3 pawns, card043 other-pawn rows (2 per client), card132
+# mismatches 0 on both clients, the client rejoin (c448 steps) with a clean digest. c448 predictions also hold.
+# Run: systemd-run --user --scope -q -p MemoryMax=16G taskset -c 4-7,12-15 nice -n 10 env LANE=2 PULSE_SINK=null
+#      SCENARIO=tools/scenarios/c502-c1m1.txt FAST=0 GOD=0 CLIENT2=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" CLIENT2_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c502b262a 900
+# Card 448 (rejoin is a full heal), senior order 2026-11-16: the client takes a Morita (a card 327 row, so card 440
+# keeps an entry), is downed by code and revived by the host (the c142-r4 steps), which leaves its Health at the
+# revive fraction, then leaves the game (card 045 reconnects it on the same map). Predictions in
+# docs/cards/448-rejoin-is-a-full-heal.md: host card448 row "(Up): kept Health H, Armour A" with H below max; host
+# card143 "Restore applied ... Health <full> -> H (want H)" and no WARN card198; client card157 vitals row and HUD shot
+# after the rejoin show H. Optional end block: a second leave while downed logs kept Health -1.0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c448-c1m1.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      tools/run_pair.sh c448b186a 720
+# Expected wall: about 7 min.
+voidsoft
+void unless host dll e138228037a8dede
+void unless client dll e138228037a8dede
+void unless client2 dll e138228037a8dede
+host wait state map=FED_C1M1 pawn=host-own timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+client2 wait state map=FED_C1M1 pawn=client-own timeout=180
+host ui continue
+# b169: the client ui continue raced the client IntroStart by 10 ms (c448b169a); wait for it. The client screen also
+# confirms by itself about 2 s later (card320 "prompt ready 0"), so the press is a try.
+client wait log "card135: client t=\d+ IntroStart \(FED_C1M1" timeout=30
+# Card 225 (b185 backlog): the press-to-start screen on the client, no name tag over it.
+client shot c225-client-press-start
+try client ui continue
+try client2 wait log "card135: client t=\d+ IntroStart \(FED_C1M1" timeout=30
+try client2 ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=20
+# Card 285 (b183 order): the landed player transport dropship's client check row, rotation under 2 degrees at rest,
+# and a client shot of it (level on the pad). Try: a miss here does not stop card 448.
+try client wait log "card159: client t=\d+ dropship BP_PlayerTransportDropship\S* check: state 1/1 .*rotation [01]\.\d deg off \(at rest" timeout=30
+try client look actor BP_PlayerTransportDropship_VerySlow_C 0 bounds
+sleep 0.5
+client shot c285-c-landed-ship
+# Card 449 (troop dropship takeoff decided per side), docs/cards/449-*.md predictions: troop ship 3 begins its descent
+# about 29 s after the hold and takes off about 10 s later (c448b148a host rows). The client copy logs "landed copy
+# leaves its takeoff to the host"; the client's trooper is then warped onto the ship (10 uu front: the ship's location
+# +100 z) for the host's "takeoff held" row and a shot, warped back to where it stood (the warp row's old location),
+# and shot again after the host's launch edge (the ship climbing). All try: a miss here does not stop card 448.
+host mark
+client mark
+try host wait log "dropship: host/standalone ExecuteBeginDescentBehaviour\(\S+ BP_ProceduralDropshipTroops_C," since-mark timeout=60
+try client wait log "card449: client t=\d+ dropship \S+: landed copy leaves its takeoff to the host" since-mark timeout=30
+host mark
+host warp client BP_ProceduralDropshipTroops_C 10 front
+try host wait log "card449: host(/standalone)? t=\d+ dropship \S+: a client's trooper stands on it: takeoff held" since-mark timeout=3
+client shot c449-on-landed-ship
+try host wait log "cmd: \d+ warp: server copy \S+ \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\) -> " since-mark timeout=5
+host mark
+try host warp client point {g1} {g2} {g3}
+try host wait log "card342: host t=\d+ dropship BP_ProceduralDropshipTroops_C_\d+ launch edge: spline distance 0," since-mark timeout=40
+client look actor BP_ProceduralDropshipTroops_C 0 bounds
+sleep 0.5
+client shot c449-ship-climbing
+try client wait log "card449: client t=\d+ dropship \S+: host took off, StartAction run on the landed copy" timeout=10
+# Card 451 part 2 (b231; after the card 449 block: at line 26 its wait moved the 449 marks past the descent): a relayed trooper bark on the client and a shot with its secondary subtitle. Try: a
+# miss here does not stop card 448.
+try client wait log "card451: client t=\d+ bark started .* \(relay\)" timeout=30
+try client shot c451-bark-subtitle
+# The client takes a Morita and equips it (c142-r4): its card 327 row gives card 440 a kept entry.
+# b215 speed-up: warp about 300 uu off the pickup, then a short walk (was a 20 s goto).
+host warp client BP_WeaponPickup_MoritaMk1_C 300
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# No CollisionOp wait here: that row comes only after the host took a weapon from the same pickup (c142-r4); the
+# collider is on from the map start (run c448b148a: the wait timed out, 0 InteractionCollider ops).
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" since-mark timeout=10
+# Card 495 (b243): the client's take of the shooting-range Morita is credited and its base held (1 of 2); the host
+# then takes it too, which releases the base (2 of 2) and the level's chain (ShootingRange_SO1 complete, SO2 added).
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 \(take\): taken by 1 of 3 living players" since-mark timeout=5
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Run c448b245a: the client stands on the pickup's only navmesh approach (109 uu off it, landing direction 3 of 8),
+# so the host's walk stopped 132 uu out against the client's pawn. Move the client back along the same line first.
+host warp client BP_WeaponPickup_MoritaMk1_C_0 600
+host mark
+host warp actor BP_WeaponPickup_MoritaMk1_C_0 300
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 120 timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host key E
+# Card 502: three players; the host take is held (2 of 3), client2 releases the base (3 of 3).
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 \(take\): taken by 2 of 3 living players" since-mark timeout=10
+host warp actor BP_WeaponPickup_MoritaMk1_C_0 600
+host warp client2 BP_WeaponPickup_MoritaMk1_C_0 300
+client2 goto actor BP_WeaponPickup_MoritaMk1_C_0 120 timeout=30
+client2 look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+client2 key E
+host wait log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 by take: taken by 3 of 3 living players" since-mark timeout=10
+host wait log "card049: host t=\d+ AddSubObjective\(ShootingRange_O1, ShootingRange_SO2\)" since-mark timeout=5
+failsoft
+# Card 220 (b190): trigger _9 (Enabled?=1 from the map start; box centre (5186, 2519, 499) extent (8691, 9606, 605)).
+# b189: the client entered it on the walk to the Morita, Final Prompt Message held the _9 text, but no shot fell in
+# its 8 s. Each player is warped into it here (an enter edge), the 1 s widget rows are awaited and each takes a shot.
+# Prediction: client row "prompt widgets ... (1 s after the enter): ... visibility 0 Visible, list 1 ..., newest
+# 'Press <glyph ...Objectives...> to review your objectives.'" on the live widget, and the prompt line in the shot.
+client mark
+host warp client point 480 3750 103
+try client wait log "card220: client prompt widgets \d+ \(1 s after the enter\): .*trigger BP_TutorialPromptTrigger_C_9 " since-mark timeout=3
+client shot c220-client-9
+host mark
+host warp actor point 600 3950 103
+try host wait log "card220: host/standalone prompt widgets \d+ \(1 s after the enter\): .*trigger BP_TutorialPromptTrigger_C_9 " since-mark timeout=3
+host shot c220-host-9
+# Card 220 (b186 order): training prompt triggers _0 and _7 share one spot (c448b185a: both fire at 12500 14100 400).
+# The host walks in first (no warp into the trigger), then the client walks in. Rows: host "own pawn, passed" for _0
+# and _7, then client "own pawn, passed" for _0 and _7 after the client's goto; host and client shots inside show the
+# same prompt text. Each walk starts about 690 uu west of the box edge, and the mark comes after the start warp settles, so a row from the
+# warp itself cannot satisfy the wait.
+# b189: the boxes reach 2420 uu in x and 4746 uu in y from the actor (_0 x 9486..14326, y 11701..21193; _7 inside
+# the same x range), so warps measured from the actor landed inside. Start both players about 690 uu west of the x edge.
+host warp actor point 8800 16400 400
+host warp client point 8800 16600 400
+sleep 1
+host mark
+host goto actor BP_TutorialPromptTrigger_C_0 80 timeout=60
+try host wait log "card220: host/standalone prompt trigger BP_TutorialPromptTrigger_C_0 entered by \S+: own pawn, passed" since-mark timeout=10
+try host wait log "card220: host/standalone prompt trigger BP_TutorialPromptTrigger_C_7 entered by \S+: own pawn, passed" since-mark timeout=5
+sleep 0.5
+host shot c220-host-in
+client mark
+client goto actor BP_TutorialPromptTrigger_C_0 80 timeout=60
+try client wait log "card220: client prompt trigger BP_TutorialPromptTrigger_C_0 entered by \S+: own pawn, passed" since-mark timeout=10
+try client wait log "card220: client prompt trigger BP_TutorialPromptTrigger_C_7 entered by \S+: own pawn, passed" since-mark timeout=5
+sleep 1
+client shot c220-client-in
+host shot c220-host-both-in
+# b197 order (Pl:8e:wp standing mismatch, host c9c4 = BP_Weapon_MoritaMk1_C, client 1903 = BP_Weapon_Unarmed_C): the
+# client looks at the host pawn (the look skips the client's own pawn, so the class search finds the host's) and shoots
+# the weapon it holds; the host shot shows its own. Same weapon in both shots = a reader gap in the digest; a missing
+# weapon on the client = a sync gap. c448b197a: from behind at about 1 m the host's hands were hidden, so the host now
+# stands 350 uu off and faces the client. Try: no gate.
+host warp actor point 12500 14100 400
+host warp client point 12850 14100 400
+sleep 0.5
+try host look point 12850 14100 450
+try client look actor BP_PlayerCharacterMI_C 0
+sleep 0.5
+try client shot c448-host-weapon-on-client
+try host shot c448-host-weapon-on-host
+# 1. Down and revive (c142-r4 lines 62-69): Health ends at the revive fraction. Bugs cleared by code first (GOD=0).
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+client wait near 12600 14100 400 150 timeout=5
+host clear 4000 kill
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+# Card 295 (card 469): the client walks inside the 10 s after the revive; the corrections row must stay 0.
+client key W 3000 timeout=10
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\) \+5 s" since-mark timeout=10
+client shot c448-hud-before-leave
+# 2. The client leaves and card 045 reconnects it (the c423 rejoin steps).
+host mark
+client mark
+client disconnect
+host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Up\): kept Health " since-mark timeout=30
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=120
+# A mid-mission rejoin logs no card135 "screen prompt ready" (c448b151b line 73); the possess wait and the pawn state cover it.
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=3
+try client ui continue
+client wait state pawn=client-own timeout=120
+host wait log "card143: host t=\d+ Restore applied" since-mark timeout=60
+client wait log "card157: client t=\d+ own pawn Armour \S+ -> \S+ \(max \S+\), Health \S+ -> \S+" since-mark timeout=20
+sleep 1
+client shot c448-hud-after-rejoin
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# Card 288 (b186 order): the entry door _0 opens at ShootingRange_O1 (c224-c1m1-b4d: DoorState 0 -> 2 -> 1). Both
+# players stand outside (x > -3674); the client walks alone into BP_PlayerPresence_C_7. Card (c) predictions: host
+# card227 "held: 1 of 2" and DoorState stays 1; client card288 "presence BP_PlayerPresence_C_7 entered by ...: 1 door
+# reactions left to the host's DoorOp"; no client-only DoorState WARN, no card270 presence started. Then the host walks
+# in: card227 "fired after hold: 2 of 2" and door _0 DoorState 1 -> 3.
+host mark
+host objective complete Assault_O1
+host objective complete TacSupport_01
+host objective complete ShootingRange_O1
+try host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1" since-mark timeout=20
+host warp actor point -3454 9300 300
+host warp client point -3454 9450 300
+host warp client2 point -3454 9600 300
+sleep 1
+host mark
+client mark
+client goto actor BP_PlayerPresence_C_7 80 timeout=60
+try host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 held: 1 of 3 players inside" since-mark timeout=10
+try client wait log "card288: client t=\d+ presence BP_PlayerPresence_C_7 entered by \S+: \d+ door reactions left to the host's DoorOp" since-mark timeout=3
+try host wait log "card288: host t=\d+ door BP_Door_Sliding_Large_C_0 close held: " since-mark timeout=3
+sleep 1
+client shot c288-client-alone-in
+host shot c288-host-outside
+host mark
+host goto actor BP_PlayerPresence_C_7 80 timeout=60
+try host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 held: 2 of 3 players inside" since-mark timeout=10
+# Card 502: client2 walks in last.
+host mark
+client2 goto actor BP_PlayerPresence_C_7 80 timeout=60
+try host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 3 of 3 players inside" since-mark timeout=10
+try host wait log "card288: host t=\d+ door BP_Door_Sliding_Large_C_0 closing: all 3 players inside" since-mark timeout=3
+try host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 1 -> 3" since-mark timeout=10
+sleep 2
+client shot c288-client-both-in
+host shot c288-host-both-in
+# Card 495 (b243, user rule 2026-11-18): host and client each pick up the CTF laser; CaptureTheFlag_SO1 and door C_1
+# only after both. The host's take is held (1 of 2), the client's releases the base (2 of 2), then the level's chain.
+# Run c448b245c: SO1 is added when the course's earlier step ends, before the mark at the presence walk, so this
+# wait reads the whole log.
+host wait log "card049: host t=\d+ AddSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" timeout=60
+host mark
+client mark
+# Run c448b245c: the pickup is 168 uu off the navmesh; the walk ends about 115 uu out, inside the take range.
+host goto actor BP_WeaponPickup_LaserMorita_C_0 130 timeout=60
+host look actor BP_WeaponPickup_LaserMorita_C_0 0 bounds focus=BP_WeaponPickup_LaserMorita_C_0
+host key E
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0 \(take\): taken by 1 of 3 living players" since-mark timeout=10
+host shot c495-host-took
+host key E
+try host wait log "card495: host t=\d+ refused PickupWeapon on BP_WeaponPickup_LaserMorita_C_0 by " since-mark timeout=10
+# Run c448b245c: the host's pawn stood on the client's approach (the client stopped 80 uu from it), so the host
+# steps back along the same line before the client walks in.
+host warp actor BP_WeaponPickup_LaserMorita_C_0 600
+client goto actor BP_WeaponPickup_LaserMorita_C_0 130 timeout=60
+client look actor BP_WeaponPickup_LaserMorita_C_0 0 bounds focus=BP_WeaponPickup_LaserMorita_C_0
+client shot c495-client-sees-pickup
+client key E
+# Card 502: client take held (2 of 3), client2 releases the base (3 of 3).
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0 \(take\): taken by 2 of 3 living players" since-mark timeout=10
+host warp client BP_WeaponPickup_LaserMorita_C_0 600
+client2 goto actor BP_WeaponPickup_LaserMorita_C_0 130 timeout=60
+client2 look actor BP_WeaponPickup_LaserMorita_C_0 0 bounds focus=BP_WeaponPickup_LaserMorita_C_0
+client2 key E
+host wait log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0 by take: taken by 3 of 3 living players" since-mark timeout=10
+host wait log "card049: host t=\d+ CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" since-mark timeout=5
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_1 DoorState 0 -> 2" since-mark timeout=10
+client wait log "card494: client t=\d+ card495 door BP_Door_Sliding_Large_C_1 opened \d+ ms ago: equipped BP_Weapon_LaserMorita_C" since-mark timeout=5
+host shot c495-host-in-hand
+host wait log "card494: host t=\d+ \S*c495-host-in-hand: equipped BP_Weapon_LaserMorita_C" since-mark timeout=5
+client shot c495-client-in-hand
+void unless host log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0" before host log "CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)"
+void unless host log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0" before host log "door BP_Door_Sliding_Large_C_1 DoorState 0 -> 2"
+void unless host log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0" before client log "card145: client t=\d+ world E BP_WeaponPickup_LaserMorita_C_0 -?\d+ -?\d+ -?\d+ 0 "
+# Digest round after the objective completes.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# 3. Optional: a second leave while downed keeps none (kept Health -1.0).
+host warp client point 12600 14100 400
+client mark
+host down client
+try client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host mark
+client mark
+client disconnect
+try host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Downed\): kept Health -1\.0" since-mark timeout=30
+try client wait log "reconnected \(" since-mark timeout=120

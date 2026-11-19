@@ -479,7 +479,7 @@ Moved out of `docs/STATE.md` on 2026-11-04 so that STATE carries only open cards
 | 488 | Client audio mixer crash at quit (FPatchOutput::PopAudio) | open |
 | 489 | c245 BrainBug_SO2_R2 marker step left open | Closed b219 |
 | 490 | Infinite stamina setting | closed b219 |
-| 491 | Client replay scores cascade sub-objective completes | open |
+| 491 | Client replay scores cascade sub-objective completes | closed 2026-11-19 b262: host-owned resupply level, U rows, client FedScoreGained refused |
 | 321 | Host tick code asks for player 0: client combat music modes. b228 11b7efb307ea9b4e c321_client_modes ports the host music-mode branches into the client tick post-hook; c245b228a client follows host level changes in 33-66 ms; c244b228a WARN321 0 both sides, 17 client transitions. Hearing not checked (card 302) | Closed 2026-11-18 14:07 (b228) |
 | 451 | Bark subtitles on the client: host FBarkDelegate::Broadcast relayed as ChanOp::Bark, client rebuilds FADActiveBark and broadcasts OnBarkStarted/Finished. b231 ba9d7b915f00ef61, c448b231a 20 ms relay plus client subtitle shot | Closed 2026-11-18 14:33 |
 | 330 | Per-frame cost audit: slow step rows name every spike; client peak a load frame, host peak DIAG logging; mod 1.29% of frame time (c244b228a) | Closed 2026-11-18 14:33 |
@@ -510,3 +510,5 @@ Moved out of `docs/STATE.md` on 2026-11-04 so that STATE carries only open cards
 | 500 | BugForm third player | open 2026-11-19 06:41: split from 209 |
 | 500 | BugForm third player | dropped 2026-11-19 06:48: user does not care about bug mode |
 | 501 | Client aim at BrainBug voids | open 2026-11-19 06:59: c245 line 724 on b258 and b259 |
+| 502 | Four players | open 2026-11-19: user wants 4 player; proofs use three instances (user); MaxPlayers check at listen |
+| 503 | C5M2 Array_SO4 waves never end | open 2026-11-19: SetWaves C_1 encounter never ends in any c247 run; diag first |

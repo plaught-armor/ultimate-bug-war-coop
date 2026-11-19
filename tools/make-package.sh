@@ -21,6 +21,13 @@ install -m 644 "$REPO/HOW-TO-PLAY.txt" "$pkg/HOW-TO-PLAY.txt"
 install -m 755 "$REPO/tools/playtest.sh" "$pkg/tools/playtest.sh"
 install -m 644 "$DLL" "$pkg/build/dwmapi.dll"
 echo "$hash" > "$pkg/build/VERSION.txt"
+# The release tag (TAG=b<N>) lets PLAY-COOP.sh ask to update when GitHub has a newer one.
+if [[ -n ${TAG:-} ]]; then
+    [[ $TAG =~ ^b[0-9]+$ ]] || { echo "ABORT: TAG must look like b263" >&2; exit 1; }
+    echo "$TAG" > "$pkg/build/RELEASE.txt"
+else
+    echo "WARN: no TAG set, so this package never checks for updates" >&2
+fi
 
 mkdir -p "$REPO/dist"
 out=$REPO/dist/UBW-Coop-$(date +%Y%m%d-%H%M).zip

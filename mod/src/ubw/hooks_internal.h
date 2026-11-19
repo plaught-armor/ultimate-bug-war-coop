@@ -434,6 +434,28 @@ extern PerformSpawnFn g_orig_perform_spawn;
 extern QueueSpawnFn g_orig_queue_spawn;
 bool is_net_client(const void* actor);
 void detour_start_encounter(void* manager);
+// Card 503 (diag, waves_c503.cpp): host rows per encounter wave event; c503_clear_report after a `clear ... kill`
+// that left 0 lists each still-open wave's alive NPCs.
+using C503WaveNpcFn = void (*)(void* manager, void* wave, void* npc);
+using C503WaveFn = void (*)(void* manager, void* wave);
+using C503CancelFn = void (*)(void* wave, const void* result);
+using C503WaveIdFn = int32_t (*)(void* manager);
+extern C503WaveNpcFn g_orig_c503_spawned;
+extern C503WaveNpcFn g_orig_c503_killed;
+extern C503WaveFn g_orig_c503_spawn_complete;
+extern C503WaveFn g_orig_c503_wave_end;
+extern EncounterFn g_orig_c503_next_wave;
+extern EncounterFn g_orig_c503_encounter_ended;
+extern C503CancelFn g_orig_c503_cancelled;
+extern C503WaveIdFn g_c503_wave_id;
+void detour_c503_spawned(void* manager, void* wave, void* npc);
+void detour_c503_killed(void* manager, void* wave, void* npc);
+void detour_c503_spawn_complete(void* manager, void* wave);
+void detour_c503_wave_end(void* manager, void* wave);
+void detour_c503_next_wave(void* manager);
+void detour_c503_encounter_ended(void* manager);
+void detour_c503_cancelled(void* wave, const void* result);
+void c503_clear_report(uint32_t seq, const void* pawn);
 void detour_activate_current_wave(void* manager);
 void* detour_perform_spawn(void* spawner, void* result, const void* params);
 void* detour_queue_spawn(void* spawner, void* result, const void* params, float delay);
@@ -1663,6 +1685,14 @@ void c459_receive(void* pc, const WireString* s);             // client: ChanOp:
 void c475_receive(void* pc, const WireString* s);             // client: ChanOp::Score (score_c475.cpp)
 void c475_join_replay(void* pc);                              // host: score rows to one PC (score_c475.cpp)
 void c491_pawn_rows(const void* sub, const char* what); // card 491 diag: each bound pawn's resupply state (UBWCOOP_C99_LOG)
+// Card 491 b260 (score_c475.cpp): the host pays every ResupplyUpgraded; clients drop their own and apply "U" rows.
+void c491_resupply_arm(const void* sub);                  // both: ResupplyLevel's offset, once per map
+bool c491_resupply_drop(const void* sub, uint64_t tag);   // client: true for a native ResupplyUpgraded (dropped)
+void c491_resupply_paid(const void* sub, uint64_t tag);   // host: after a ResupplyUpgraded, "U" to every client
+extern bool g_c491_inner_text; // AddFedScore(tag)'s own inner AddFedScoreText is next: the detour passes it (b262)
+void c491_resupply_join_replay(void* pc);                 // host: each bound pawn's level to one PC
+bool c491_pe(void* object, const void* function);         // client, ProcessEvent: true refuses a pawn's FedScoreGained (b262)
+void c491_level_watch(const void* sub);                   // client, every tick: a ResupplyLevel change no U row made (b262)
 void c475_map_end(void* old_world);                           // both: drops a replay cut by the map change
 int32_t c475_digest_total(const void* world);                 // the digest's Score: value, -1 when none
 void c475_step(void* engine);                                 // card 323: host total per change, client apply
@@ -3710,6 +3740,8 @@ extern C128CleanUpFn g_orig_c128_cleanup;
 extern C128KickFn g_orig_c128_kick;
 void detour_c128_cleanup(void* conn);
 bool detour_c128_kick(void* session, void* pc, const void* reason);
+// Card 502 (3): host, every listen tick: once per world, log the GameSession's MaxPlayers and raise it to 4.
+void c502_session_step(void* world);
 // The object and UFunction of the latest UObject::ProcessEvent entry (set by detour_process_event): a reliable RPC
 // that overflows its channel closes the connection inside that call, so the close names it.
 // The innermost ProcessEvent in progress on this thread (thread-local: worker threads run thread-safe anim Blueprint

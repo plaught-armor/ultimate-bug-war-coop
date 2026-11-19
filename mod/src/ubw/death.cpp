@@ -315,6 +315,9 @@ bool c128_pe_run(void* object, void* function, void* parms, uint64_t* orig_tsc) 
     if (g_c408_pe && c408_pe(object, function, parms)) {
         return false; // card 408: the client's own flak or plasma bug building timer event (the host's row calls it)
     }
+    if (g_client_session && c491_pe(object, function)) {
+        return false; // card 491 b262: a player pawn's own resupply step (the host's "U" row runs it)
+    }
     const uint64_t t0 = __rdtsc();
     g_orig_process_event(object, function, parms);
     *orig_tsc = __rdtsc() - t0;
