@@ -1,0 +1,17 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 047 proof: a normal two-player run with the audit hooks gated off. Auto-travel, then the card 043 down and
+# revive test runs to its done lines on both sides.
+# Run: SCENARIO=tools/scenarios/c47-gates.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C43_TEST=1" \
+#      CLIENT_ENV="UBWCOOP_C43_TEST=1" run65.sh <tag>
+# card047t adds UBWCOOP_C40_DAMAGE_TRACE=1 UBWCOOP_C41_ANIM_TRACE=1 UBWCOOP_DIAG=1 on both sides.
+# The bug kill seen on the client is c47-bug.txt: the card 023 debug bug spawns only with UBWCOOP_ENEMYAUDIT=1.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card043: host test done" timeout=300
+client wait log "card044: client test done" timeout=60
+client shot revived
+host shot revived
+client quit
+sleep 2
+host quit

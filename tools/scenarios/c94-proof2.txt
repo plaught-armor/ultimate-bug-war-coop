@@ -1,0 +1,57 @@
+# Card 094 proof: two client jumps on flat ground at the start, then the client walks the assault course from
+# (-520, 14700, 460) at yaw 90 with a jump after each short walk (the c94-scout2 course; the sixth walk turns onto the x -750 platform, as the scout's client drifted) until it has mantled over the
+# ledge at about (-767, 20969, 817), which takes the mantle (pre-fix the client never mantled). The host watches
+# from the ground below. Each jump logs the pawn position on both sides.
+# Run: SCENARIO=tools/scenarios/c94-proof2.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client key SpaceBar 100
+sleep 2
+client key SpaceBar 100
+sleep 2
+host goto -1200 20900 143 200 timeout=90
+client goto -520 14700 460 150 timeout=60
+client look 90 0
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client look point -750 20200 830
+client key W 1000
+client key SpaceBar 100
+sleep 2
+host look actor BP_PlayerCharacterMI_C 60
+host shot pre-vault
+client shot pre-vault
+client look 90 0
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+host look actor BP_PlayerCharacterMI_C 60
+host shot post-vault
+client shot post-vault
+client quit
+host quit

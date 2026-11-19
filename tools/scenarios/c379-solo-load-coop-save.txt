@@ -1,0 +1,46 @@
+# Probe (run c379): the host loads, alone, a save that was taken with a client in the session. Never run.
+# Static trace (card 375, done): the save stores each player pawn's PC list index; LoadOwnerVariables_Pawn spawns every
+# saved player pawn and possesses it only when a PC sits at that index. With the client gone, the client's saved pawn
+# has no PC at index 1 and should stay in the world with no controller (an orphan trooper).
+# Predictions: docs/STATE.md, entry "c379 predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c379-solo-load-coop-save.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c379b67 300
+# No failsoft.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot hud-client
+# 1. Both far from the start, 300 uu apart, then a save with both players in it.
+host warp actor point 6554 11459 197
+host wait stand 6554 11459 97 400 timeout=10
+host warp client point 6254 11459 197
+client wait near 6254 11459 197 300 timeout=10
+client wait stand 6254 11459 any 400 timeout=10
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+# 2. The client leaves. The host row: fire.cpp detour_logout -> c140_pace_logout (net_budget.cpp:998), written on
+#    every AGameModeBase::Logout, before the engine's own Logout runs.
+host mark
+client quit
+host wait log "card140: host Logout: pace queue of PC [0-9A-Fa-f]+ dropped with \d+ frames" since-mark timeout=30
+# 3. The host, alone, loads the save in place and looks at the client's saved spot.
+host mark
+host travel checkpoint
+host wait log "card132: host travel checkpoint: LoadLatestSave returned 1" since-mark timeout=20
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" since-mark timeout=20
+host wait state map=FED_C1M1 pawn=host-own timeout=60
+host wait stand 6554 11459 97 600 timeout=20
+# b66 (card 380): c379b65's look from (6554, 11459) was blocked by a barrier; look from the south instead.
+host warp actor point 6254 11159 197
+host wait stand 6254 11159 any 400 timeout=10
+host look point 6254 11459 97
+host shot h-orphan
+sleep 2
+host quit

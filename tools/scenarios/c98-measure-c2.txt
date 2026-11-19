@@ -1,0 +1,29 @@
+# Card 098 measurement, FED_C2M1 (host travel overridden with HOST_EXTRA_ENV UBWCOOP_TRAVEL): the host warps to the
+# first LOS bug hole (BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7, LOS_O02_SO05a) and throws grenades and fires at
+# it; the client watches from further back. `objectives` dumps each side's card098 world-change tally.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host objectives
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 700
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 1200
+sleep 2
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c98b-client-before
+host key G
+sleep 3
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+host key G
+sleep 3
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+host key LeftMouseButton 3000
+sleep 4
+host shot c98b-host-after
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c98b-client-after
+host objectives
+client objectives
+host quit
+client quit

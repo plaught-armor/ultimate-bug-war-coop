@@ -1,0 +1,81 @@
+# Cards 177 and 192, run c177-r2 (one build, one run, the last one granted). FED_C2M1, the c177-r1c route: the squad
+# Morita troopers (BP_AI_Trooper_Morita_C, IsNPC2D sprites) next to the player start die through
+# TryPlayDeathAnimation. Parts: 1, a live kill in the client's view; 2, the client far away (out of relevancy), a
+# kill, then the client warped by point to the corpse the host's death line names, inside the corpse's lifetime
+# (about 24 s): the arrival, its read-back, and an OverKill row update when the kill gibs; 3, a client rejoin (the
+# replay carries the live rows); 4, the travel to the bug-side map (card 177 map totals with their side; card 192: both
+# games alive 30 s after LoadMap returned, both pawns possessed). Predictions in
+# docs/cards/177-no-ragdoll-corpse-end-pose.md "Run c177-r2 predictions" and docs/cards/192-c33-hide-bug-pawn-crash.md.
+# Every state step waits for its log line; the only sleeps are replication waits and the 30 s survival hold.
+# A wait log's groups feed {g1}..{g9} until the next matched wait log, so the warp step follows its wait directly.
+# Run: SCENARIO=tools/scenarios/c177-r2.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      tools/run_pair.sh c177-r2 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host wait log "card098: host spawn BP_AI_Trooper_Morita_C" count=2 timeout=60
+host ui continue
+# Part 1: a live kill in the client's view.
+host warp actor BP_AI_Trooper_Morita_C 700
+host warp client BP_AI_Trooper_Morita_C 900
+sleep 3
+both look actor BP_AI_Trooper_Morita_C
+host mark
+client mark
+host kill actor BP_AI_Trooper_Morita_C
+host wait log "card177: host sprite death BP_AI_Trooper_Morita_C guid 0x[0-9a-f]+ seq \S+ \(\d+ frames, \d+ ms\), sent to 1 PCs" since-mark timeout=10
+host wait log "card177: host sprite rest BP_AI_Trooper_Morita_C" since-mark timeout=15
+client wait log "card177: client sprite row guid 0x[0-9a-f]+ seq \S+, host age \d+ ms" since-mark timeout=10
+client shot live-corpse
+host shot live-corpse
+# Part 2: the client far away (out of relevancy), a Morita killed next to the host, the client warped to its corpse.
+client mark
+host warp client point 222858 -90404 8700
+client wait near 222858 -90404 8700 800 timeout=60
+sleep 4
+host mark
+client mark
+host kill actor BP_AI_Trooper_Morita_C
+host wait log "card177: host sprite death BP_AI_Trooper_Morita_C guid 0x[0-9a-f]+ .*; Health \S+ at (-?\d+) (-?\d+) (-?\d+)" since-mark timeout=10
+host warp client point {g1+300} {g2} {g3+100}
+client wait log "card177: client sprite row guid" since-mark timeout=10
+client wait log "card177: client sprite death BP_AI_Trooper_Morita_C guid 0x[0-9a-f]+ seq \S+, arrival, (rest state set|played from the start)" since-mark timeout=30
+client wait log "card177: client sprite read-back BP_AI_Trooper_Morita_C" since-mark timeout=10
+try host wait log "card177: host sprite row update BP_AI_Trooper_Morita_C" since-mark timeout=5
+both look actor BP_AI_Trooper_Morita_C
+sleep 1
+client shot arrived-corpse
+host shot arrived-corpse
+# Part 3: the rejoin. The replay at the joining PC's first Pong carries every live row.
+client disconnect
+client mark
+host mark
+host wait log "card098: host spawn BP_PlayerController_C" since-mark timeout=120
+host wait log "card177: host sprite replay to a joining PC: \d+ rows sent" since-mark timeout=60
+client wait log "card045: client t=\d+ reconnected" timeout=120
+try client wait state pawn=client-own timeout=60
+try client wait log "card177: client sprite row guid" since-mark timeout=10
+client shot rejoin
+host shot rejoin
+# Part 4: the travel to the bug-side map. Both sides log their sprite death totals for FED_C2M1 on the LoadMap enter
+# path; card 192: both games alive 30 s after LoadMap returned, both pawns possessed.
+host mark
+client mark
+host travel next
+try host wait log "card177: host sprite death map totals" since-mark timeout=60
+try client wait log "card177: client sprite death map totals" since-mark timeout=60
+host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=180
+client wait log "UEngine::LoadMap returned true" count=2 since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+sleep 30
+host wait state pawn=host-own timeout=5
+client wait state pawn=client-own timeout=5
+try host wait log "card192: host skips .* on \S+ \(BP_PlayerCharacterBug_C\)" since-mark timeout=5
+try client wait log "card192: client skips .* on \S+ \(BP_PlayerCharacterBug_C\)" since-mark timeout=5
+client shot bug-map
+host shot bug-map
+host quit
+client quit

@@ -1,0 +1,52 @@
+# Card 121 review proof, one run: the client pulls the lever (the level script's checkpoint save: the client must log
+# "card121: client ... save engine save skipped (...): delegate executed (success 0)"), then quits to the main menu
+# from its pause menu (QUIT button, then the confirm's ConfirmQuitToMainMenu, through ProcessEvent: `ui click`) and
+# must load 3D_Frontend. USTGameInstance::ReturnToMainMenu reaches Save_CheckPoint only past its own guards; any
+# PerformSave it makes on the client logs a second skip line. No CRASH line, no new dump.
+# Run: SCENARIO=tools/scenarios/c121-save-quit.txt FAST=1 DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host warp client BP_PlayerPresence_C_2 300
+sleep 2
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO2\)" timeout=10
+host warp client BP_PlayerPresence_C_6 300
+sleep 2
+client goto actor BP_PlayerPresence_C_6 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO3\)" timeout=10
+host warp client BP_PlayerPresence_C_9 300
+sleep 2
+client goto actor BP_PlayerPresence_C_9 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO4\)" timeout=10
+host warp client point 17332 12821 213
+sleep 2
+client look actor BP_PanelSwitch_WithoutScreen_C_0 100
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 60
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 140
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 30
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client wait log "CompleteObjective\(Assault_O1\)" timeout=30
+host wait log "CompleteObjective\(Assault_O1\)" timeout=30
+client wait log "card121: client .*save engine save skipped .*: (delegate executed|unbound)" timeout=10
+sleep 3
+client key Escape 150
+sleep 2
+client shot c121-pause-menu
+client ui click BndEvt__WB_Pause_Menu_QUIT_button
+sleep 2
+client shot c121-quit-confirm
+client ui click ConfirmQuitToMainMenu
+client wait log "card052: .*world 3D_Frontend" timeout=60
+sleep 3
+client shot c121-frontend
+host quit
+client quit

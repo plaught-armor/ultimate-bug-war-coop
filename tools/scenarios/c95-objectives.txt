@@ -1,0 +1,19 @@
+# Card 095: finish the tutorial-area objectives from the host (one objective complete all; the script then adds CaptureTheFlag_O1),
+# log the objective list, then both walk to the capture-the-flag door pair and the client walks north through door _0.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete all
+sleep 5
+host objectives
+client objectives
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+host door list
+client door list
+client goto -3674 10400 150 150 timeout=20
+client shot c95o-client-after
+host shot c95o-host
+host quit
+client quit

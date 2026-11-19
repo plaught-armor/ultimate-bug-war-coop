@@ -1,0 +1,168 @@
+# Card 319 played path (card "Run 3 result" and the senior's "Played-path scenario review", 2026-11-14): the client
+# joins from the menu, the press-to-start screen stays up on both sides as in the play build (the client confirms after
+# the host), no FAST route and no AUTODROPSHIP (the game runs the dropship ride itself, as in the play build), then four
+# live-bug sample points, each a card319 row wait and a cropped minimap shot pair:
+#   A  right after the ride, before any death: three code-spawned bugs beside the client
+#   B  after a down and a host revive with no reload
+#   C  beside game-spawned bugs: `host objective go` to the current step, no `clear` until both shots
+#   D  after a checkpoint Reload (b14 case B: both down, the client reconnects)
+# Run 1 (b18r4 c4ece6d9f559d959): host crash in fx_watch (stale component pointer), host goto resolved to its own
+# pawn, shot names over 40 chars; all fixed in b18r5b (build-b5/dwmapi-b18r5b-e94555c8fd4ecc76.dll, copied into game/
+# under the senior's swap conditions). MENU=1 is lane 1 only in run_pair.sh. Run 3 (b18r5b): void before line 52. The
+# driver's SetForegroundWindow fails under Wine on Wayland, so the host was held, the client joined first and timed out;
+# and the "host" rows' Next row took the host on to FED_C2M1 at 100 s. Fixed: run_pair.sh MENU=1 activates a held
+# side's window with xdotool and launches the client only once the host is in its first mission; the drivers run the
+# new "play" / "join" rows (no Next, no Fail). UBWCOOP_C135_KEEP_SCREEN has no effect with
+# UBWCOOP_AUTODROPSHIP=1 (flags.cpp:117), so AUTODROPSHIP is off:
+#   systemd-run --user --scope -q -p MemoryMax=12G env MENU=1 SCENARIO=tools/scenarios/c319-played-c1m1.txt GOD=1
+#   HOST_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1 UBWCOOP_C52_TEST=play"
+#   CLIENT_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1 UBWCOOP_C52_TEST=join"
+#   tools/run_pair.sh c319-played-c1m1 2400
+# Rules: docs/STATE.md "Gameplay test scenario rules" (state steps wait on log rows; no coordinate tables: bug spawns
+# and the revive walk are placed from the client pawn's live position, C from the live active objective; shots viewed
+# by the junior).
+# Crop for every minimap shot: magick <png> -crop 110x100+0+260 +repage -filter point -resize 300% out.png
+#
+# Predictions (written before the run):
+#  Every sample waits on a card319 row with `hostile [1-9]` (c37_enemy: ASTEnemyBase and not an AI trooper), so friendly
+#  troopers in range never satisfy a wait; the compare below is hostile gathered against hostile in range.
+#  prompt both sides "card135: <side> t=... screen prompt ready: ..., on FED_C1M1" before that side's `ui continue`.
+#  join   client "card052: test client" rows reach the mission world; no "UBWCOOP_TRAVEL" in either config block;
+#         both config blocks "UBWCOOP_C135_KEEP_SCREEN 1"; host "card320: host t=... screen read", then client
+#         "card320: client t=... screen confirmed on FED_C1M1".
+#  A      (pre-death, the start-order question) client rows read hud BP_HUD_Gameplay... gameplay 1, range > 0, scan > 0.0,
+#         and over the 4 rows 5 s apart cached reads both 0 and 1 (the gather timer runs). If hostile gathered =
+#         hostile >= 1 and the shot shows red blips: the fault is not there from the start (go to B, C, D). If a client
+#         row reads scan 0.0, gameplay 0 or a hud other than the gameplay HUD: the start-order cause, named without a
+#         death (the host rows at the same step read scan > 0.0 and hostile gathered = hostile).
+#  B      the down and revive keep the same pawn: client rows "pc pawn same"; gathered as in A. A change here against A
+#         names the revive path.
+#  C      game-spawned bugs (the wait passes only once a hostile is in range): hostile gathered = hostile on both sides
+#         when A held; if A held and C fails, the cause is per bug
+#         class or spawn path (the `missed` rows name the collision of each missed bug).
+#  D      if the playtest cause is the stale pawn (card 319 first suspect), every client card319 row after the Reload
+#         reads "pc pawn other" or "pc pawn null" and "hostile <n>: gathered 0" with n >= 1, while the host rows
+#         at the same step read "pc pawn same" and hostile gathered = hostile. If the client rows read "pc pawn same"
+#         and hostile gathered = hostile, the respawn does not reproduce it either.
+#  types  both sides "object types [0: empty, default query]" (b18 run 3 disassembly: the HUD passes an empty array).
+#  tally  map end, client: "hostile <n>: gathered <n>" with the two equal when no fault shows (the all-NPC count
+#         stays in the row: friendly troopers raise it); samples with pc pawn not same = the samples after the Reload (pawn cause) or 0.
+voidsoft
+failsoft
+abort-on objective
+void unless host dll d781c1e804ad64d6
+void unless client dll d781c1e804ad64d6
+host wait state map=FED_C1M1 pawn=host-own timeout=600 void
+client wait state map=FED_C1M1 pawn=client-own timeout=300 void
+# --- The press-to-start screen on both sides: the host continues first, the client confirms after it (card 320).
+host wait log "card135: host t=\d+ screen prompt ready: .*, on FED_C1M1" timeout=180
+host mark
+client mark
+host ui continue
+host wait log "card135: host continued t=\d+ on FED_C1M1 " since-mark timeout=30
+host wait log "card320: host t=\d+ screen read " since-mark timeout=5
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1 " since-mark timeout=60
+client wait log "card135: client t=\d+ screen prompt ready: .*, on FED_C1M1" timeout=60
+client ui continue
+client wait log "card320: client t=\d+ screen confirmed on FED_C1M1 " since-mark timeout=30
+host wait log "playlog: host t=\d+ clock 1 " timeout=60
+client wait log "playlog: client t=\d+ clock 1:" timeout=30
+client shot start-cl
+host shot start-host
+# --- The game's own dropship ride (no AUTODROPSHIP), then both on foot.
+host wait log "collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship\w*_C, LocalRole 3\)" since-mark timeout=300
+host wait state pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+# --- A: before any death. Three Warrior bugs 1500 uu from the client's pawn (read live from the host's look at it).
+# GOD=1 keeps the client up while they attack. B's and D's `down` is c109_down -> c43_enter_down (Health set to 1
+# inside in_reset, no damage hit), so the test god does not block it; D's all-down kill is c43_kill_host's in_kill hit.
+# Run 1: the host stood ~900 uu off the client, so bugs 1500 uu past the client sat at the edge of the host's 2500 uu
+# scan range (host rows hostile 0). The host walks to the client first (goto skips the walker's own pawn in b18r5b).
+host goto actor BP_PlayerCharacterMI_C 150 timeout=60
+host wait goto timeout=60
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1+1500} {g2} {g3+150} 180
+host spawn bug {g1+1500} {g2+300} {g3+150} 180
+host spawn bug {g1+1500} {g2-300} {g3+150} 180
+client mark
+host mark
+client wait log "card319: client t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+host wait log "card319: host t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+client shot A-cl-map
+host shot A-host-map
+client wait log "card319: client t=\d+ " since-mark count=4 timeout=30
+client shot A-cl-map-2
+host shot A-host-map-2
+host clear 6000 kill
+# --- B: the host downs the client and revives it, no reload (b7-combined 295 pattern; the host walks to the client).
+host goto actor BP_PlayerCharacterMI_C 150 timeout=60
+host wait goto timeout=60
+host mark
+client mark
+host down client
+host wait log "card130: host t=\d+ revive prompt shown" since-mark timeout=10
+host look actor BP_PlayerCharacterMI_C
+try host key E 6000 timeout=15
+client wait log "card295: client t=\d+ " since-mark timeout=15
+client wait state pawn=client-own timeout=30
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1+1500} {g2} {g3+150} 180
+host spawn bug {g1+1500} {g2+300} {g3+150} 180
+host spawn bug {g1+1500} {g2-300} {g3+150} 180
+client mark
+host mark
+client wait log "card319: client t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+host wait log "card319: host t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+client shot B-cl-map
+host shot B-host-map
+host clear 6000 kill
+# --- C: game-spawned bugs at the live current step, no clear until both shots.
+host objective now
+host objective go
+client mark
+host mark
+client wait log "card319: client t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=180
+host wait log "card319: host t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+client shot C-cl-map
+host shot C-host-map
+# --- D: the client dies and respawns once (b14 case B: both down, checkpoint load).
+host clear 6000 kill
+host mark
+client mark
+host down client
+host wait log "card294: host t=\d+ Down Downed for pawn id \d+ \(slot \d+\) sent now, ahead of \d+ queued frames" since-mark timeout=10
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=40
+host travel checkpoint
+host wait log "card143: host t=\d+ Reload to \S+ \(copy \S+\): sent now, ahead of \d+ queued frames" since-mark timeout=60
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+client wait log "card294: client t=\d+ host restart \(" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built \d+, respawns in the old world 0" since-mark timeout=90
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+# Run 1: the host stood ~900 uu off the client, so bugs 1500 uu past the client sat at the edge of the host's 2500 uu
+# scan range (host rows hostile 0). The host walks to the client first (goto skips the walker's own pawn in b18r5b).
+host goto actor BP_PlayerCharacterMI_C 150 timeout=60
+host wait goto timeout=60
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1+1500} {g2} {g3+150} 180
+host spawn bug {g1+1500} {g2+300} {g3+150} 180
+host spawn bug {g1+1500} {g2-300} {g3+150} 180
+client mark
+host mark
+client wait log "card319: client t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+host wait log "card319: host t=\d+ .*, hostile [1-9]\d*: gathered" since-mark timeout=30
+client shot D-cl-map
+host shot D-host-map
+client wait log "card319: client t=\d+ " since-mark count=4 timeout=30
+client shot D-cl-map-2
+host shot D-host-map-2
+host quit
+client quit

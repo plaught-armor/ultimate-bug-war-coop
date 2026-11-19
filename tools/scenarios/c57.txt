@@ -1,0 +1,27 @@
+# Card 057 route (card057t), ported from the xdotool driver drive57.sh to the card 063 command file.
+# Run: SCENARIO=tools/scenarios/c57.txt STAGGER=5 \
+#   HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_ENEMYAUDIT=1 UBWCOOP_SPAWN_BUG=1 UBWCOOP_C50_TEST=1" \
+#   CLIENT_EXTRA_ENV="UBWCOOP_ENEMYAUDIT=1 UBWCOOP_C40_DAMAGE_TRACE=1 UBWCOOP_C50_TEST=1" tools/run_pair.sh c63a 420
+# The client picks up the case laser (C50_TEST), presses 2 and fires (C50_TEST); the host presses 2 afterwards.
+
+client wait log "card050: client test done" timeout=240
+client shot picked-up
+# Past the host's mission brief (drive57.sh sent Return, space, Return, space). The brief takes Slate focus keys only,
+# so injected InputKey presses never closed it; `ui continue` (card 067) calls the BP functions behind the key through
+# ProcessEvent. AUTODROPSHIP closes it the same way, so this is usually done already ("nothing to close").
+host ui continue
+client key Two
+client wait log "switch to weapon 1: Equip sent" timeout=15
+client wait state equipped=1 timeout=10
+client shot after-switch
+host shot client-holds-rifle
+host wait log "card057: host test moves its own pawn" timeout=150
+host wait log "card039: host SpawnGoreResponse BP_AI_WarriorBug_C" timeout=60
+host shot bug-dead
+client shot bug-dead
+sleep 12
+host key Two
+host wait log "ConstructWeaponSwitchRequest\(1, 0, .*host-own" timeout=15
+host shot host-switch
+client quit
+host quit

@@ -1,0 +1,48 @@
+# Card 073 step 3: a client's frag pickup reaches its own HUD and its throw works. The host walks near the pickup
+# first (it stops 500 uu short, so it does not take it) and watches; the client takes it, its HUD should read x1,
+# then it throws (G) and both screens are shot at the explosion. A second G throws the incendiary the same pickup gave.
+# Run: SCENARIO=tools/scenarios/c73-client-grenade.txt HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C73_LOG=1" \
+#      CLIENT_ENV="UBWCOOP_C73_LOG=1" run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto actor BP_GrenadeAmmoPickup_Frag_C 500
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+client shot after-pickup
+client wait log "GrenadeItem .*Frag.* our count 0 to 1" timeout=10
+# The client throws along yaw 0 at pitch -25 from about (6520, 11370): both cameras face the ground ahead of it.
+client look 0 -15
+host look point 7300 11400 60
+client key G
+sleep 1
+host shot frag-throw-1
+client shot frag-throw-1
+sleep 1
+host shot frag-throw-2
+client shot frag-throw-2
+sleep 1
+host shot frag-throw-3
+client shot frag-throw-3
+sleep 1
+host shot frag-throw-4
+client shot frag-throw-4
+sleep 1
+client shot after-frag
+client key G
+sleep 1
+host shot incendiary-1
+client shot incendiary-1
+sleep 1
+host shot incendiary-2
+client shot incendiary-2
+sleep 1
+host shot incendiary-3
+client shot incendiary-3
+sleep 2
+client shot after-incendiary
+sleep 2
+client quit
+sleep 2
+host quit

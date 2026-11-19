@@ -1,0 +1,52 @@
+# Card 419 (b183 reduced fix): plasma rounds burst at the host's location. FED_C5M1 places the plasma bug buildings,
+# which fire from the map start (c408b115a: first round about 20 s after the load). Predictions: host card419 "burst
+# ... at (x, y, z)" rows; client card419 rows on the same building with "burst diff" under 100 uu and "row age" under
+# 100 ms; card419 map totals with 0 fallback bursts and 0 missed; no WARN card419. Host and client shots at a plasma
+# building after the bursts. The c234-c5m1 opening (travel, hold, continue), then waits only.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c419-c5m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C5M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c419b185a 540
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 41c369126e01b57f
+void unless client dll 41c369126e01b57f
+# b183: under AUTODROPSHIP the host's controller pawn is the dropship (state pawn=other) until the autodropship
+# continue (c419b183a/b voided here on pawn=host-own); the host gate is the map only, the continue is the
+# autodropship's own (the press is a try), and the host pawn is waited on after the hold.
+host wait state map=FED_C5M1 timeout=240 void
+client wait state map=FED_C5M1 pawn=client-own timeout=180
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+try client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host wait log "card408: host t=\d+ armed: \d+ buildings" timeout=30
+# Six bursts on the host (3 buildings), each answered on the client.
+host wait log "card419: host t=\d+ burst \S+ of BP_SatchelBuilding_Plasmabug_C\S* at " count=6 timeout=150
+client wait log "card419: client t=\d+ burst \S+ of BP_SatchelBuilding_Plasmabug_C\S* at " count=6 timeout=20
+host look actor BP_SatchelBuilding_Plasmabug_C 0 bounds
+client look actor BP_SatchelBuilding_Plasmabug_C 0 bounds
+sleep 2
+host shot c419-h-plasma
+client shot c419-c-plasma
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# b185 (card 477): the host quits (its card408 and card419 totals print at the test quit); the client loses the
+# session and loads the frontend, where its card095, card408 and card419 map totals print at LoadMap enter. Run
+# c419b184a crashed the client in this load (a freed plasma class tested at BeginPlay); the load must return. The
+# card095 row prints only when the map had door or collision rows (c419b185a had none): a try.
+host mark
+client mark
+host quit
+client wait log "card408: client map totals: " since-mark timeout=90
+try client wait log "card095: client map totals: \d+ collision rows" since-mark timeout=5
+client wait log "card419: client map totals: " since-mark timeout=10
+client wait log "UEngine::LoadMap returned true" since-mark timeout=60
+sleep 5
+client quit

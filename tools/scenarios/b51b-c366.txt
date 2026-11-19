@@ -1,0 +1,30 @@
+# Batch b51 run B (senior order 2026-11-15): card 366, a downed host whose last teammate leaves dies.
+# Predictions: docs/cards/366-...md. Build b51: f46ae0eb6b1386d6. GOD=0, no card 043/045 levers.
+# FED_C1M1, both on foot; card 109 `host down host`, then at once `client quit` (a clean exit: Logout, no timeout;
+# no wait between, a trooper could pick the host up after about 3 s). Then the host's card 366 all-down, the real
+# death, the game's death screen. Expected wall: about 2 min.
+# Run: LANE=2 SCENARIO=tools/scenarios/b51b-c366.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1" tools/run_pair.sh b51b 300
+void unless host dll f46ae0eb6b1386d6
+void unless client dll f46ae0eb6b1386d6
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host wait log "card113: session players 1 -> 2" timeout=60
+sleep 3
+host shot b51b-before
+host mark
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Downed" since-mark timeout=10
+client quit
+host wait log "all down: last teammate left \(card 366\)" since-mark timeout=30
+host wait log "card043: host t=\d+ real-death hit 1 " since-mark timeout=15
+host wait log "card043: host real death: 1 hits, Health 0\.0" since-mark timeout=15
+sleep 3
+host shot b51b-death-screen
+sleep 4
+host shot b51b-death-later
+host quit

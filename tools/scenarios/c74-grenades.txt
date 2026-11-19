@@ -1,0 +1,58 @@
+# Card 074 proof: each grenade throw shows on both screens. The client takes the frag and incendiary pickup set and
+# throws both ahead; the host takes the second frag pickup (_1), walks back beside the client and throws one. A throw
+# spawns about 1.1 s after G and explodes when its life span ends (frag 1.6 s later, incendiary 1.36 s), so each throw
+# takes a shot in flight and two around the explosion, client first. Health and frames are in the logs (card074 GrenadeSpawn, client-own Health).
+# Run: SCENARIO=tools/scenarios/c74-grenades.txt DEPLOY=1 run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto actor BP_GrenadeAmmoPickup_Frag_C 500
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+client wait log "GrenadeItem .*Frag.* our count 0 to 1" timeout=10
+client wait log "GrenadeItem .*Incendiary.* our count 0 to 1" timeout=10
+client look 0 -5
+host look point 7700 11400 60
+client key G
+sleep 1.5
+client shot frag-flight
+host shot frag-flight
+sleep 1.3
+client shot frag-boom-a
+host shot frag-boom-a
+sleep 0.4
+client shot frag-boom-b
+host shot frag-boom-b
+sleep 3
+client key G
+sleep 1.5
+client shot inc-flight
+host shot inc-flight
+sleep 0.9
+client shot inc-boom-a
+host shot inc-boom-a
+sleep 1
+client shot inc-fire
+host shot inc-fire
+sleep 8
+host goto actor BP_GrenadeAmmoPickup_Frag_C_1 80 timeout=200
+sleep 2
+host goto 6400 11900 100 150 timeout=200
+host look 0 -5
+client look point 7700 11900 60
+sleep 1
+host key G
+sleep 1.5
+client shot host-flight
+host shot host-flight
+sleep 1.3
+client shot host-boom-a
+host shot host-boom-a
+sleep 0.4
+client shot host-boom-b
+host shot host-boom-b
+sleep 2
+client quit
+sleep 2
+host quit

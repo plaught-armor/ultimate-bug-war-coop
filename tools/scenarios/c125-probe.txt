@@ -1,0 +1,46 @@
+# Card 125 measurement (FED_C3M1): the card 123 mount, then the client holds fire 3 s, taps once, turns the turret
+# with mouse axis events. UBWCOOP_C125_LOG on both sides logs the turret's tag edges, look counts and 1 Hz state.
+# Run: SCENARIO=tools/scenarios/c125-probe.txt DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C125_LOG=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen" CLIENT_EXTRA_ENV="UBWCOOP_C125_LOG=1" tools/run_pair.sh c125p 480
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 5
+# The turret's CanInteract wants the pawn's yaw within a cone of the turret root's forward, and the client's turret
+# root yaw differs from the host's (c123z: client -90, host 0), so the client picks the seat-side point from its own
+# turret and the host puts the server copy there; the look waits until the client's pawn is there.
+host warp actor BP_MountableTurret_C 400
+host warp client BP_MountableTurret_C 100
+sleep 3
+host warp client BP_MountableTurret_C 90 behind
+client wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" timeout=5
+host warp client point {g1} {g2} {g3}
+client wait near {g1} {g2} {g3} 60 timeout=6
+sleep 1
+client wait near {g1} {g2} {g3} 60 timeout=6
+client look actor BP_MountableTurret_C
+client key E
+client shot turret-before
+host wait log "card123: host TurretMount from" timeout=10
+client wait log "AcknowledgePossession.*BP_MountableTurret_C" timeout=10
+sleep 3
+client shot turret-mounted
+host shot turret-mounted
+client key LeftMouseButton 3000
+sleep 1
+client key LeftMouseButton 150
+sleep 1
+client axis MouseX 0.5 1500
+client axis MouseY -0.3 800
+sleep 2
+client shot turret-aimed
+host shot turret-aimed
+client key E
+host wait log "card123: host TurretLeave from" timeout=10
+sleep 3
+client shot turret-left
+host shot turret-left
+sleep 2
+client quit
+sleep 2
+host quit

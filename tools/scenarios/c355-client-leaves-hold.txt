@@ -1,0 +1,34 @@
+# Card 355: the client leaves during the card 320 hold on FED_C2M1 (after the host's continue, before its own
+# confirm). The host returns to the main menu at once, not after the 60 s bound, and does not start alone.
+# Prediction: docs/cards/355-client-leaves-during-hold-host-to-menu.md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c355-client-leaves-hold.txt
+#      FAST=1 GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh
+#      c355-client-leaves-hold 300
+# No failsoft: a missed required step ends the run there. Start as c344-no-confirm.txt.
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+# 1. The hold on FED_C2M1 waits for the client, and the host has continued.
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=60
+# 2. The client is at its prompt and leaves without confirming.
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client quit
+# 3. The host returns to the menu on the leave, by the game's QUIT path; the hold is not released for a disconnect.
+host wait log "card320: host t=\d+ client \S+ left during the hold \(waited for\), clients 0" since-mark timeout=30
+host wait log "WARN card355: host t=\d+ a waited-for client left during the hold \(host continued 1\): host returns to the main menu" since-mark timeout=10
+host wait log "card350: host t=\d+ return to the menu: OpenLevel\(./Game/Maps/3D_Frontend/3D_Frontend., absolute, .FromLevelQuit\?ChapterID=\d+\?LevelID=\d+.\)" since-mark timeout=10
+host wait log "card320: host t=\d+ hold off after \d+ ms \(map end\)" since-mark timeout=30
+host wait log "card052: t=\d+ world \S+ \(package \S*3D_Frontend\S*, net mode \d\)" since-mark timeout=90
+sleep 4
+host shot c355-host-menu
+host quit

@@ -1,0 +1,24 @@
+# Card 096: the host opens its pause menu (Escape through the PC's InputKey, as a player would) while the client walks;
+# the client's goto must finish while the host's menu is open. Then the host closes the menu and walks, and the client
+# opens and closes its own pause menu (it must not pause the host: the host walks during it).
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host key Escape 150
+sleep 2
+host shot c96-host-menu
+client goto -3454 9600 148 300 timeout=20
+client shot c96-client-during
+host key Escape 150
+sleep 2
+host goto -3454 9686 148 300 timeout=20
+client key Escape 150
+sleep 2
+host goto -3454 8800 148 150 timeout=20
+client shot c96-client-menu
+client key Escape 150
+sleep 2
+client goto -3454 8800 148 150 timeout=20
+host quit
+client quit

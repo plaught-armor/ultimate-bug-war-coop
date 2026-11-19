@@ -1,0 +1,110 @@
+# b163 FED_C3M2 proof run with the dropship ride (FAST=0, no UBWCOOP_AUTODROPSHIP), senior order 2026-11-16: the owed
+# proofs of cards 236 (client resolves the host's dropship spline), 263 (client frame windows in the PowerPlant fight),
+# 274/276 (copy magazine and fire presses through real fire with reloads) and 289 (a host secret take credited on the
+# client). Shape: the c399 ride block (map, hold, both continue, ride, landing), three code-spawned bugs beside the
+# landing with client real fire and two reloads (b169: was the PowerPlant SO2 fight), then the host takes BP_SecretPickup_C_2 (c243-c3m2-r8.txt:1543 stands), then one digest round.
+# Predictions:
+#   236: 0 client `card159 ... not resolved` rows; card159 rows name spline BP_CustomFlightPathActor_C_6 on both sides.
+#   263: no client `card132: client ... frame window` row below 300 frames outside load and join.
+#   274/276: `card274: host copy magazine` rows after the client's reloads; 0 `found no round` rows while the client
+#            holds rounds; relayed reload presses equal the client's reload sends.
+#   289: host `card289: host ... secret BP_SecretPickup_C_2 credited`, then client `card289: client ... credited from
+#        the host row (count 0 -> 1)`.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c236-c3m2-ride.txt FAST=0 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c236b163a 1500
+# Expected wall: about 8 min.
+void unless host dll 4efbc7838d907625
+void unless client dll 4efbc7838d907625
+failsoft
+# Direct travel starts in the dropship under the hold: map, the hold, both continue, then the pawns (c399 C3M1 block).
+host wait state map=FED_C3M2 timeout=300 void
+client wait state map=FED_C3M2 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+# The ride (card 236: the client's card159 spline rows during the flight), then the landing beside the host.
+host wait log "card320: host t=\d+ hold off" timeout=30
+client wait log "card399: client t=\d+ ride on" timeout=30
+sleep 3
+host shot c236-h-ride
+client shot c236-c-ride
+host wait log "card399: host t=\d+ release" timeout=180
+client wait log "card399: client t=\d+ ride off" timeout=30
+sleep 3
+host shot c236-h-landed
+client shot c236-c-landed
+try host wait state pawn=host-own timeout=60
+try client wait state pawn=client-own timeout=60
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# Cards 263, 274, 276 (b169 senior order): three code-spawned bugs 800 uu ahead of the host right after the landing,
+# the client beside the host, then client real fire with two reloads (c109-shoot.txt bursts). Replaces the PowerPlant
+# SO2 fight (c236b163a and later did not reach it).
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+150} {g3} 180
+host spawn bug {g1+800} {g2-150} {g3} 180
+host warp client point {g1} {g2+200} {g3}
+sleep 3
+client look point {g1+800} {g2} {g3}
+host look point {g1+800} {g2} {g3}
+host shot c236-h-fight
+client shot c236-c-fight
+host mark
+client mark
+client key LeftMouseButton 2000 timeout=15
+sleep 1
+client key R
+sleep 3
+client look point {g1+800} {g2} {g3}
+client key LeftMouseButton 2000 timeout=15
+sleep 1
+client key R
+sleep 3
+client key LeftMouseButton 2000 timeout=15
+sleep 1
+# b170 (card 444 proof): one full Morita magazine (60 rounds, about 10.5 per s in c236b169a) in one hold after a fresh
+# reload, then a reload: the client's netbudget AmmoMirror 5 s window over the hold, at most one "AmmoMirror sent: @"
+# row per s, the full row at each reload and the host "card274: host copy magazine" row after it.
+client key R
+sleep 3
+client look point {g1+800} {g2} {g3}
+client key LeftMouseButton 7000 timeout=20
+sleep 1
+client key R
+sleep 3
+host clear 3000 kill
+host shot c236-h-fight-end
+client shot c236-c-fight-end
+# Card 289: the host takes BP_SecretPickup_C_2; the client's credited row follows.
+host warp actor point -35484 -23313 1179
+host warp client point -35346 -23429 1179
+host wait stand -35484 -23313 any 60 timeout=15
+client wait stand -35346 -23429 any 60 timeout=15
+try both clear 600 45 max-left=2
+host mark
+client mark
+try host goto actor BP_SecretPickup_C_2 30 timeout=25
+unless host log "card289: host t=\d+ secret BP_SecretPickup_C_2 credited" count=1 try host look actor BP_SecretPickup_C_2
+unless host log "card289: host t=\d+ secret BP_SecretPickup_C_2 credited" count=1 try host key E
+host wait log "card289: host t=\d+ secret BP_SecretPickup_C_2 credited" since-mark timeout=10
+client wait log "card289: client t=\d+ secret BP_SecretPickup_C_2 credited from the host row" since-mark timeout=10
+host shot c236-h-secret
+client shot c236-c-secret
+# Digest round at the end.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+sleep 2
+client quit
+sleep 2
+host quit

@@ -1,0 +1,80 @@
+# Card 106 run 1 (FED_C1M1, FAST=1): client flare and pod pickup, host throw, then three client mantles.
+# The mantles go last, so a mantle that does not fire (drive stops at the first failed wait) costs no other row.
+# Run: SCENARIO=tools/scenarios/c106-combined.txt FAST=1 DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh c106a 420
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 2
+# c105-proof flare route: the range steps, the tutorial objectives by command, then the tutorial pickup.
+host warp client BP_PlayerPresence_C_2 300
+sleep 1
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+host warp client BP_PlayerPresence_C_24 10
+sleep 1
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+sleep 1
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+sleep 1
+host warp actor BP_PlayerPresence_C_1 10
+host warp client BP_WeaponPickup_MoritaMk1_C_1 120
+sleep 1
+client look actor BP_WeaponPickup_MoritaMk1_C_1
+client key E
+sleep 1
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host objective complete TacSupport_SO5
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 10
+sleep 1
+client look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+client key E
+sleep 1
+client key Four
+sleep 1.5
+client key LeftMouseButton
+host wait log "flare BP_SupportFlare_C ActivateFlare" count=1 timeout=25
+client wait log "copy of host \d+: \S+BP_WeaponPickup_MoritaMk1_C at" count=1 timeout=10
+# Client pod pickup: the pod's MoritaMk1 is the nearest of its class to the tutorial pickup (the placed one is ~770 uu off).
+# c106a: after 1 s the client still stood 450 uu off (its look took the placed one, target null); wait 3 s.
+# The take is checked from the logs after the run, so a miss does not end the throw and mantle rows.
+host warp client BP_WeaponPickup_MoritaMk1_C 80
+sleep 3
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 3
+client shot c106-pod-taken
+# Host throw: charge slot 0 by the card 106 test command, then Four and fire.
+host charge 0 20000 1
+host look 0 -35
+host key Four
+sleep 1.5
+host key LeftMouseButton
+host wait log "flare BP_SupportFlare_C ActivateFlare" count=2 timeout=25
+client wait log "copy of host \d+: \S+BP_TacSupp_Pod_Resupply_C at" count=2 timeout=10
+host shot c106-host-throw
+client shot c106-host-throw
+# Mantle x3 at the c101g spot: the server copy exactly on the ground spot, face +Y, W plus Space.
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 400
+client key SpaceBar 100
+host wait log "card101: host t=\d+ mantle window closes" count=1 timeout=8
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 400
+client key SpaceBar 100
+host wait log "card101: host t=\d+ mantle window closes" count=2 timeout=8
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 400
+client key SpaceBar 100
+host wait log "card101: host t=\d+ mantle window closes" count=3 timeout=8
+client shot c106-mantle3
+client quit
+host quit

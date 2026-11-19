@@ -1,0 +1,20 @@
+# Card 064 proof 2: the client walks to a zipline point (no teleport) and presses Use.
+# FED_C1M1 has four points: _C_3 (17337 14717 333, on the ground), _C_2 above it (1085), _C_1 (17300 19713 1383,
+# the card 054 target) and _C_0 (17252 28454 1645). The navmesh does not reach _C_1: the walker ends on the ground
+# under it (card 064 run c64g). _C_3 is the walkable start of the chain.
+# Run: SCENARIO=tools/scenarios/client-zipline.txt STAGGER=5 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 520
+# Passes when the host relays the client's Use onto a BP_ZiplinePoint_C (the card 054 relay line prints the name without
+# its number).
+
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+sleep 5
+client goto actor BP_ZiplinePoint_C_3
+client look actor BP_ZiplinePoint_C_3
+client key E
+host wait log "card054: host .*relayed Use #\d+: .* Interact on BP_ZiplinePoint_C \(" timeout=15
+client shot zipline
+sleep 3
+client shot zipline-after
+client quit
+host quit

@@ -1,0 +1,23 @@
+# Card 138 hold proof (begin_c138.cpp): the client's world BeginPlay dispatch waits for its pawn.
+# Join 1 is forced (UBWCOOP_C138_HOLD_MS=3000 on the client: the hold runs at least 3 s, pawn or not, then the switch
+# turns itself off). The card 045 rejoin then shows the real order: "hold start" with a null pawn (hb59's GameState-
+# first order) or "no hold" (pawn first). BP_PickupTracker (FED_C2M1 nuke pickup) logs the pawn its BeginPlay reads.
+# Run: LANE=2 SCENARIO=tools/scenarios/c138-hold-proof.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C138_HOLD_MS=3000"
+#      tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+client wait log "card138: client t=\d+ release after" timeout=30
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host ui continue
+# Rejoin (card 045): the client drops and follows the host back in.
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait log "card138: client t=\d+ (release after|no hold)" new timeout=60
+# The origin line can come before the pawn state poll returns: wait for it first, from line 17.
+client wait log "card120: client t=\d+ minimap origin" new timeout=30
+client wait state pawn=client-own timeout=60
+# The tracker's OnWeaponEquipped binding: a weapon switch after the rejoin.
+client key One
+sleep 2

@@ -1,0 +1,118 @@
+# Card 375 proof (b59 c0c1e733ab2bb380, no build; b60 a48aa4475e889bf7 with the card 374 late-copy fix): the client rejoins while the host is still on its death screen.
+# c374 covered the rejoin only after the host had restarted. Play route: both down (client first, so the all-down
+# decision fires), the client presses Exit on its death screen (card 373: no reconnect), the host stays Dead with no
+# button pressed, the client rejoins from the lobby (`client travel join`, c52_join), then the host clicks RESTART
+# CHECKPOINT (LoadLastSave) through the real click path (`host ui click`, card 121). FED_C1M1, FAST=1, GOD=0.
+# Trace (objectives.cpp c307_beside_up / c46_spawn_spot, death.cpp, restore_c143.cpp):
+#  - Senior correction: c43_join_replay sends the host's Dead entry; c43_receive_down sets death_pending for a non-own
+#    Dead entry (card 044 all down), so the joining client gets "card043: client ... other pawn ... -> Dead", then its
+#    own death and death screen (3 buttons disabled, Exit kept). Recorded, not fixed: whether the client's copy on the
+#    host stays Up, and whether the client's Exit works a second time (card373 row again; step 3b, then a second join).
+#  - Join with nobody Up: c307_beside_up gets no Up target, so "card307: ... kept PlayerStart: nobody Up" (if the
+#    host's Dead pawn is already gone, r.p[0].pawn is null and the row reads "the host's own pawn spawns" instead; the
+#    row text settles which), or the card146 origin row if the PlayerStart is encroached. The client spawns Up at the
+#    PlayerStart (-560, -1715, 128), the card135 join replay and the card320 confirm follow.
+#  - The host stays Dead on its death screen (5 widgets, 3 buttons enabled) while the client joins: no host stand-up,
+#    no second all-down pass, no card366/344/355 row.
+#  - LoadLastSave: the in-place load with a client whose pawn is not in the save: the card371 "no player pawn after
+#    the load ... Reload with no saved state" row and a card143 Reload "none" (or a normal Reload if the pawn is in the
+#    save), the client's Reload received, reconnected, restart done; both Up at the checkpoint, the client's death screen
+#    cleared.
+# Predictions: as above; 0 stranded players; FATAL/ERROR 0; digest mismatches at most card 218's spawner
+# (STAISpawner); no new WARN class against c374b58.
+# b60 predictions (card 374, death.cpp c374_late_copies): per join one "card374: host ... (slot 1) joined after the
+# all-down: Out" row, host "card043 ... (server-copy, slot 1) -> Out", client "own pawn ... Up -> Out" plus the death
+# screen as before; host stays Dead, no auto-restart, no second all-down row; second Exit and rejoin still work;
+# LoadLastSave brings both Up, client Health 100 and normal walk speed; FATAL/ERROR 0; WARN class diff vs c375a59 empty.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c375-rejoin-host-dead.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 420
+# Expected wall: about 3 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# --- 1. Both down, client first.
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+host wait log "card044: host death screen: 5 widgets" since-mark timeout=20
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+host shot dead-host
+client shot dead-client
+# --- 2. The client's Exit.
+host mark
+client mark
+client ui click BndEvt__WB_PlayerDeathScreen_Exit
+client wait log "card045: client t=\d+ Browse URL: .* map ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=20
+client wait log "card373: client t=\d+ left the session by the death screen Exit \(FromGame\): no reconnect" since-mark timeout=5
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 0\)" since-mark timeout=10
+client shot front-client
+# --- 3. The host stays on its death screen; the client rejoins by the lobby join button's path.
+host mark
+client mark
+client travel join
+client wait log "card374: client t=\d+ travel join: c52_join" since-mark timeout=5
+client wait log "card052: t=\d+ join armed" since-mark timeout=5
+client wait log "card052: t=\d+ world FED_C1M1 \(package /Game/Maps/FED/FED_C1M1, net mode 3\)" since-mark timeout=60
+host wait log "card307: host t=\d+ player spawn at .* kept PlayerStart|card146: host t=\d+ .*origin" since-mark timeout=60
+host wait log "card135: host t=\d+ join replay" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+try client ui continue
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot \d\) .*-> Dead" since-mark timeout=30
+host wait log "card374: host t=\d+ BP_PlayerCharacterMI_C\S* \(slot 1\) joined after the all-down: Out" since-mark timeout=30
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(server-copy, slot 1\) -> Out" since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Out" since-mark timeout=10
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=30
+sleep 2
+host shot joined-host
+client shot joined-client
+# --- 3b. Senior's finding check: the client's Exit a second time (card373 row again), then a second rejoin.
+client mark
+client ui click BndEvt__WB_PlayerDeathScreen_Exit
+try client wait log "card373: client t=\d+ left the session by the death screen Exit \(FromGame\): no reconnect" since-mark timeout=20
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 0\)" since-mark timeout=20
+host mark
+client mark
+client travel join
+client wait log "card052: t=\d+ world FED_C1M1 \(package /Game/Maps/FED/FED_C1M1, net mode 3\)" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+try client ui continue
+host wait log "card374: host t=\d+ BP_PlayerCharacterMI_C\S* \(slot 1\) joined after the all-down: Out" since-mark timeout=30
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(server-copy, slot 1\) -> Out" since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Out" since-mark timeout=10
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=30
+# --- 4. RESTART CHECKPOINT on the host, with the rejoined client.
+host mark
+client mark
+host ui click BndEvt__WB_PlayerDeathScreen_LoadLastSave
+host wait log "card143: host t=\d+ Reload to BP_PlayerController_C .*sent now" since-mark timeout=30
+host wait log "card045: host t=\d+ respawn in place \(new pawn" since-mark timeout=30
+client wait log "card143: client t=\d+ Reload received" since-mark timeout=15
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=60
+client wait log "card294: client t=\d+ restart done" since-mark timeout=60
+host wait state pawn=host-own timeout=30
+client wait state pawn=client-own timeout=30
+host wait stand -1769 1820 296 800 timeout=15
+client wait stand -1769 1820 296 1500 timeout=15
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot after-host
+client shot after-client
+sleep 2
+client quit
+sleep 2
+host quit

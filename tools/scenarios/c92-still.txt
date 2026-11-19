@@ -1,0 +1,17 @@
+# Card 092 (log only), client still: the host stands still about 400 uu in front of the client while the client's
+# UBWCOOP_C92_LOG=1 per-frame line runs (10 s from the first frame the host is within 600 uu; 5 shots from +4 s).
+# Run: SCENARIO=tools/scenarios/c92-still.txt LANE=2 DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C92_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+# The client's server copy (it replicates) moves to 400 uu short of the host's pawn; each side then faces the other.
+host warp client BP_PlayerCharacterMI_C 400
+sleep 1
+client look actor BP_PlayerCharacterMI_C
+host look actor BP_PlayerCharacterMI_C
+sleep 8
+client wait log "card092: .*window closed" timeout=20
+client quit
+host quit

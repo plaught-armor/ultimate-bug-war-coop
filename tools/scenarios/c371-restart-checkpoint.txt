@@ -1,0 +1,75 @@
+# Card 371 proof (b57 78025485639b5da3; first run c371b56 on b56 found the defect): game-over RESTART CHECKPOINT (LoadLastSave) with a client, FED_C1M1, FAST=1,
+# GOD=0. Both reach the first Save_CheckPoint (card 146 anchor row), move away, the client goes down first, then the
+# host, so the all-down decision fires with no revive. The button is pressed with `host ui click` (card 121: the
+# topmost WB_Stack widget's function, through detour_process_event as a real click). Not the card 045 test path
+# (c44_press): that needs UBWCOOP_C45_TEST/C43_TEST phases and calls g_orig_process_event, past the mod's gates.
+# Predictions (trace: death.cpp c45_respawn_check / c294, restore_c143.cpp, save_c121.cpp, old c73b press rows):
+# 1. Host: "(host-own, slot 0) -> Dead (all down: nobody Up)", CompleteDeath about 3 s later, death screen with
+#    5 widgets naming the LoadLastSave click function. Client: own Downed row, death screen with 3 buttons disabled.
+# 2. After the click, host: the load replays a script CompleteDeath and a second host death screen (as c73b), then
+#    card143 "Reload to BP_PlayerController_C ... sent now", card045 "respawn in place (new pawn ..., no map load):
+#    per-map reset" with all down cleared, and the card132 "respawn in place (this map so far) totals" row.
+# 3. Client: card290 host travel row (in-place load), card294 hold, card143 "Reload received", card045 "reconnected"
+#    in under 60 s (about 2.5 s in c143b55d), card143 "Restore sent", card294 "restart done" without WARN (the client's
+#    second CompleteDeath, if any, is the card294 "skipped (death screen up)" row).
+# 4. Host: card143 "Restore applied ... after its AssignStartingInventories". Both pawns Up at the checkpoint, Health
+#    100 (the save was taken Up; 30 would mean a save after the down, card 143 downed-Health rule).
+# 5. A client digest round after the load, 0 mismatches. 0 card344/card355 travel-to-menu rows; card346 camera
+#    manager rows only the ones every map load has. FATAL/ERROR 0 each side; no new WARN rows against c370b56.
+# b57 predictions (card 371 fix, proof list in docs/cards/371-restart-checkpoint-strands-client.md): the only save is
+# the map's first checkpoint, taken before the client's pawn existed, so the load leaves the copy PC pawnless. Host:
+# "card371: ... has no player pawn after the load ...: Reload with no saved state", then the card143 Reload row with
+# text "none". Client: "Reload received (4 chars): none; rejoining", "reconnected" under 60 s, 0 "Restore sent";
+# host 0 "Restore received". The client's login pawn possessed, Up within 1500 uu of the checkpoint; host Up at it.
+# A digest round after the rejoin with 0 mismatches; shots show both players in the world; 0 card344/card355 rows.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c371-restart-checkpoint.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 420
+# Expected wall: about 3 min.
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# --- 1. Away from the checkpoint (the c143b55d range floor, grounded), then both down: client first.
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+host wait log "card044: host death screen: 5 widgets; .*LoadLastSave click function" since-mark timeout=20
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+host shot dead-host
+client shot dead-client
+# --- 2. RESTART CHECKPOINT on the host.
+host mark
+client mark
+host ui click BndEvt__WB_PlayerDeathScreen_LoadLastSave
+host wait log "card371: host t=\d+ BP_PlayerController_C has no player pawn after the load .*Reload with no saved state" since-mark timeout=30
+host wait log "card143: host t=\d+ Reload to BP_PlayerController_C .*sent now, ahead of \d+ queued frames: none" since-mark timeout=5
+host wait log "card045: host t=\d+ respawn in place \(new pawn" since-mark timeout=30
+client wait log "card143: client t=\d+ Reload received \(4 chars\): none; rejoining" since-mark timeout=15
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=60
+client wait log "card294: client t=\d+ restart done" since-mark timeout=60
+host wait state pawn=host-own timeout=30
+client wait state pawn=client-own timeout=30
+host wait stand -1769 1820 296 800 timeout=15
+client wait stand -1769 1820 296 1500 timeout=15
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot after-host
+client shot after-client
+sleep 2
+client quit
+sleep 2
+host quit

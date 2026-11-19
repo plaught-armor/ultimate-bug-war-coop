@@ -1,0 +1,66 @@
+# Card 094 scout: walk the client along the assault course from its start (-520, 14700, 460) at yaw 90 and jump
+# after each short walk, to find the first wall the mantle takes. Each jump logs the pawn position on both sides.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client goto -520 14700 460 150 timeout=60
+client look 90 0
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t1
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t3
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t4
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t5
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t6
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t7
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t8
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t9
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t10
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t11
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t12
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t13
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client shot t14
+client quit
+host quit

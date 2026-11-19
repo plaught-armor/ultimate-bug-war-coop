@@ -1,0 +1,193 @@
+# Card 209, three-instance run (step 3): host, client, client2 in one lane (run_pair.sh CLIENT2=1). Each client gets
+# one Down and revive, one kill floor Warp and one BugForm of the other client's pawn, so every op of card 209
+# reaches a client whose roster holds two remote players. Predictions per step below (P1 to P6) and in the card.
+# Map: FED_C2M1 for Down and Warp (MI pawns), then `host travel next` to the bug-side map for BugForm (c208-r3 shape;
+# FED_C1M1 has no travel to a bug map, so it cannot show BugForm).
+# Needs the mod test forms `down client2` (host roster slot 2) and `warp client2 ...` (the second server copy in PC
+# order); build 5 (faaa085d7714170b) has neither, so the dll lines below void the run until the hash is replaced by
+# the build that carries them.
+# Run (discovery, voidsoft; scope per the card 209 harness note, three games do not fit 12G reliably):
+#   systemd-run --user --scope -q -p MemoryMax=16G env SCENARIO=tools/scenarios/c209-three.txt DEPLOY=1 FAST=1
+#   CLIENT2=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#   tools/run_pair.sh c209-three 1200
+# Guid matching: each client's card043 row for the other client's pawn names its guid G (host slot 1 or 2); the
+# Warp and BugForm rows on that client must name the same G (or a card209 held row for G followed by its applied row).
+voidsoft
+void unless host dll d7711448006d4100
+void unless client dll d7711448006d4100
+void unless client2 dll d7711448006d4100
+# Card 320 hold (c469c shape): C2M1 starts with each player in the dropship (pawn=other), so the pawn waits come
+# after every player's continue.
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180 void
+client2 wait state map=FED_C2M1 timeout=180 void
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 2" timeout=180
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+client2 wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client2 ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=120 void
+client wait state pawn=client-own timeout=120 void
+client2 wait state pawn=client-own timeout=120 void
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+client2 wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+client shot c209-client-hud
+client2 shot c209-client2-hud
+host shot c209-host-hud
+# Stands: the FED_C2M1 LZ (c241-c2m1 points), 300 uu apart; z never measured there, so x y only.
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+host warp client2 point 229912 38956 9100
+host wait stand 229312 38956 any 300 timeout=15
+client wait stand 229612 38956 any 300 timeout=15
+client2 wait stand 229912 38956 any 300 timeout=15
+host clear 1500 kill
+host warp actor point 229312 38956 9100
+host wait stand 229312 38956 any 300 timeout=15
+# P1. client is downed; the host revives it. client2 sees the other client's pawn go Downed and back Up.
+host mark
+client mark
+client2 mark
+host down client
+host wait log "cmd: \d+ down: slot 1 " since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot 1\) Up -> Downed" since-mark timeout=10
+client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 1\) Up -> Downed" since-mark timeout=10
+host look point 229612 38956 9050
+host shot c209-p1-host-look
+client2 shot c209-p1-client2-sees-down
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 1\) Downed -> Up" since-mark timeout=10
+# P2. client2 is downed (new test form); the host revives it. client sees the other pawn go Downed and back Up.
+# The host stands between the clients (c209b255a: a warp onto the client's point at 229612 pushed it 388 uu back).
+host warp actor point 229762 38956 9100
+host wait stand 229762 38956 any 300 timeout=15
+host mark
+client mark
+client2 mark
+host down client2
+host wait log "cmd: \d+ down: slot 2 " since-mark timeout=5
+client2 wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot 2\) Up -> Downed" since-mark timeout=10
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 2\) Up -> Downed" since-mark timeout=10
+host look point 229912 38956 9050
+host shot c209-p2-host-look
+client shot c209-p2-client-sees-down
+try host key E 6000 timeout=15
+client2 wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 2\) Downed -> Up" since-mark timeout=10
+# P3. The host is downed, so the kill floor target of a client copy is the other client (first Up pawn in roster
+# order, the warped one excluded). client's copy goes below KillZ: it warps to client2's pawn (slot 2) and the
+# client moves its own pawn to the guid of client2's pawn.
+host warp actor point 229312 38956 9100
+host wait stand 229312 38956 any 300 timeout=15
+host mark
+client mark
+client2 mark
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Downed" since-mark timeout=10
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Up -> Downed" since-mark timeout=10
+client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Up -> Downed" since-mark timeout=10
+host warp client point 229612 38956 -23000
+host wait log "card046: host t=\d+ kill floor warp \d+: \S+ \(server-copy\) at .* to \S+ \(slot 2\) .*Warp frame sent" since-mark timeout=15
+client wait log "(card046: client t=\d+ Warp \d+ to guid 0x[0-9a-f]+ \(|card209: client t=\d+ held Warp \d+ for guid 0x[0-9a-f]+ applied)" since-mark timeout=10
+client shot c209-p3-client-warped
+# P4. client2's copy goes below KillZ (new test form): it warps to the client's pawn (slot 1).
+host warp client2 point 229912 38956 -23000
+host wait log "card046: host t=\d+ kill floor warp \d+: \S+ \(server-copy\) at .* to \S+ \(slot 1\) .*Warp frame sent" since-mark timeout=15
+client2 wait log "(card046: client t=\d+ Warp \d+ to guid 0x[0-9a-f]+ \(|card209: client t=\d+ held Warp \d+ for guid 0x[0-9a-f]+ applied)" since-mark timeout=10
+client2 shot c209-p4-client2-warped
+# The client revives the host (both clients now stand next to each other, not next to the host: bring it over).
+# c209b256 audit: c209b255a's P3/P4 left the clients near (230063, 38787) and (230137, 38656), 650 uu off 229412, and a
+# WarriorBug hit the downed host there; clear first, then warp the client 150 uu beside the host (client2 stays 575+
+# uu off, so the client's nearest BP_PlayerCharacterMI_C is the host).
+# b257 bleedout budget (senior): the host's 30 s runs from its down row (line 90). Lines 89-101 took 0.6 s in c209b256a;
+# the revive hold is 6 s; so the two stand waits get 8 s each (worst case about 0.6 + 8 + 8 + 1 + 6 = 24 s < 30).
+host clear 1500 kill
+host warp actor point 229412 38956 9100
+host wait stand 229412 38956 any 300 timeout=8
+host warp client point 229562 38956 9100
+client wait stand 229562 38956 any 300 timeout=8
+client look actor BP_PlayerCharacterMI_C
+client shot c209-p4-client-look-host
+try client key E 6000 timeout=15
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Up " since-mark timeout=15
+client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Downed -> Up" since-mark timeout=10
+# Travel to the bug-side map (c208-r3 lines 18-32, with client2 waits).
+host mark
+client mark
+client2 mark
+host travel next
+try host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+# Card 320 hold on the bug map (card 346 seamless travel: no reconnect, so no reconnect or second LoadMap rows).
+# c209b255a: the hold starts with clients 0 (they join the bug map after it), so the joins are their own rows.
+host wait log "card320: host t=\d+ hold on \(\S+\), waiting for host 1 clients \d+" since-mark timeout=180
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=30
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 2" since-mark timeout=120
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+client2 wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client2 ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client2 wait state pawn=client-own timeout=120
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterBug_C\) set" since-mark timeout=30
+client2 wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterBug_C\) set" since-mark timeout=30
+client shot c209-bug-client-hud
+client2 shot c209-bug-client2-hud
+# P5. client switches form (Two): the host sends BugForm to both clients; client2 applies it to the other pawn.
+host mark
+client mark
+client2 mark
+client key Two
+# c209b256 audit: the host Equip row is card210 (weapons.cpp c210 Equip), not card208.
+host wait log "card210: host t=\d+ Equip [1-9] from \S+: tag .*, EquipWeapon on the server copy, equipped -?\d+ -> -?\d+" since-mark timeout=10
+host wait log "card208: host t=\d+ form [1-9] of \S+ \(server-copy, guid 0x[0-9a-f]+\) equipped: BugForm sent to 2 client\(s\)" since-mark timeout=10
+client wait log "card208: client t=\d+ BugForm [1-9] for the own pawn \S+: " since-mark timeout=10
+client2 wait log "(card208: client t=\d+ BugForm [1-9] for the other pawn \S+: |card209: client t=\d+ held BugForm [1-9] for guid 0x[0-9a-f]+ applied)" since-mark timeout=10
+client2 shot c209-p5-client2-sees-form
+# P6. client2 switches form: the client applies it to the other pawn.
+host mark
+client mark
+client2 mark
+client2 key Two
+host wait log "card208: host t=\d+ form [1-9] of \S+ \(server-copy, guid 0x[0-9a-f]+\) equipped: BugForm sent to 2 client\(s\)" since-mark timeout=10
+client2 wait log "card208: client t=\d+ BugForm [1-9] for the own pawn \S+: " since-mark timeout=10
+client wait log "(card208: client t=\d+ BugForm [1-9] for the other pawn \S+: |card209: client t=\d+ held BugForm [1-9] for guid 0x[0-9a-f]+ applied)" since-mark timeout=10
+client shot c209-p6-client-sees-form
+host shot c209-p6-host
+# Card 323 join while the host is downed (after every 209 proof step; senior b255 order). With three players the
+# client's leave does not make the host's Downed entry all down (card 366 needs a third, Up player: client2), so the
+# host stays Downed (30 s bleedout, the reconnect takes about 10 s) and the rejoined client gets the Down join replay
+# (death.cpp c43_join_replay). Predictions: the host row "Down join replay to <pc>: N of M entries sent" with N >= 1;
+# the rejoined client's card043 row puts the host pawn (host slot 0) in Downed; the digest round after it runs.
+host mark
+client mark
+client2 mark
+host clear 1500 kill
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacter\w+ \(host-own, slot 0\) -> Downed" since-mark timeout=10
+try client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Up -> Downed" since-mark timeout=10
+host shot c209-323-host-downed
+client disconnect
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacter\w+" since-mark timeout=120
+host wait log "card323: host t=\d+ Down join replay to \S+: [1-9]\d* of \d+ entries sent" since-mark timeout=30
+try client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) \w+ -> Downed" since-mark timeout=15
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+try client ui continue
+try client wait state pawn=client-own timeout=120
+client shot c209-323-client-rejoined
+# digest round: card 323 rejoin, host downed
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+try client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client2 quit
+client quit
+host quit

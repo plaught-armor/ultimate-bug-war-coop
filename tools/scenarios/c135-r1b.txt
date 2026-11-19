@@ -1,0 +1,45 @@
+# Card 135 run c135-r1b (the rerun of c135-r1, void: its line 13 waited for the map name the pause dump does not log;
+# the three stack dump waits now use "in \S+" as c222-r1): the press-to-start screen on both sides. FED_C1M1, test skip on (run_pair default), the
+# keep-screen flag on both sides (the test skip skips the brief but leaves WB_Loading_Screen_Final_C up),
+# AUTODROPSHIP off (its close would shut the screen). The client joins while the host's screen is up (the host's
+# screen stays until `host ui continue`, so every client join time is inside it). Predictions: the card, "Trace" 6,
+# and the client-world-keeps-running line ("card135: client GameStarted ... world paused 0").
+# FAST=1 without AUTODROPSHIP: the host logs "WARN config: UBWCOOP_SKIP_FLIGHT=1 needs UBWCOOP_AUTODROPSHIP=1 -- off"
+# (expected; the flight is not reached before the quit).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c135-r1b.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1" CLIENT_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1"
+#      tools/run_pair.sh c135-r1b 900
+# No failsoft: a missed required step ends the run there.
+# 1. Host: the screen pushed (stack pause), the brief skipped, the screen still up 5 s after the pause.
+host wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" timeout=300
+host mark
+try host wait log "card130: host cinematic skipped WB_Cutscenes_C" since-mark timeout=30
+host wait log "card067: 5 s after the WB_Stack_C pause: \d+ pause requester" since-mark timeout=30
+# 2. The client joins: the host lifts its pause at the first Pong, the client's clock line.
+host wait log "card096: host t=\d+ pause lifted: client connected while paused \(first Pong\)" timeout=300
+client wait log "playlog: client t=\d+ clock 1:" timeout=60
+host shot c135-r1b-host-screen
+client shot c135-r1b-client-before
+# 3. Host continues: the op goes to the client, the client calls GameStarted and gets its own screen.
+host mark
+client mark
+host ui continue
+host wait log "cmd: \d+ ui continue -> done" since-mark timeout=30
+host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" since-mark timeout=5
+client wait log "card135: client t=\d+ IntroStart \(FED_C1M1, bFromSave 0\) in" since-mark timeout=10
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1 " since-mark timeout=60
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=20
+try client wait log "card130: client cinematic skipped WB_Cutscenes_C" since-mark timeout=30
+client wait log "card067: 5 s after the WB_Stack_C pause: \d+ pause requester" since-mark timeout=30
+host shot c135-r1b-host-in-game
+client shot c135-r1b-client-screen
+# 4. The client continues: its own stack empties and unpauses.
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=30
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=10
+host shot c135-r1b-host-end
+client shot c135-r1b-client-end
+client quit
+sleep 2
+host quit

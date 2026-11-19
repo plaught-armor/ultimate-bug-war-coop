@@ -1,0 +1,103 @@
+# Card 101 measure: client mantles at the card 094 scout7 route (c94-scout2.txt): straight W+jump presses from (-520, 14700), mantling at y 20968.6
+# and further on, with the mantle lerp logged on both sides. From the 7th press on, shorter W steps with a short D tap before each press
+# sweep x across the y 21796 ledge (c101d mantled from x -455.7; c101e stood at x -462.9 and its search found no ledge).
+# Run: SCENARIO=tools/scenarios/c101-measure.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client goto -520 14700 460 150 timeout=60
+client look 90 0
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key W 1000
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client key D 20
+client key W 400
+client key SpaceBar 100
+sleep 2
+client quit
+host quit

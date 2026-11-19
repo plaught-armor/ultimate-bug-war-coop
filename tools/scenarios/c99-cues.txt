@@ -1,0 +1,20 @@
+# Card 099 proof, FED_C1M1 start (FAST=1): the client fires bursts and walks next to the host, then the host fires.
+# Host log (UBWCOOP_C99_LOG=1): "player 0 remapped" lines name the callers the gate moved to the client's controller;
+# StartCameraShake lines must name the client's camera for the client's shots and the host's for the host's shots.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host shot c99-host-before
+client key LeftMouseButton 2500
+sleep 1
+client key LeftMouseButton 2500
+sleep 1
+host shot c99-host-during
+client key W 2000
+sleep 2
+host key LeftMouseButton 1500
+sleep 2
+host shot c99-host-after
+host quit
+client quit

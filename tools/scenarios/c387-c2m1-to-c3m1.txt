@@ -1,0 +1,79 @@
+# Card 387: the third step of a Trooper playthrough. Start on FED_C2M1, level end, hangar, the hangar's next mission
+# is FED_C3M1 (starts in the dropship), reached by a seamless travel with the client kept; both confirm the hold.
+# Predictions: docs/STATE.md 2026-11-15 "c387b72".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c387-c2m1-to-c3m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c387b72b 480
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+# FED_C2M1 by direct travel starts in the dropship under the hold (run c387b72: a pawn wait here ran into the card 344
+# 60 s limit). So: map, the hold, both continue, then the pawns (as c125-proof).
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# 1. Level end by the game's own EndLevel, relayed to the client (card 260).
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+# 2. The host presses Next: a seamless travel takes both into the host's hangar. No drop on the client.
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=10
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+# Still the same connection: a host row arrives in the hangar.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+host shot c387-host-hangar
+client shot c387-client-hangar
+# 3. The host starts the next mission from the hangar: a second seamless travel.
+host mark
+client mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C3M1." timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C3M1" since-mark timeout=10
+host wait state map=FED_C3M1 timeout=300 void
+client wait state map=FED_C3M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" since-mark timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+sleep 4
+host shot c387-host-c3m1
+client shot c387-client-c3m1
+client quit
+sleep 2
+host quit

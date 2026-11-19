@@ -1,0 +1,38 @@
+# Card 179, run c179-r1 (run 1 of 3, no code). FED_C1M1, FAST=1, no UBWCOOP_GOD (god mode zeroes the drop). The one
+# placed BPHazardousZone_C (RazorWire data) at (5391, 28904, 1092). Part 1: the host's own pawn on the wire (side 0,
+# the tick amount and interval baseline). Part 2: the client's server copy warped onto the wire (side 1). Part 3: the
+# playtest move, a run-and-jump onto the wire from 400 uu. Predictions in docs/cards/179-client-hazard-damage.md,
+# "Run c179-r1 predictions". Every state step waits for its log line; no sleeps.
+# Run: SCENARIO=tools/scenarios/c179-r1.txt DEPLOY=1 FAST=1 GOD=0 tools/run_pair.sh c179-r1 600
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+# Part 1: host baseline, the host's own pawn on the wire.
+host mark
+host warp actor BPHazardousZone_C 0
+host wait log "card137: host zone BPHazardousZone_C DamageActor on BP_PlayerCharacterMI_C \S+ \(side 0, call \d+\): health (\S+) -> (\S+)" since-mark timeout=10
+host shot host-on-wire
+host warp actor BPHazardousZone_C 900
+# Part 2: the server copy put on the wire (the client follows the copy).
+host mark
+client mark
+host warp client BPHazardousZone_C 0
+host wait log "card137: host zone BPHazardousZone_C DamageActor on BP_PlayerCharacterMI_C \S+ \(side 1, call \d+\): health (\S+) -> (\S+)" since-mark timeout=10
+try host wait log "card021: host server-copy Health \S+ -> \S+" since-mark timeout=10
+client wait log "card021: client client-own Health \S+ -> \S+, HealthAttributeChanged called" since-mark timeout=10
+client shot client-on-wire
+host shot client-on-wire
+# Part 3: the playtest move, a run-and-jump onto the wire from 400 uu.
+host warp client BPHazardousZone_C 400
+client wait near 5391 28904 1092 700 timeout=30
+client look actor BPHazardousZone_C
+host mark
+client mark
+client key W 1500 SpaceBar 300
+host wait log "card137: host zone BPHazardousZone_C DamageActor on BP_PlayerCharacterMI_C \S+ \(side 1, call \d+\)" since-mark timeout=10
+client wait log "card021: client client-own Health \S+ -> \S+, HealthAttributeChanged called" since-mark timeout=10
+client shot client-jumped
+host shot client-jumped
+host quit
+client quit

@@ -1,0 +1,169 @@
+# Card 207 probe (senior order 2026-11-16, no fix in this run): tools/scenarios/c142-r4.txt body, plus the card 320
+# hold steps (both continue at the map start and after the checkpoint load) and corpse shots: host after the in-place
+# load, host and client after the client's rejoin, all from (12500, 14700) looking at the three killed warriors.
+# Report: host "card269: host rest row" count within 10 s after the load, client "no stream row" WARN count, and
+# whether the corpses lie in the same place in the host and client shots.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c207-probe.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C136_LOG=1 UBWCOOP_C99_LOG=1" tools/run_pair.sh c207b157a 900
+# Folded in (senior order 2026-11-16, b152): the card 449 deck proof right after the map start, and the hurt shake check
+# at the bug hits (card 099 cue log on both sides, GOD=0).
+voidsoft
+void unless host dll 1e6244b6739bbcd0
+void unless client dll 1e6244b6739bbcd0
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=10
+# Card 449 deck proof: troop ship 3 lands about 29 s after the hold (c448b151b). The client is warped 10 uu in front of
+# the ship (its origin +100 z, under the hull in c448b151b), then 1100 uu above that point, so it falls onto the ship's
+# top: the game's CanTakeoff bounds test and down trace then hit the ship (card 449 doc). The actor bounds take in the
+# whole flight spline (c448b151b: extent 79366 47607 5673), so they cannot give the deck height. Host row "takeoff
+# held", a shot on the deck, then the client goes back to where it stood (the first warp row matched again) and the
+# ship climbs (shot at the ship's origin +500 z, not its bounds centre).
+host mark
+client mark
+try host wait log "dropship: host/standalone ExecuteBeginDescentBehaviour\(\S+ BP_ProceduralDropshipTroops_C," since-mark timeout=60
+try client wait log "card449: client t=\d+ dropship \S+: landed copy leaves its takeoff to the host" since-mark timeout=30
+# c207b154a: warped about 130 ms after touchdown (as in c207b153a), the client fell onto the hull at z 986 and slid off
+# to (-3214, 5354, 293): no "takeoff held" row. The troop deploy cue (about 1 s after touchdown, about 9 s before the
+# takeoff) marks the ship at rest.
+try host wait log "card136: host fx \d+ t=\d+ ExecuteGameplayCue_NonReplicated GameplayCue.Spawn.Dropship " since-mark timeout=10
+host mark
+host warp client BP_ProceduralDropshipTroops_C 10 front
+try host wait log "cmd: \d+ warp: server copy \S+ \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_ProceduralDropshipTroops" since-mark timeout=5
+try host warp client point {g4} {g5} {g6+1100}
+try host wait log "card449: host/standalone t=\d+ dropship \S+: a client's trooper stands on it: takeoff held" since-mark timeout=10
+try client look actor BP_ProceduralDropshipTroops_C
+sleep 1
+client shot c449-on-deck
+try host wait log "cmd: \d+ warp: server copy \S+ \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_ProceduralDropshipTroops" since-mark timeout=5
+try host warp client point {g1} {g2} {g3}
+try host wait log "card342: host t=\d+ dropship BP_ProceduralDropshipTroops_C_\d+ launch edge: spline distance 0," since-mark timeout=40
+try client look actor BP_ProceduralDropshipTroops_C 500
+sleep 2
+client shot c449-ship-climbing
+try client wait log "card449: client t=\d+ dropship \S+: host took off, StartAction run on the landed copy" timeout=10
+# Both take a Morita and equip it.
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+# Card 267 (c207b152a line 61): the host's pickup completes ShootingRange_O1, whose level script AddWeapon (equip 1) is
+# mirrored to the client's copy, so the client holds and wields the Morita without its own pickup (its E on the pickup
+# then gives nothing: weapons before = after).
+host wait log "card267: host level script AddWeapon\(Default__BP_WeaponDefinition_MoritaMk1_C, equip 1\) on \S+ \(host-own\) mirrored to \S+ \(server-copy\): 1" since-mark timeout=10
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1" timeout=10
+failsoft
+# Card 454 (senior order 2026-11-16, b154): real bug hits on the client only. c207b153a: warriors spawned beside both
+# players downed, then killed the host (all down: game over), and every later step failed. The host now stands about
+# 1800 uu north of the client; the three warriors spawn 300-400 uu from the client. After four client vitals drops the
+# bugs are killed by code (user rule), so the client stays Up for step 1. Predictions: a card454 row at each drop, each
+# followed by a card099 Shake_Generic_Damaged*_C (local) row (card 099 shake rows have their own budget in b154).
+host warp actor point 12500 16000 400
+host warp client point 12600 14200 400
+client wait near 12600 14200 400 150 timeout=5
+host mark
+client mark
+host spawn bug 12300 13900 400 0
+host spawn bug 12300 14300 400 180
+host spawn bug 12900 13900 400 90
+client wait log "card157: client t=\d+ own pawn Armour \S+ -> \S+ \(max \S+\), Health \S+ -> \S+" count=4 since-mark timeout=40
+host clear 4000 kill
+try client wait log "card454: client t=\d+ own pawn lost \S+ \(Armour \+ Health\): PlayHurtCameraShake" since-mark timeout=3
+try client wait log "card099: client CameraManager::StartCameraShake Shake_Generic_Damaged\S*_C .*\(local\)" since-mark timeout=3
+# 1. Downed -> Up.
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+client wait near 12600 14100 400 150 timeout=5
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\) \+5 s" since-mark timeout=10
+client goto 12900 14100 400 120 timeout=15
+client look point 12900 30000 600
+host mark
+client key LeftMouseButton 800
+host wait log "playlog: host t=\d+ shot s seq=" since-mark timeout=10
+# 2. Out -> Up is not driven: card 130 sends an AI trooper to a downed client within 4000 uu, and it revives
+#    the client from Downed in about 5 s (c156-r1), before the 30 s bleedout. Out -> Up runs the same
+#    c156_client_up call as Downed -> Up (kKind table).
+# 3. Game over -> checkpoint -> client rejoin (map load). Save with both Up, then all down.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=20
+host mark
+client mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+# Card 207 (b155): the save spawns the three warriors dead with no ragdoll and no death edge; the host gives each a
+# rest row when it shows the mesh again (card207 row, then a card269 rest row).
+host wait log "card207: host corpse shown without a ragdoll or a death edge: BP_AI_WarriorBug_C .*rest row 1" count=3 since-mark timeout=20
+try host wait log "WARN card269: host rest row \S+ guid 0x[0-9a-f]+ not added" since-mark timeout=1
+# The host's corpses right after the in-place load, aimed at the center of the three (spawned at 12300 13900,
+# 12300 14300, 12900 13900); the client's after-rejoin shot is taken from the same point. c207b157a: the shot point
+# is west of the corpses, clear of the host's own corpse at 12500 14700 (it filled the b156a frame).
+host warp actor point 11700 14100 450
+host look point 12500 14100 79
+sleep 1
+host shot c207-host-after-load
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=90
+try client wait log "card135: client GameStarted t=\d+ on FED_C1M1" since-mark timeout=60
+try host ui continue
+try client ui continue
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+host wait log "card143: host t=\d+ Restore applied" since-mark timeout=60
+client wait log "card156: client t=\d+ back to Up \(map load\):" since-mark timeout=30
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" since-mark timeout=10
+# Card 142: the held rows and their late applies (since the client mark before the checkpoint travel).
+try client wait log "card132: client t=\d+ decal \d+ held: no target" since-mark timeout=5
+try client wait log "card132: client t=\d+ decal \d+ applied late" since-mark timeout=30
+client mark
+client wait log "card132: client decal round \d+: host live " since-mark timeout=40
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client wait state pawn=client-own timeout=30
+try client key Two
+# The rejoin spawns the client at the player start: back to the bug field, then a walk there.
+host warp client point 12500 14100 400
+client wait near 12500 14100 400 300 timeout=10
+client goto 12900 14100 400 120 timeout=20
+client look point 12900 30000 600
+host mark
+client key LeftMouseButton 800
+host wait log "playlog: host t=\d+ shot s seq=" since-mark timeout=10
+# Card 207: the rest replay to the rejoined client, played on its corpses.
+host wait log "card269: host rest replay to a joining PC: 3 rows sent of 3" timeout=5
+# b157: a corpse with no death name has a bare rest row (card207 "bare" arrival), the others play their name.
+client wait log "card(269: client rest arrival BP_AI_WarriorBug_C guid 0x[0-9a-f]+ seq \S+ played|207: client rest arrival BP_AI_WarriorBug_C guid 0x[0-9a-f]+ bare)" count=3 timeout=5
+# Both players' shots of the same corpse spot from the same point: host first, then it steps aside for the client.
+host warp actor point 11700 14100 450
+host look point 12500 14100 79
+sleep 1
+host shot c207-host-after-rejoin
+host warp actor point 11700 13300 450
+host warp client point 11700 14100 450
+client wait near 11700 14100 450 300 timeout=10
+client look point 12500 14100 79
+sleep 1
+client shot c207-client-after-rejoin
+client inventory
+client quit
+sleep 2
+host quit

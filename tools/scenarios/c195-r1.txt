@@ -1,0 +1,37 @@
+# Card 195, run c195-r1 (run 1 of 3). The client's card 138 BeginPlay hold on the bug-side map: the hold's pawn test
+# is the ASTPlayerCharacter base (c138_local_pawn), so BP_PlayerCharacterBug_C releases it like the MI pawn.
+# Parts: 1, FED_C2M1 (an MI map): the client's no-hold or release line names BP_PlayerCharacterMI_C (prediction 5);
+# 2, the travel to BUG_C1M1 (the bug-side part of c177-r2): the no-hold or release line names
+# BP_PlayerCharacterBug_C, the card 120 Pong opens, the host's first-Pong join replays run, both games alive and both
+# pawns possessed 30 s after LoadMap returned. Predictions in docs/cards/195-c138-hold-bug-pawn.md, "Predictions,
+# run c195-r1". Every state step waits for its log line; the only sleep is the 30 s survival hold.
+# Run: SCENARIO=tools/scenarios/c195-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      tools/run_pair.sh c195-r1 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+# Part 1: the MI map.
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterMI_C\)|release after)" timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Part 2: the travel to the bug-side map.
+host mark
+client mark
+host travel next
+host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=180
+client wait log "UEngine::LoadMap returned true" count=2 since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterBug_C\)|release after)" since-mark timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterBug_C\) set" since-mark timeout=30
+host wait log "card098: host t=\d+ world journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=30
+try host wait log "card049: host t=\d+ journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=5
+sleep 30
+host wait state pawn=host-own timeout=5
+client wait state pawn=client-own timeout=5
+client shot bug-map
+host shot bug-map
+host quit
+client quit

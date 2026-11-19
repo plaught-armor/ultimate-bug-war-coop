@@ -1,0 +1,60 @@
+# Card 164, run c164-r2 (run 2 of 3). The c164-r1 route (FED_C2M1 with the client in from the start, the map's own
+# troop dropship landings) through its Part 1 kills, then a digest round forced during the troop flight with the
+# `objectives` command (c132_digest_now, a "command" round). c164-r1 had no round in the flight: the flight is a fixed
+# timer from the player dropship landing (+53.0 s to about +61.5 s) and the 30 s digest timer missed it.
+# Predictions in docs/cards/164-gate-server-only-actors.md, "Run c164-r2 predictions": the command round's card164
+# line has "moved since the last round M" with M > 0 on both sides, the client round line has 0 mismatches.
+# Waits: the _21 state 2 line with a PC ("sent to 1 of 1 PCs"; the map-start lines say 0 of 0), then the first
+# card095 blocker _3/_4 line after it (the flight start: the blockers at the landing spot, then at the start point).
+# Run: SCENARIO=tools/scenarios/c164-r2.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher"
+#      tools/run_pair.sh c164-r2 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host mark
+client mark
+host ui continue
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+client wait near 229612 38956 9100 600 timeout=120
+both look point 229312 39956 8900
+# Part 1: three rounds of 3 WarriorBug kills 1000 uu out.
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Part 2: the troop flight and the command round in it.
+host wait log "dropship BP_ProceduralDropshipTroops_C_21 state 2: sent to 1 of 1 PCs" since-mark timeout=120
+host mark
+host wait log "card095: host t=\d+ SetCollisionEnabled on BP_Dropship_LandingBlocker_C_[34] " since-mark timeout=30
+host mark
+client mark
+host objectives
+host wait log "card164: host round \d+ left out .*; attached \d+, moved since the last round [1-9]" since-mark timeout=20
+client wait log "card132: client round \d+: actors " since-mark timeout=30
+client wait log "card164: client round \d+ left out .*; attached \d+, moved since the last round [1-9]" since-mark timeout=10
+client shot flight
+host shot flight
+host quit
+client quit

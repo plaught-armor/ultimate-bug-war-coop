@@ -1,0 +1,394 @@
+# Card 127 soak FED_C4M1 (senior order 2026-11-12): the c127-c3m1 shape at TimeDilation 1.0 (no "host speed"),
+# test skip on, muted and windowed by run_pair. UBWCOOP_TRAVEL to FED_C4M1, god on. Both players fight every round
+# (3 WarriorBugs placed off the client copy's position, both fire 2.5 s, then the host kills what is left). A digest
+# round ends each stage. Stages: 1 the landing point (both land at about 20792 -94902 -865, c76c-host.log:1321/1324),
+# 2 both players in a pod mech (the client in mech A at 3052 -61452 1519, the host in mech B at -28941 -83026 129,
+# c89g-host.log:1009-1011) and three mech rounds, 3 one down and revive per side (god does not block `host down`:
+# c210-r2 ran GOD=1 and downed both), 4 the bug nest nearest the landing point with the Park_SO2 sub-objective as a
+# prediction (no earlier run completed a Park objective). No card137 pose freeze waits, no waits on capped lines
+# (card075 mechs/EnterMech lines, card076, possess). Every wait is listed with its proof in
+# docs/cards/127-coverage-playthrough.md, "Soak C4M1 scenario (junior)". Faults are recorded, not fixed: failsoft.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c127-c4m1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh c127-c4m1 1800
+failsoft
+host wait state map=FED_C4M1 pawn=host-own timeout=240
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Stage 1: the landing point (c76c-host.log:1321/1324: own pawn and server copy at about 20790 -94940 -865), 6 rounds.
+host warp actor point 20792 -94902 -765
+host warp client point 21092 -94902 -765
+client wait near 21092 -94902 -765 600 timeout=120
+# A host frag the client sees, then the client's own frag (3 s for the fuse).
+host look point 20792 -94202 -865
+client look point 21092 -94202 -865
+host key G
+client wait log "card074: client t=\d+ GrenadeExplode" timeout=15
+client key G
+sleep 3
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Digest round at the stage end.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+# Stage 2: pod mechs (two BP_BaseMech_C, each about 290 uu from a BP_MechDropPlatform_C, c89g-host.log:1009-1011).
+# The client enters mech A, the one nearest its copy (c76c-host.log:1321: 316 uu from BP_BaseMech_C at 3210 -61757).
+host mark
+host warp client BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: server copy \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+client wait near {g1} {g2} {g3} 250 timeout=6
+client look actor BP_BaseMech_C 150
+sleep 1
+host mark
+client key E
+host wait log "card075: host MechEnter from BP_PlayerController_C: mech BP_BaseMech_C at \d+ units" since-mark timeout=10
+# In the mech: the client warps its own pawn 100 uu over mech A (c127-c4m1 run 1: mech A at 3233 -61494 1669, the
+# look line; the state line cannot show a pilot: in run 1 it read weapons=1 with the PC's pawn BP_BaseMech_C, the mech
+# is a player MI pawn). The warp line names the pawn it moved, so BP_BaseMech_C proves the pilot.
+client mark
+client warp actor point 3233 -61494 1769
+client wait log "cmd: \d+ warp: own pawn BP_BaseMech_C" since-mark timeout=5
+# The host goes to mech B (400 uu north of it, then the warp to the nearest mech) and enters it.
+host warp actor point -28941 -82626 429
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \(-2\d{4}\.\d, -8\d{4}\.\d, -?[\d.]+\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+host look actor BP_BaseMech_C 150
+sleep 1
+host key E
+# In the mech: the same warp proof over mech B (run 1: mech B at -28886 -83182 279, the look line).
+host mark
+host warp actor point -28886 -83182 379
+host wait log "cmd: \d+ warp: own pawn BP_BaseMech_C" since-mark timeout=5
+host shot c127-c4m1-host-mech
+client shot c127-c4m1-client-mech
+# Three mech rounds: 2 bugs 1200 uu north of each mech, each pilot aims at the nearest and fires 3 s.
+host mark
+host spawn bug 2752 -60252 1669 270
+host spawn bug 3352 -60252 1669 270
+host spawn bug -29241 -81826 279 270
+host spawn bug -28641 -81826 279 270
+try host wait log "card125: host spawned" count=4 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 3000 timeout=15
+& client key LeftMouseButton 3000 timeout=15
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Secondary fire once per pilot (c76-mech-fire.txt: RightMouseButton 300).
+& host key RightMouseButton 300 timeout=10
+& client key RightMouseButton 300 timeout=10
+try join
+host mark
+host spawn bug 2752 -60252 1669 270
+host spawn bug 3352 -60252 1669 270
+host spawn bug -29241 -81826 279 270
+host spawn bug -28641 -81826 279 270
+try host wait log "card125: host spawned" count=4 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 3000 timeout=15
+& client key LeftMouseButton 3000 timeout=15
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host spawn bug 2752 -60252 1669 270
+host spawn bug 3352 -60252 1669 270
+host spawn bug -29241 -81826 279 270
+host spawn bug -28641 -81826 279 270
+try host wait log "card125: host spawned" count=4 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 3000 timeout=15
+& client key LeftMouseButton 3000 timeout=15
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Both leave (E held 2.5 s, c76-mech-fire.txt). The client's leave is the host's MechLeave line; the host's own leave
+# is its next warp naming its MI pawn (in a mech the warp moves the mech and names BP_BaseMech_C).
+host mark
+client key E 2500 timeout=15
+host wait log "card075: host MechLeave from BP_PlayerController_C: mech BP_BaseMech_C" since-mark timeout=10
+host key E 2500 timeout=15
+# Digest round at the stage end.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+# Stage 3: one down and revive per side at the landing point (c142-r4.txt / c171-r1.txt steps; god on, as c210-r2).
+host mark
+host warp actor point 20792 -94902 -765
+host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C " since-mark timeout=5
+host warp client point 20892 -94902 -765
+client wait near 20892 -94902 -765 150 timeout=10
+# The client is downed; the host revives it (E held 6 s; an AI trooper revive also passes the client wait).
+client mark
+host mark
+host down client
+host wait log "cmd: \d+ down: slot \d+ " since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 20892 -94902 -815
+host shot c127-c4m1-host-client-down
+client shot c127-c4m1-client-down
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+# The host is downed; the client revives it.
+client mark
+host mark
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Downed" since-mark timeout=10
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Up -> Downed" since-mark timeout=10
+client look point 20792 -94902 -815
+host shot c127-c4m1-host-down
+client shot c127-c4m1-client-host-down
+try client key E 6000 timeout=15
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Up " since-mark timeout=15
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Downed -> Up" since-mark timeout=10
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Digest round at the stage end.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+# Stage 4: the bug nest nearest the landing point (Park_SO2 counts 5 nests A..E, c89g-host.log:711-733). The host
+# stands 600 uu off it, the client there after the host steps back to 900 uu.
+host mark
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 600
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+host warp client point {g1} {g2} {g3}
+client wait near {g1} {g2} {g3} 300 timeout=60
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 900
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+host mark
+client mark
+& host key LeftMouseButton 5000
+& client key LeftMouseButton 5000
+try join
+host shot c127-c4m1-host-nest
+client shot c127-c4m1-client-nest
+# Prediction only (no run ever completed a Park objective; the client lacks the Park objectives, card 199 item 9).
+try host wait log "card049: host sent CompleteSubObjective\(Park_SO2, Park_SO2_[A-E]\)" since-mark timeout=10
+try client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Park_SO2, Park_SO2_[A-E]\)" since-mark timeout=10
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host spawn bug {g1-300} {g2+700} {g3+150} 270
+host spawn bug {g1} {g2+800} {g3+150} 270
+host spawn bug {g1+300} {g2+700} {g3+150} 270
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+sleep 1
+try host look actor BP_AI_WarriorBug_C
+try client look actor BP_AI_WarriorBug_C
+& host key LeftMouseButton 2500
+& client key LeftMouseButton 2500
+try join
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Digest round at the stage end.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+# End: objective lists on both sides, shots, quit.
+host shot c127-c4m1-host-end
+client shot c127-c4m1-client-end
+host quit
+client quit

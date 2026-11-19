@@ -1,0 +1,60 @@
+# b14 probe: FED_C1M1 Assault_O1 only, through Assault_SO4 (the panel switch E by the client), then quit. One run,
+# about 2 min. Proves the b14 tool change (senior, b13 run 3 verdict: TraceForInteractable's line missed the switch's
+# interact collider from the look at the bounds centre, and the client stood on slot 90 instead of the stand).
+# Not run yet: waits on the senior's go. DLL build-b5/dwmapi-b14-17ac07260788d9b3.dll copied into game2/ by hand.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/b14-probe-so4.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh b14-probe-so4 600
+# Rules: docs/STATE.md "Gameplay test scenario rules". Objective steps: card 284 expect / go / wait on live data.
+#
+# Predictions (written before the run; checked against both logs):
+#  go   at Assault_SO4's `objective go all`: host "cmd: N objective go: client kind use slot stand point at ..." and
+#       "cmd: N objective go: host kind use slot 90 at ..."; other kinds (SO0-SO3, presence) keep host "slot stand
+#       point" and client "slot 90".
+#  scan client "cmd: N aim scan: BP_PanelSwitch_WithoutScreen_C_0 hits <k> of 26, chosen X Y Z yaw P pitch Q, range
+#       <f> trace type <t>, by centroid" (or "by first hit (centroid missed)") with k >= 1; range and trace type
+#       printed from the interactor's +0xF8 / +0xFD.
+#  aim  client "cmd: N aim: focus BP_PanelSwitch_WithoutScreen_C_0" from the settled view; the drive's focus= gate holds.
+#  E    the client's E is sent (no "SKIPPED key: last look gate voided").
+#  284  host "card049: host t=<ms> CompleteSubObjective(Assault_O1, Assault_SO4)", then
+#       "CompleteSubObjective(Assault_O1, Assault_SO0)" and "card049: host sent CompleteObjective(Assault_O1)"; the
+#       client replays CompleteObjective(Assault_O1).
+#  gate drive summary "gate skips: 0".
+voidsoft
+failsoft
+void unless host dll 17ac07260788d9b3
+void unless client dll 17ac07260788d9b3
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# --- Assault_O1: SO0's presence (adds SO1, which the same volume completes), SO2, SO3, then the panel switch (client E).
+host objective now
+host objective expect Assault_SO0
+host clear 1500 kill
+host objective go all
+host wait log "card049: host sent AddSubObjective\(Assault_O1, Assault_SO1\)" timeout=60
+host objective wait Assault_SO1 60
+host objective expect Assault_SO2
+host clear 1500 kill
+host objective go all
+host objective wait Assault_SO2 60
+host objective expect Assault_SO3
+host clear 1500 kill
+host objective go all
+host objective wait Assault_SO3 60
+host objective expect Assault_SO4
+host clear 1500 kill
+host objective go all
+host wait log "c284: use stand BP_PanelSwitch_WithoutScreen_C: .* winner \w+" timeout=5
+client look actor BP_PanelSwitch_WithoutScreen_C_0 0 bounds focus=BP_PanelSwitch_WithoutScreen_C_0
+client shot p14-assault-so4
+client key E
+host objective wait Assault_SO4 30
+host wait log "card049: host t=\d+ CompleteSubObjective\(Assault_O1, Assault_SO0\)" timeout=10
+host wait log "card049: host sent CompleteObjective\(Assault_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(Assault_O1\)" timeout=30
+client quit
+sleep 2
+host quit

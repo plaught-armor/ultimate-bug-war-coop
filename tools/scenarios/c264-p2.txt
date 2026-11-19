@@ -1,0 +1,341 @@
+# Card 264/265 probe 2 (c264-p2): one launch, senior grant 2026-11-13. Trace is now the Visibility channel
+# (UWorld::LineTraceSingleByChannel). 1) aim rows, no gates, judged offline: the blocked stands (Switch_C_6, Switch_C_8,
+# WallSwitch, the 3 clasps, nest stands host seq 81/87/99) plus alternates, the WALL case, a bug in the line, both
+# client stands; 2) presence C_51; 3) clears at radius 1500 with the area cap and max-left, the Switch_C_2 E-use
+# look gated by focus=; 4) presence C_52, then SKY last with hit=.
+void unless host dll f9266e00ec49b4bd
+void unless client dll f9266e00ec49b4bd
+failsoft
+host wait state map=FED_C3M2 pawn=host-own timeout=240 void
+client wait state map=FED_C3M2 pawn=client-own timeout=180 void
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Senior 2026-11-13: in every 241-243 run the client stayed on the operation card (WB_Loading_Screen_Final_C, "PRESS
+# ANY KEY TO CONTINUE"), so its key input went to the card. Close it the way c135-r2 does and prove it, fail fast.
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+client shot c243-client-ingame
+void unless client log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" before client log "cmd: \d+ shot \S*c243-client-ingame"
+host shot c264-host-ingame
+both inventory
+# Switch_C_6: host point -12839 -13808 2154
+host warp actor point -12839 -13808 2154
+sleep 2
+host wait stand -12839 -13808 2154 200000 timeout=15
+try host look actor BP_Switch_C_6 160
+# shot p2h01: Switch_C_6 look actor BP_Switch_C_6 160
+host shot p2h01
+try host look actor BP_Switch_C_6 100
+# shot p2h02: Switch_C_6 look actor BP_Switch_C_6 100
+host shot p2h02
+# Switch_C_6 alt (past Actor_20): host point -12839 -13700 2154
+host warp actor point -12839 -13700 2154
+sleep 2
+host wait stand -12839 -13700 2154 200000 timeout=15
+try host look actor BP_Switch_C_6 160
+# shot p2h03: Switch_C_6 alt (past Actor_20) look actor BP_Switch_C_6 160
+host shot p2h03
+try host look actor BP_Switch_C_6 100
+# shot p2h04: Switch_C_6 alt (past Actor_20) look actor BP_Switch_C_6 100
+host shot p2h04
+# Switch_C_8: host point -11144 -1143 3369
+host warp actor point -11144 -1143 3369
+sleep 2
+host wait stand -11144 -1143 3369 200000 timeout=15
+try host look actor BP_Switch_C_8 160
+# shot p2h05: Switch_C_8 look actor BP_Switch_C_8 160
+host shot p2h05
+try host look actor BP_Switch_C_8 100
+# shot p2h06: Switch_C_8 look actor BP_Switch_C_8 100
+host shot p2h06
+# Switch_C_8 alt: host point -11250 -1143 3369
+host warp actor point -11250 -1143 3369
+sleep 2
+host wait stand -11250 -1143 3369 200000 timeout=15
+try host look actor BP_Switch_C_8 160
+# shot p2h07: Switch_C_8 alt look actor BP_Switch_C_8 160
+host shot p2h07
+try host look actor BP_Switch_C_8 100
+# shot p2h08: Switch_C_8 alt look actor BP_Switch_C_8 100
+host shot p2h08
+# WallSwitch: host point -40323 54270 1820
+host warp actor point -40323 54270 1820
+sleep 2
+host wait stand -40323 54270 1820 200000 timeout=15
+try host look actor BP_WallSwitch_C_1 160
+# shot p2h09: WallSwitch look actor BP_WallSwitch_C_1 160
+host shot p2h09
+try host look actor BP_WallSwitch_C_1 100
+# shot p2h10: WallSwitch look actor BP_WallSwitch_C_1 100
+host shot p2h10
+# clasp silo 4: host point -58581 1543 1261
+host warp actor point -58581 1543 1261
+sleep 2
+host wait stand -58581 1543 1261 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h11: clasp silo 4 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h11
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h12: clasp silo 4 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h12
+# clasp silo 4 far side 500: host point -60265 175 1300
+host warp actor point -60265 175 1300
+sleep 2
+host wait stand -60265 175 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h13: clasp silo 4 far side 500 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h13
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h14: clasp silo 4 far side 500 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h14
+# clasp silo 4 far side 900: host point -60574 -79 1300
+host warp actor point -60574 -79 1300
+sleep 2
+host wait stand -60574 -79 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h15: clasp silo 4 far side 900 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h15
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h16: clasp silo 4 far side 900 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h16
+# clasp silo 3: host point -67647 2602 1270
+host warp actor point -67647 2602 1270
+sleep 2
+host wait stand -67647 2602 1270 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h17: clasp silo 3 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h17
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h18: clasp silo 3 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h18
+# clasp silo 3 far side 500: host point -69817 2614 1300
+host warp actor point -69817 2614 1300
+sleep 2
+host wait stand -69817 2614 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h19: clasp silo 3 far side 500 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h19
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h20: clasp silo 3 far side 500 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h20
+# clasp silo 3 far side 900: host point -70217 2614 1300
+host warp actor point -70217 2614 1300
+sleep 2
+host wait stand -70217 2614 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h21: clasp silo 3 far side 900 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h21
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h22: clasp silo 3 far side 900 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h22
+# clasp silo 0: host point -58599 8645 1270
+host warp actor point -58599 8645 1270
+sleep 2
+host wait stand -58599 8645 1270 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h23: clasp silo 0 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h23
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h24: clasp silo 0 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h24
+# clasp silo 0 far side 500: host point -59967 10330 1300
+host warp actor point -59967 10330 1300
+sleep 2
+host wait stand -59967 10330 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h25: clasp silo 0 far side 500 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h25
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h26: clasp silo 0 far side 500 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h26
+# clasp silo 0 far side 900: host point -60220 10639 1300
+host warp actor point -60220 10639 1300
+sleep 2
+host wait stand -60220 10639 1300 200000 timeout=15
+try host look actor BP_MissileSilo_Clasp_C 150 bounds
+# shot p2h27: clasp silo 0 far side 900 look actor BP_MissileSilo_Clasp_C 150 bounds
+host shot p2h27
+try host look actor BP_MissileSilo_Clasp_C 0 bounds
+# shot p2h28: clasp silo 0 far side 900 look actor BP_MissileSilo_Clasp_C 0 bounds
+host shot p2h28
+# nest9: host point -34184 51368 1073
+host warp actor point -34184 51368 1073
+sleep 2
+host wait stand -34184 51368 1073 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+# shot p2h29: nest9 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+host shot p2h29
+# nest9: host point -35784 51368 1073
+host warp actor point -35784 51368 1073
+sleep 2
+host wait stand -35784 51368 1073 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+# shot p2h30: nest9 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+host shot p2h30
+# nest9: host point -36684 50468 1073
+host warp actor point -36684 50468 1073
+sleep 2
+host wait stand -36684 50468 1073 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+# shot p2h31: nest9 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_9 200
+host shot p2h31
+# nest1: host point -32628 46221 1156
+host warp actor point -32628 46221 1156
+sleep 2
+host wait stand -32628 46221 1156 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+# shot p2h32: nest1 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+host shot p2h32
+# nest1: host point -32628 51221 1156
+host warp actor point -32628 51221 1156
+sleep 2
+host wait stand -32628 51221 1156 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+# shot p2h33: nest1 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+host shot p2h33
+# nest1: host point -32628 47821 1156
+host warp actor point -32628 47821 1156
+sleep 2
+host wait stand -32628 47821 1156 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+# shot p2h34: nest1 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+host shot p2h34
+# nest5: host point -44607 43198 934
+host warp actor point -44607 43198 934
+sleep 2
+host wait stand -44607 43198 934 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+# shot p2h35: nest5 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+host shot p2h35
+# nest5: host point -44607 38198 934
+host warp actor point -44607 38198 934
+sleep 2
+host wait stand -44607 38198 934 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+# shot p2h36: nest5 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+host shot p2h36
+# nest5: host point -42107 40698 934
+host warp actor point -42107 40698 934
+sleep 2
+host wait stand -42107 40698 934 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+# shot p2h37: nest5 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+host shot p2h37
+# nest5: host point -43707 40698 934
+host warp actor point -43707 40698 934
+sleep 2
+host wait stand -43707 40698 934 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+# shot p2h38: nest5 look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 200
+host shot p2h38
+# WALL cmd 37 (expect wall hit): host point -30128 48721 1156
+host warp actor point -30128 48721 1156
+sleep 2
+host wait stand -30128 48721 1156 200000 timeout=15
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+# shot p2h39: WALL cmd 37 (expect wall hit) look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_1 200
+host shot p2h39
+# BUG in the line (switch look hits the bug, row with its guid; the bug look passes)
+host warp actor point -24445 -13482 2030
+sleep 2
+host wait stand -24445 -13482 2030 200000 timeout=15
+host spawn bug -24445 -13600 2030 90
+sleep 2
+try host look actor BP_Switch_C_2 160
+# shot p2h40: BUG look actor BP_Switch_C_2 160
+host shot p2h40
+try host look actor BP_AI_WarriorBug_C 50
+# shot p2h41: BUG look actor BP_AI_WarriorBug_C 50
+host shot p2h41
+# client Switch_C_2: client point -24645 -13482 2030
+host warp client point -24645 -13482 2030
+sleep 2
+client wait stand -24645 -13482 2030 200000 timeout=15
+try client look actor BP_Switch_C_2 160
+# shot p2c01: client Switch_C_2 look actor BP_Switch_C_2 160
+client shot p2c01
+try client look actor BP_Switch_C_2 100
+# shot p2c02: client Switch_C_2 look actor BP_Switch_C_2 100
+client shot p2c02
+# client Switch_C_0: client point -64446 5949 1728
+host warp client point -64446 5949 1728
+sleep 2
+client wait stand -64446 5949 1728 200000 timeout=15
+try client look actor BP_Switch_C_0 160
+# shot p2c03: client Switch_C_0 look actor BP_Switch_C_0 160
+client shot p2c03
+try client look actor BP_Switch_C_0 100
+# shot p2c04: client Switch_C_0 look actor BP_Switch_C_0 100
+client shot p2c04
+# both onto BP_PlayerPresence_C_51 (Monorail_SO1)
+host warp actor BP_PlayerPresence_C_51 40
+host warp client BP_PlayerPresence_C_51 60
+sleep 2
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Monorail_SO1\)|card097: host t=\d+ subsystem ObjectiveComplete\(Monorail_SO1\))" timeout=30
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Monorail_SO1\)|card097: client t=\d+ subsystem ObjectiveComplete\(Monorail_SO1\))" timeout=30
+sleep 10
+# CLEAR nest9 area (spawner)
+host warp actor point -35784 51368 1073
+host warp client point -39443 49558 873
+sleep 2
+host wait stand -35784 51368 1073 200000 timeout=15
+client wait stand -39443 49558 873 200000 timeout=15
+try both clear 1500 60 max-left=6
+# shot p2h42: nest9 area (spawner) after clear
+host shot p2h42
+# shot p2c05: nest9 area (spawner) after clear
+client shot p2c05
+both inventory
+# both onto BP_PlayerPresence_C_52 (PowerPlant_SO1)
+host warp actor BP_PlayerPresence_C_52 40
+host warp client BP_PlayerPresence_C_52 60
+sleep 2
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?PowerPlant_SO1\)|card097: host t=\d+ subsystem ObjectiveComplete\(PowerPlant_SO1\))" timeout=30
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?PowerPlant_SO1\)|card097: client t=\d+ subsystem ObjectiveComplete\(PowerPlant_SO1\))" timeout=30
+sleep 10
+# CLEAR Switch_C_2 fight (spawner)
+host warp actor point -24445 -13482 2030
+host warp client point -24645 -13482 2030
+sleep 2
+host wait stand -24445 -13482 2030 200000 timeout=15
+client wait stand -24645 -13482 2030 200000 timeout=15
+try both clear 1500 60 max-left=6
+# shot p2h43: Switch_C_2 fight (spawner) after clear
+host shot p2h43
+# shot p2c06: Switch_C_2 fight (spawner) after clear
+client shot p2c06
+both inventory
+# E-use switch: the final guard is focus=
+try host look actor BP_Switch_C_2 100 focus=BP_Switch_C_2
+# shot p2h44: Switch_C_2 aim after clear, focus= gate
+host shot p2h44
+# CLEAR Switch_C_2 fight 2
+host warp actor point -24445 -13482 2030
+host warp client point -24645 -13482 2030
+sleep 2
+host wait stand -24445 -13482 2030 200000 timeout=15
+client wait stand -24645 -13482 2030 200000 timeout=15
+try both clear 1500 60 max-left=6
+# shot p2h45: Switch_C_2 fight 2 after clear
+host shot p2h45
+# shot p2c07: Switch_C_2 fight 2 after clear
+client shot p2c07
+both inventory
+# presence C_52 at 300 (aim row only)
+host warp actor BP_PlayerPresence_C_52 300
+sleep 2
+try host look actor BP_PlayerPresence_C_52
+# shot p2h46: presence C_52 300
+host shot p2h46
+# SKY (expect VOID, no hit): host point -44724 51871 876
+host warp actor point -44724 51871 876
+sleep 2
+host wait stand -44724 51871 876 200000 timeout=15
+try host look 0 85 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0
+# shot p2h47: SKY (expect VOID, no hit) look 0 85 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0
+host shot p2h47
+host quit
+client quit

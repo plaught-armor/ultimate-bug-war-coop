@@ -1,0 +1,138 @@
+# Play-mode check (2026-11-15): the path tonight's playtest takes, with no test cinematic skip and human-rate presses.
+# SKIP_MOVIES=0 (briefs, cutscenes and the title screen run as in the play build), no FAST (the real dropship flight).
+# Each side leaves its title screen by one real Enter; the client presses 20 s after the host (a player reading the
+# screen), so the card 320 hold lasts that long. Then the level end, the hangar and the FED_C2M1 start the same way.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/play-mode-start.txt SKIP_MOVIES=0 GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh <tag> 1500
+# No failsoft: a missed required step ends the run there.
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+# 1. FED_C1M1: the host's title screen, the client joins during it.
+host wait log "card135: host t=\d+ screen prompt ready: " timeout=420
+host wait log "card320: host t=\d+ hold waits for client slot 1 \(join\)" timeout=300
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1" timeout=180
+client wait log "card135: client t=\d+ screen prompt ready: " timeout=180
+sleep 5
+host shot play-host-c1m1-screen
+host mark
+# Play mode: the mission intro video (WB_Cutscenes_C) plays over the title screen on each side (playb68: the first
+# Enter went to it). A player presses until the screen continues: prompt, skip, continue. Up to 5 presses, 4 s apart.
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=10
+# The client reads its screen for 20 s (input timing: a human).
+sleep 20
+client shot play-client-c1m1-screen
+host shot play-host-c1m1-held
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=10
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+# 2. The real flight lands; both on foot.
+host wait state pawn=host-own timeout=300
+client wait state pawn=client-own timeout=180
+host wait log "playlog: host t=\d+ clock 1 " timeout=60
+sleep 5
+host shot play-host-c1m1-foot
+client shot play-client-c1m1-foot
+# 3. Level end by the game's own EndLevel; both read the level-end screen for 10 s.
+host mark
+client mark
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=240
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=60
+sleep 10
+host shot play-host-levelend
+client shot play-client-levelend
+# 4. Next: the level-end cutscene plays unskipped for up to 40 s (shots at 15 s), then the host skips it by Enter.
+host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+sleep 15
+host shot play-host-endcutscene
+client shot play-client-endcutscene
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=25
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host winkey Enter 165
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=6
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host winkey Enter 165
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=6
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host winkey Enter 165
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=6
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host winkey Enter 165
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=6
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=180
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=180
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 8
+host shot play-host-hangar
+client shot play-client-hangar
+# 5. The host starts FED_C2M1 from the hangar.
+host mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C2M1" since-mark timeout=10
+# 6. FED_C2M1 title screens: the host presses at its prompt, the client 20 s later.
+host wait log "card320: host t=\d+ hold on \(FED_C2M1\)" since-mark timeout=300
+host wait log "card135: host t=\d+ screen prompt ready: " since-mark timeout=180
+client wait log "card135: client GameStarted t=\d+ on FED_C2M1" since-mark timeout=180
+sleep 5
+host shot play-host-c2m1-screen
+unless host log "card135: host continued t=\d+ on FED_C2M1" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C2M1" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C2M1" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C2M1" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C2M1" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=4
+host wait log "card135: host continued t=\d+ on FED_C2M1" timeout=10
+sleep 20
+client shot play-client-c2m1-screen
+unless client log "card320: client t=\d+ screen confirmed on FED_C2M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C2M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C2M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C2M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C2M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=4
+client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=10
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+# 7. The flight; both on foot on FED_C2M1.
+host wait state map=FED_C2M1 pawn=host-own timeout=300
+client wait state pawn=client-own timeout=180
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+sleep 8
+host shot play-host-c2m1-foot
+client shot play-client-c2m1-foot
+client quit
+sleep 2
+host quit

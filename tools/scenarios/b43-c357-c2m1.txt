@@ -1,0 +1,133 @@
+# Cards 357 + 358 (senior order 2026-11-14, b43 8f7d7fc43a76c451): the b42 path (c346-persistent: C1M1, level end,
+# hangar, seamless travel to FED_C2M1) and its checkpoint reload, plus a host grenade into 3 fresh corpses near the
+# client after the first spawn. Card 357 gate: 0 WARN card038 on the client, summary StartOverkillState 0 and
+# ReleaseCorpseTicket 0, one card357 skip per overkilled corpse, client shot of the gore. Card 358: WARN card191 rows
+# reported as they are; a held game ragdoll start shows "(ragdoll started for it)" and "blend physics was 1".
+# Run: LANE=2 SCENARIO=tools/scenarios/b43-c357-c2m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1" tools/run_pair.sh b43 600
+void unless host dll 8f7d7fc43a76c451
+void unless client dll 8f7d7fc43a76c451
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# 1. Level end by the game's own EndLevel, relayed to the client (card 260).
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+# 2. The host presses Next: a seamless travel takes both into the host's hangar. No drop on the client.
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=10
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+# Still the same connection: a host row arrives in the hangar.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+# 3. The host starts the next mission from the hangar: a second seamless travel.
+host mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C2M1" since-mark timeout=10
+client mark
+host wait state map=FED_C2M1 timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+# The host's continue sends the op; the client's own screen asks for its pause only at its GameStarted.
+client wait log "card135: client GameStarted t=\d+ on FED_C2M1" since-mark timeout=60
+client ui continue
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+try host wait log "card356: host t=\d+ loadout replay to \S+, server copy \S+: \d+ of \d+ items sent" since-mark timeout=30
+try client wait log "card073: client t=\d+ GrenadeItem \S*BP_GrenadeItem_Frag_C 2( \(deferred \d+ ms\))?: our count 0 to 2, writer the host frame" since-mark timeout=30
+try client wait log "card073: client t=\d+ grant \S+ bound to replicated spec" since-mark timeout=30
+try client wait log "card354: client t=\d+ own .*caller exe\+0x51DA8EE" timeout=20
+sleep 2
+client shot c356-c2m1-first-hud
+sleep 3
+host inventory
+client inventory
+host objectives
+# --- Card 357: three code-spawned warrior bugs 800 uu ahead of the host, the client warped beside them, killed by
+# code, then one host grenade into the corpses once they lie (host on foot after the landing).
+host wait state pawn=host-own timeout=180
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+150} {g3} 180
+host spawn bug {g1+800} {g2-150} {g3} 180
+host warp client point {g1+400} {g2+500} {g3}
+sleep 3
+host clear 1500 kill
+sleep 5
+host mark
+client mark
+host look point {g1+800} {g2} {g3-80}
+# The client faces the corpses now: a later wait log replaces the groups.
+client look point {g1+800} {g2} {g3-80}
+host key G
+try host wait log "card039: host Gib signal " since-mark timeout=10
+unless host log "card039: host Gib signal " count=2 host key G
+try host wait log "card039: host Gib signal " count=2 since-mark timeout=10
+try client wait log "card357: client StartOverkillState skipped" since-mark timeout=10
+sleep 1
+client shot c357-gore-client
+host shot c357-gore-host
+sleep 3
+# --- Card 354: client respawn by checkpoint load (b14 case A shape), then the loadout from the host frames.
+host mark
+# The host on foot after the landing (UBWCOOP_AUTODROPSHIP=1): the save needs its own pawn.
+host wait state pawn=host-own timeout=180
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+host clear 6000 kill
+host mark
+client mark
+host down host
+host wait log "card294: host t=\d+ Down Downed for pawn id \d+ \(slot \d+\) sent now, ahead of \d+ queued frames" since-mark timeout=10
+host travel checkpoint
+host wait log "card143: host t=\d+ Reload to \S+ \(copy \S+\): sent now, ahead of \d+ queued frames" since-mark timeout=60
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+host clear 6000 kill
+client wait log "card294: client t=\d+ host restart \(" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=120
+host clear 6000 kill
+client wait log "card294: client t=\d+ restart done in \d+ ms: " since-mark timeout=90
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+try host wait log "card356: host t=\d+ loadout replay to \S+, server copy \S+: \d+ of \d+ items sent" since-mark timeout=30
+try client wait log "card073: client t=\d+ GrenadeItem .*writer the host frame" since-mark timeout=30
+try client wait log "card073: client t=\d+ grant \S+ bound to replicated spec" since-mark timeout=30
+sleep 2
+try client wait log "card354: client t=\d+ own .*caller exe\+0x51DA8EE" since-mark timeout=20
+sleep 2
+try client ui continue
+sleep 1
+client shot c354-c2m1-respawn-hud
+host inventory
+client inventory
+client quit
+sleep 2
+host quit

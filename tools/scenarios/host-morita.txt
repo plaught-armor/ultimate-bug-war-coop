@@ -1,0 +1,23 @@
+# Card 064 proof 1: the host walks to the nearer placed Morita pickup (no teleport), looks at it, presses Use, then 2.
+# Run: SCENARIO=tools/scenarios/host-morita.txt STAGGER=5 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 520
+# The host's brief movie stays on screen (card 067), so proof is the log and state lines; host shots show the movie.
+
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+sleep 5
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+# The pickup takes on overlap as the walker arrives (before the Use press), and the game equips it at once
+# (EquipWeapon(1), caller chain "game"; it logs ConstructWeaponSwitchRequest(1, 0) too). The 2 press must reach the
+# SelectWeapon.Slot2 input tag, which only the press logs; an EquipWeapon after it is the
+# card 062 gap and does not fail this scenario.
+# The card057 EquipWeapon line is diag-only (card 047 gate, g_gate_diag), so this route does not wait on it (card 077 review).
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C" timeout=15
+sleep 2
+host key Two
+host wait log "card021: host AbilityInputTagPressed InputTag.SelectWeapon.Slot2 .*host-own" timeout=15
+host shot morita
+client shot host-morita
+client quit
+host quit

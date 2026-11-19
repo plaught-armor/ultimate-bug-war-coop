@@ -1,0 +1,19 @@
+# Card 113 (FED_C1M1, FAST=1): both players in, then the host travels to the next mission (FED_C2M1) through the
+# game's TransitionToLevel. The client drops and card 045's reconnect brings it back. The host log carries the
+# card113 session lines and the new map's start waves "scaled ... (2 players)" before the client's pawn exists.
+# Run: SCENARIO=tools/scenarios/c113-travel.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c113a 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host travel next
+client wait log "reconnected \(" timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host ui continue
+sleep 5
+host shot c113-arrived
+client shot c113-arrived
+host quit
+client quit

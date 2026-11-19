@@ -1,0 +1,71 @@
+# Card 227 run c227c (step 3): the presence gate. FED_C1M1, FAST=1, UBWCOOP_C65_LOG=1 on both sides (the BeginPlay
+# dump and the presence edge lines; the gate itself is always on), UBWCOOP_C132_FX=1 for the frame windows. The
+# tutorial objectives are completed by command (card 095: the script adds CaptureTheFlag_O1 and opens door
+# BP_Door_Sliding_Large_C_0). Both players walk to the door pair; the client stays outside; the host walks into
+# BP_PlayerPresence_C_7 alone (a goto to the actor, not a warp: a warp does not start the overlap, card 100) and is
+# held; then the client walks in and completes the set. Prediction: the card, "Step 3 (junior)".
+# Wait audit: every wait is on a line that the prediction says must appear; no try-waits. card227 "gated", "held"
+# and "fired after hold" lines share one counter (cap 64 per map); edge lines have their own (cap 240 per map);
+# card161 DoorState lines are capped 120 per map (door_c161.cpp:32), this run changes doors fewer than 10 times;
+# card111 wave budget, card095, cmd and playlog clock lines are not capped. The absence checks (no wave line, door
+# _0 still 1 while held) are read from the logs after the run, with the door lists below as the on-screen state.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c227-presence.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C65_LOG=1 UBWCOOP_C132_FX=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C65_LOG=1 UBWCOOP_C132_FX=1" tools/run_pair.sh c227c 900
+# 1. In game on both sides, the brief closed, the presences dumped.
+host wait state map=FED_C1M1 pawn=host-own timeout=300
+client wait state pawn=client-own timeout=120
+host wait log "card227: \S+ presence BP_PlayerPresence_C_7 gated \(LTOnEnter LR_Door_Toggle_C\), table 1 of 32" timeout=10
+client wait log "card227: \S+ presence BP_PlayerPresence_C_7 gated \(LTOnEnter LR_Door_Toggle_C\), table 1 of 32" timeout=10
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# 2. The tutorial objectives done by command; the script adds CaptureTheFlag_O1 and opens door _0.
+host mark
+client mark
+host objective complete all
+host wait log "card095: host cmd objective complete all: \d+ completed" since-mark timeout=10
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," since-mark timeout=30
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," since-mark timeout=15
+# 3. Both walk to the door pair's south side (c95 route); the client stays there.
+host goto -3454 9300 148 200 timeout=90
+client goto -3654 9300 150 200 timeout=90
+host wait goto timeout=90
+client wait goto timeout=90
+host shot c227c-host-at-door
+client shot c227c-client-at-door
+host door list
+client door list
+# 4. The host walks into _7 alone: held, the original not called, door _0 stays open.
+host mark
+client mark
+host goto actor BP_PlayerPresence_C_7 80 timeout=30
+host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 held: 1 of 2 players inside \(entered by " since-mark timeout=40
+host wait goto timeout=30
+host shot c227c-host-held
+client shot c227c-client-outside
+host door list
+client door list
+host objectives
+client objectives
+# 5. The client walks in: the host's entered edge for the client pawn completes the set.
+client mark
+host mark
+client goto actor BP_PlayerPresence_C_7 150 timeout=30
+host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2 players inside, entered by " since-mark timeout=40
+host wait log "card227: host/standalone t=\d+ presence BP_PlayerPresence_C_7 entered by \S+ \(\S+\) at .*: end" since-mark timeout=5
+host wait log "card111: wave budget STEncounterWaveBase .*\(2 players" since-mark timeout=5
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 1 -> 3," since-mark timeout=15
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 1 -> 3," since-mark timeout=15
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 3 -> 0," since-mark timeout=15
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 3 -> 0," since-mark timeout=15
+client wait goto timeout=30
+host shot c227c-host-end
+client shot c227c-client-end
+host door list
+client door list
+host objectives
+client objectives
+client quit
+sleep 2
+host quit

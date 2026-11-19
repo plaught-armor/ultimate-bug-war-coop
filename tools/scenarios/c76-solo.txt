@@ -1,0 +1,40 @@
+# Card 076: solo host (SOLO=1) on FED_C4M1, card 075's c75-solo with the mech's fire in place of the walk. The host
+# enters a pod mech, is warped 1000 uu short of the nearest warrior bug, fires primary in three 1 s bursts and
+# secondary once, and leaves. No GrenadeSpawn frame is sent (there is no client); the card076 host lines show the
+# rounds and the bug's Health.
+# Run: SCENARIO=tools/scenarios/c76-solo.txt SOLO=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_C76_LOG=1" run65.sh <tag> 600
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+host shot pods
+host warp actor BP_BaseMech_C 300
+sleep 3
+host look actor BP_BaseMech_C 150
+sleep 1
+host key E
+host wait log "card075: host EnterMech after" timeout=10
+sleep 3
+host shot enter
+host warp actor BP_AI_WarriorBug_C 1000
+sleep 2
+host look actor BP_AI_WarriorBug_C 50
+sleep 1
+host key LeftMouseButton 1000 timeout=15
+host shot fire1
+host key LeftMouseButton 1000 timeout=15
+host shot fire2
+host key LeftMouseButton 1000 timeout=15
+host shot fire
+sleep 1
+host key RightMouseButton 300 timeout=10
+sleep 1
+host shot alt
+sleep 1
+host key E 2500 timeout=15
+host wait log "card075: host LeaveMech after" timeout=10
+sleep 3
+host shot leave
+sleep 2
+host quit

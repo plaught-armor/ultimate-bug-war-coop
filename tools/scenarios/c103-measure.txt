@@ -1,0 +1,31 @@
+# Card 103 measure, FED_C2M1 (HOST_EXTRA_ENV UBWCOOP_TRAVEL): the host stays at the LZ, out of sight; the host warps the
+# client's server copy 1500 uu short of the nearest warrior bug and the client fights it; then the host warps in too.
+# Host: UBWCOOP_C103_LOG=1 (target selection), both: UBWCOOP_ENEMYAUDIT=1 (enemy rows for the comparison).
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host warp client BP_AI_WarriorBug_C 1500
+sleep 4
+client look actor BP_AI_WarriorBug_C 50
+client shot c103-client-arrive
+client key LeftMouseButton 1500 timeout=15
+sleep 3
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+sleep 8
+client shot c103-client-fight
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+sleep 10
+client shot c103-client-late
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 4
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+sleep 12
+host shot c103-host-both
+client shot c103-client-both
+sleep 8
+host quit
+client quit

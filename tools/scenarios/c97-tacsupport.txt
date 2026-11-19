@@ -1,0 +1,38 @@
+# Card 097: finish the FED_C1M1 tutorial steps before the flare by command (objective complete <id>), then the host
+# takes the support flare pickup and throws it (4, then fire) for the real flare and bombing run path. Both list the
+# objectives, then the client walks north through the capture-the-flag entrance (door _0, as card 095).
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host objective complete TacSupport_SO5
+sleep 3
+host goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 100 timeout=90
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+sleep 2
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 4
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 20
+host shot c97-host-strike
+host objectives
+client objectives
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+client shot c97-client-after
+host quit
+client quit

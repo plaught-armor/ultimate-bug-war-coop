@@ -1,0 +1,98 @@
+# Batch b44 (senior order 2026-11-14): card 333 c72 trace (which client-local call writes the stale
+# AmmunitionType.Laser entry on the client's new FED_C2M1 pawn; run with UBWCOOP_C69_LOG=1 on both sides) and card 322
+# part B out of bounds (each player warped into the nearest STOutOfBoundsVolume on FED_C2M1, then back).
+# Predictions in cards 333 and 322. Path: b41's (C1M1, level end, hangar, seamless travel to FED_C2M1). Build b44:
+# d875ca838402bfc5 (card 333 loadout AddAmmo skip).
+# Run: LANE=2 SCENARIO=tools/scenarios/b44-c333-c322-c2m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C69_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_C69_LOG=1" tools/run_pair.sh b44 600
+void unless host dll d875ca838402bfc5
+void unless client dll d875ca838402bfc5
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# 1. Level end by the game's own EndLevel, relayed to the client (card 260).
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+# 2. The host presses Next: a seamless travel takes both into the host's hangar. No drop on the client.
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=10
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+# Still the same connection: a host row arrives in the hangar.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+# 3. The host starts the next mission from the hangar: a second seamless travel.
+host mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C2M1" since-mark timeout=10
+host wait state map=FED_C2M1 timeout=300 void
+client wait state pawn=client-own timeout=180
+client mark
+host ui continue
+# The host's continue sends the op; the client's own screen asks for its pause only at its GameStarted.
+client wait log "card135: client GameStarted t=\d+ on FED_C2M1" since-mark timeout=60
+client ui continue
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+try client wait log "card354: client t=\d+ own .*caller exe\+0x51DA8EE" timeout=20
+try client wait log "card333: client t=\d+ own loadout AddAmmo " timeout=5
+sleep 3
+host inventory
+client inventory
+host objectives
+# --- Card 322 part B: out of bounds. Host first, into the nearest volume, 10 uu behind its centre, 100 uu up.
+host mark
+client mark
+host warp actor STOutOfBoundsVolume 10 behind
+host wait log "card322: host t=\d+ out of bounds entered " since-mark timeout=15
+try client wait log "card322: client t=\d+ out of bounds entered " since-mark timeout=10
+sleep 2
+host shot oob-host-in
+client shot oob-host-in-cview
+host warp actor BP_PlayerCharacterMI_C 300
+try host wait log "card322: host t=\d+ out of bounds exited " since-mark timeout=15
+try client wait log "card322: client t=\d+ out of bounds exited " since-mark timeout=5
+sleep 3
+# The client, by its server copy on the host (run 2: a client-local warp was corrected back at once, 27 ms in).
+host mark
+client mark
+host warp client STOutOfBoundsVolume 10 behind
+host wait log "card322: host t=\d+ out of bounds entered " since-mark timeout=15
+try client wait log "card322: client t=\d+ out of bounds entered " since-mark timeout=10
+sleep 2
+client shot oob-client-in
+host shot oob-client-in-hview
+host warp client point 232629 43682 8720
+try host wait log "card322: host t=\d+ out of bounds exited " since-mark timeout=15
+try client wait log "card322: client t=\d+ out of bounds exited " since-mark timeout=5
+sleep 3
+host inventory
+client inventory
+client quit
+sleep 2
+host quit

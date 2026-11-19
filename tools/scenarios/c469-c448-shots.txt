@@ -1,0 +1,111 @@
+# Card 469 leftovers on b174 (senior order 2026-11-17), the c448 route with two shot pairs and the client capped
+# at 20 fps for the whole run (CLIENT_EXTRA_ENV DXVK_FRAME_RATE=20 VKD3D_FRAME_RATE=20; drive.py has no console
+# step for t.MaxFPS). Card 320: a pair inside the hold (after host `hold on`) and a pair right after `hold off ...
+# (all confirmed)`. Card 226 step 2: the host netbudget pace/queue rows against c448b174a (60 fps).
+# Run: same as below with tag c469b174a and the client env above.
+# Card 448 (rejoin is a full heal), senior order 2026-11-16: the client takes a Morita (a card 327 row, so card 440
+# keeps an entry), is downed by code and revived by the host (the c142-r4 steps), which leaves its Health at the
+# revive fraction, then leaves the game (card 045 reconnects it on the same map). Predictions in
+# docs/cards/448-rejoin-is-a-full-heal.md: host card448 row "(Up): kept Health H, Armour A" with H below max; host
+# card143 "Restore applied ... Health <full> -> H (want H)" and no WARN card198; client card157 vitals row and HUD shot
+# after the rejoin show H. Optional end block: a second leave while downed logs kept Health -1.0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c448-c1m1.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      tools/run_pair.sh c448b151b 600
+# Expected wall: about 5 min.
+voidsoft
+void unless host dll 4efbc7838d907625
+void unless client dll 4efbc7838d907625
+host wait state map=FED_C1M1 pawn=host-own timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+host wait log "card320: host t=\d+ hold on \(FED_C1M1\)" timeout=30
+host shot c320-h-hold
+client shot c320-c-hold
+host ui continue
+# b169: the client ui continue raced the client IntroStart by 10 ms (c448b169a); wait for it. The client screen also
+# confirms by itself about 2 s later (card320 "prompt ready 0"), so the press is a try.
+client wait log "card135: client t=\d+ IntroStart \(FED_C1M1" timeout=30
+try client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host shot c320-h-release
+client shot c320-c-release
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=20
+# Card 449 (troop dropship takeoff decided per side), docs/cards/449-*.md predictions: troop ship 3 begins its descent
+# about 29 s after the hold and takes off about 10 s later (c448b148a host rows). The client copy logs "landed copy
+# leaves its takeoff to the host"; the client's trooper is then warped onto the ship (10 uu front: the ship's location
+# +100 z) for the host's "takeoff held" row and a shot, warped back to where it stood (the warp row's old location),
+# and shot again after the host's launch edge (the ship climbing). All try: a miss here does not stop card 448.
+host mark
+client mark
+try host wait log "dropship: host/standalone ExecuteBeginDescentBehaviour\(\S+ BP_ProceduralDropshipTroops_C," since-mark timeout=60
+try client wait log "card449: client t=\d+ dropship \S+: landed copy leaves its takeoff to the host" since-mark timeout=30
+host mark
+host warp client BP_ProceduralDropshipTroops_C 10 front
+try host wait log "card449: host(/standalone)? t=\d+ dropship \S+: a client's trooper stands on it: takeoff held" since-mark timeout=10
+client shot c449-on-landed-ship
+try host wait log "cmd: \d+ warp: server copy \S+ \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\) -> " since-mark timeout=5
+host mark
+try host warp client point {g1} {g2} {g3}
+try host wait log "card342: host t=\d+ dropship BP_ProceduralDropshipTroops_C_\d+ launch edge: spline distance 0," since-mark timeout=40
+client look actor BP_ProceduralDropshipTroops_C 0 bounds
+sleep 2
+client shot c449-ship-climbing
+try client wait log "card449: client t=\d+ dropship \S+: host took off, StartAction run on the landed copy" timeout=10
+# The client takes a Morita and equips it (c142-r4): its card 327 row gives card 440 a kept entry.
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# No CollisionOp wait here: that row comes only after the host took a weapon from the same pickup (c142-r4); the
+# collider is on from the map start (run c448b148a: the wait timed out, 0 InteractionCollider ops).
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" since-mark timeout=10
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+failsoft
+# 1. Down and revive (c142-r4 lines 62-69): Health ends at the revive fraction. Bugs cleared by code first (GOD=0).
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+client wait near 12600 14100 400 150 timeout=5
+host clear 4000 kill
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+# Card 295 (card 469): the client walks inside the 10 s after the revive; the corrections row must stay 0.
+client key W 3000 timeout=10
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\) \+5 s" since-mark timeout=10
+client shot c448-hud-before-leave
+# 2. The client leaves and card 045 reconnects it (the c423 rejoin steps).
+host mark
+client mark
+client disconnect
+host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Up\): kept Health " since-mark timeout=30
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=120
+# A mid-mission rejoin logs no card135 "screen prompt ready" (c448b151b line 73); the possess wait and the pawn state cover it.
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=5
+try client ui continue
+client wait state pawn=client-own timeout=120
+host wait log "card143: host t=\d+ Restore applied" since-mark timeout=60
+client wait log "card157: client t=\d+ own pawn Armour \S+ -> \S+ \(max \S+\), Health \S+ -> \S+" since-mark timeout=20
+sleep 3
+client shot c448-hud-after-rejoin
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# 3. Optional: a second leave while downed keeps none (kept Health -1.0).
+host warp client point 12600 14100 400
+client mark
+host down client
+try client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host mark
+client mark
+client disconnect
+try host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Downed\): kept Health -1\.0" since-mark timeout=30
+try client wait log "reconnected \(" since-mark timeout=120

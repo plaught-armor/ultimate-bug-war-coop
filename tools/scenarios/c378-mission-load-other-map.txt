@@ -1,0 +1,69 @@
+# Card 375 sibling probe (run c378, SYNC_AUDIT row "host pause-menu LOAD GAME (a save, any map), client connected"):
+# the host loads a FED_C1M1 save while both players are on the next map. Never run. Same engine path as the hangar
+# load (deferred params, travel with ?FromSave, card 346 seamless), but both PCs keep their mission class.
+# Predictions: docs/STATE.md, entry "c378 predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c378-mission-load-other-map.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c378b65 480
+#      (launched with the footprint wrapper: taskset -c 4-7,12-15 nice -n 10)
+# No failsoft.
+void unless host dll 3676f5d1b88c01de
+void unless client dll 3676f5d1b88c01de
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot hud-client
+# 1. A save far from the start (the c376 stand); the client goes to its own spot so both saved rows are provable.
+host warp actor point 6554 11459 197
+host wait stand 6554 11459 97 400 timeout=10
+host warp client point 6254 11459 197
+client wait near 6254 11459 197 300 timeout=10
+# z unmeasured at x 6254 (gameplay rule: stand z only where a rest row gave it); the card048 row gives it.
+client wait stand 6254 11459 any 400 timeout=10
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+# 2. Both travel to the next map (card 113 / 346).
+host mark
+client mark
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C\dM\d, net mode 3\)" since-mark timeout=120
+host wait log "card320: host t=\d+ hold on " since-mark timeout=120
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host ui continue
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=90
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms" since-mark timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=60
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=90
+# 3. The host loads the latest save. If the newest save is one of this map (an autosave at its start), the load runs in
+#    place, the seamless wait below times out and the run proves nothing new (not a mod failure).
+host mark
+client mark
+host travel checkpoint
+host wait log "card132: host travel checkpoint: LoadLatestSave returned 1" since-mark timeout=20
+host wait log "card346: host t=\d+ seamless map change done: world FED_C1M1" since-mark timeout=120
+host wait log "card375: host t=\d+ deferred save load applied after the seamless travel to FED_C1M1 \(flag 1 -> 0\)" since-mark timeout=10
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" since-mark timeout=20
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host shot h-after-load
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1" since-mark timeout=60
+client shot c-after-load
+try host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+host wait state map=FED_C1M1 pawn=host-own timeout=120
+host wait stand 6554 11459 97 600 timeout=20
+client wait state pawn=client-own timeout=30
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=90
+sleep 2
+host shot h-mission
+client shot c-mission
+client quit
+sleep 2
+host quit

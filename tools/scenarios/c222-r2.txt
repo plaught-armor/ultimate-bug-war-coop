@@ -1,0 +1,42 @@
+# Card 222 run c222-r2: `winkey` (WM_KEYDOWN/WM_KEYUP posted to the game window, the Slate not-active input flag set
+# for the press) closes the mission brief and the pause menu the way a real key does. Host solo, FED_C1M1.
+# SKIP_MOVIES=0: no card 135 test skip (c222-r1 was void: the skip closed the brief itself). No UBWCOOP_AUTODROPSHIP
+# and no FAST, no `ui continue`, so the brief stays up until the winkey Enter. The wait audit (the log line each wait
+# matches, and the screens between process start and the pause-menu block) is in
+# docs/cards/222-driver-escape-does-not-close-menus.md, "Run c222-r2: wait audit". No failsoft.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SOLO=1 SKIP_MOVIES=0 SCENARIO=tools/scenarios/c222-r2.txt
+#      DEPLOY=1 tools/run_pair.sh c222-r2 900
+# 1. The brief is up: the 5 s dump of the FED_C1M1 WB_Stack_C pause (c120a-host.log:1307). The title screen's dumps
+#    read "in ?" or "in 3D_Frontend", never "in FED_C1M1".
+host wait log "card067: dump \d+ in FED_C1M1 \(5 s after the WB_Stack_C pause\)" timeout=300
+host shot c222-brief
+# 2. One winkey Enter (the c67e press length) closes it: WB_Stack_C unpauses with no requester left. The card222
+#    down/up/restore lines are read from the log after the run, not waited on (no earlier log can hold them).
+host mark
+host winkey Enter 165
+host wait log "cmd: \d+ winkey Enter 165 -> done" since-mark timeout=5
+host wait log "pause: host/standalone RequestGameUnpause\(requester \S+ WB_Stack_C, .*requesters now 0" since-mark timeout=10
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=5
+host shot c222-brief-closed
+# 3. After the flight (pawn=host-own comes with the landing possession, about 28 s after the brief closes), the pause
+#    menu: winkey Escape.
+host wait state pawn=host-own timeout=400
+host mark
+host winkey Escape 150
+host wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+host wait log "card096: host t=\d+ SetGamePaused\(1\) = 1 \(world paused\), 0 client" since-mark timeout=5
+host shot c222-pause
+# 4. The options page (as c171-r1).
+host mark
+host ui click BndEvt__WB_Pause_Menu_OPTIONS_button
+host wait log "cmd: \d+ ui click BndEvt__WB_Pause_Menu_OPTIONS_button -> done" since-mark timeout=10
+host shot c222-options
+# 5. winkey Escape closes options, a second one (if the world is still paused) closes the pause menu.
+host mark
+host winkey Escape 150
+host wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+try host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=4
+when host last "card096: host t=\d+ SetGamePaused" "SetGamePaused\(1\)" host winkey Escape 150
+host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=10
+host shot c222-closed
+host quit

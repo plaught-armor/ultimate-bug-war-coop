@@ -1,0 +1,20 @@
+# Card 070 late join: the host lands and passes the first checkpoint (Save_CheckPoint flag 1) before the client
+# connects; the client then gets the card 049 journal (with its card 070 ObjectiveActors frames) at its first Pong,
+# and its minimap must show the current objective icons.
+# Run: SCENARIO=tools/scenarios/c70-late-join.txt STAGGER=190 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C68_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C68_LOG=1" tools/run_pair.sh <tag> 520
+# STAGGER=190: AUTODROPSHIP holds the host's world for a second PC for up to 120 s (kAutoDropshipWaitMs), so the
+# host lands alone at about +150 s, passes its first checkpoint, and adds the objectives at about +185 s; the client
+# launches at +190 s and travels about 35 s later. A shorter stagger joins before the checkpoint (run c70e).
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card050: host USTSaveSystemLibrary::Save_CheckPoint\(.*flag 1\)" timeout=120
+host wait log "card070: host t=\d+ Assault_SO0 actors" timeout=90
+host shot checkpoint-passed
+client wait state pawn=client-own timeout=240
+host wait log "card049: host t=\d+ journal replay to .*: [1-9]\d* of" timeout=60
+sleep 5
+host shot late-join
+client shot late-join
+client quit
+host quit

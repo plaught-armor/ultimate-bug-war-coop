@@ -1,0 +1,26 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 074 step 4: the client dies holding grenades and respawns. The client takes the frag and incendiary pickup set
+# (one of each); the host's card 043 test (UBWCOOP_C43_TEST=1, its first hit held by UBWCOOP_C43_START_MS until the
+# pickup is done) downs the server copy, bleeds it out and revives it from Out (the same pawn stands up again; c74p
+# found no new pawn), and the run ends before the test's game over. The 1 s card073 lines (UBWCOOP_C73_LOG=1) give the
+# client's count and, on the host, the server copy's, before and after.
+# Run: SCENARIO=tools/scenarios/c74-respawn.txt \
+#      HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C43_TEST=1 UBWCOOP_C43_START_MS=60000 UBWCOOP_C73_LOG=1" \
+#      CLIENT_ENV="UBWCOOP_C43_TEST=1 UBWCOOP_C73_LOG=1" run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+client wait log "GrenadeItem .*Frag.* our count 0 to 1" timeout=10
+client wait log "GrenadeItem .*Incendiary.* our count 0 to 1" timeout=10
+client shot before-death
+host wait log "card043: host test: both on foot" timeout=60
+client wait log "card043: client .* own pawn guid 0x[0-9a-f]+ \(host slot \d\) Out -> Up" timeout=150
+sleep 5
+client shot after-respawn
+sleep 2
+client quit
+sleep 2
+host quit

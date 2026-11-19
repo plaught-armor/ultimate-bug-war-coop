@@ -1,0 +1,139 @@
+# Card 210, run c210-r2 (run 2 of 3): tools/scenarios/c210-r1.txt with only these changes. The host's own Hopper Jump
+# is dropped (it was gliding when it pressed One in c210-r1), so the host stays on the ground from its Two to its One.
+# The receiver-side shots now show the other pawn clear of the viewer's own third-person body (c210-r1: the camera
+# sits about 800 uu behind the own pawn and the other pawn hid behind it): the host walks 1200 uu past the client
+# along the tunnel (+x in c210-r1: both pawns on y -377, host facing yaw 0), then each viewer turns 45 deg off the
+# line between them before its shot (host yaw 225, client yaw 45), which puts the other pawn about 27 deg left of the
+# frame centre. Card 213 drops the card 028 sprite on bug pawns; card 073 binds the Hopper Jump and Swoop. Predictions
+# and the scenario audit: docs/cards/210-bug-copy-form-look-on-host.md, "Run c210-r2".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c210-r2.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C73_LOG=1" tools/run_pair.sh c210-r2 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+# Part 1: the MI map.
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterMI_C\)|release after)" timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Part 2: the travel to the bug-side map.
+host mark
+client mark
+host travel next
+host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=180
+client wait log "UEngine::LoadMap returned true" count=2 since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterBug_C\)|release after)" since-mark timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterBug_C\) set" since-mark timeout=30
+host wait log "card098: host t=\d+ world journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=30
+try host wait log "card049: host t=\d+ journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=5
+host wait state pawn=host-own timeout=5
+client wait state pawn=client-own timeout=5
+# Card 196: the client's attack press on its bug form (P2).
+host mark
+client mark
+client key LeftMouseButton 800
+host wait log "card024: host relay press \(Fire 1\) t=\d+: pawn " since-mark timeout=10
+try client wait log "card026: client t=\d+ client sent Fire " since-mark timeout=5
+try client wait log "card196: client t=\d+ bug form press " since-mark timeout=5
+# One digest round on each side after the attack (P6).
+host mark
+client mark
+host wait log "card132: host t=\d+ digest round \d+ \(\S+\) sent: " since-mark timeout=120
+client wait log "card132: client round \d+: actors " since-mark timeout=60
+client shot bug-map
+host shot bug-map
+# Card 208: the possess lines on both sides (P1), then the switches.
+host wait log "card208: host bug forms of \S+ \(host-own\): tags " timeout=5
+host wait log "card208: host bug forms of \S+ \(server-copy\): tags " timeout=5
+client wait log "card208: client bug forms of \S+ \(client-own\): tags " timeout=5
+client wait log "card208: client bug forms of \S+ \(other\): tags " timeout=5
+# The host walks 1200 uu past the client's pawn along the tunnel (look skips the own pawn; its line gives the place).
+host mark
+host look actor BP_PlayerCharacterBug_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterBug_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+host goto {g1+1200} {g2} {g3} 150 timeout=60
+host look actor BP_PlayerCharacterBug_C
+# Switch 1: Two on the client (P2, P3).
+host mark
+client mark
+client key Two
+client wait log "card057: client t=\d+ switch to weapon \d+: Equip sent" since-mark timeout=10
+host wait log "card210: host t=\d+ Equip 1 from \S+: tag BugForms\.Can\.Hopper (added and removed|already held), EquipWeapon on the server copy" since-mark timeout=10
+host wait log "playlog: host t=\d+ ability slot \d+ server-copy( \(client request\))?: GA_BugForm_SwitchAbility_C" since-mark timeout=10
+host wait log "playlog: host t=\d+ ability slot \d+ server-copy( \(client request\))?: BP_BugForm_EquipAbility_Hopper_C" since-mark timeout=10
+host wait log "card210: host form look of \S+ \(server-copy\): equipped 1, .*\(on change," since-mark timeout=10
+host wait log "card210: host form look of \S+ \(server-copy\): equipped 1, .*\(\+1 s," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(client-own\): equipped 1, .*\(on change," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(client-own\): equipped 1, .*\(\+1 s," since-mark timeout=10
+host wait log "card208: host t=\d+ form 1 of \S+ \(server-copy\) equipped: BugForm sent to 1 client" since-mark timeout=10
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: \S+ -> \S+ \((?![^)]*Warrior)" since-mark timeout=10
+host wait log "playlog: host t=\d+ weapon slot \d+ server-copy: \S+ -> \S+ \(BP_BugFormDefinition_Hopper_C\)" since-mark timeout=10
+# The receiver-side proof, the client still on the ground: the host turns 45 deg off the line, the client's pawn
+# about 27 deg left of the frame centre, clear of the host's own body.
+host look 225 -10
+client shot c210-client-two
+host shot c210-client-two
+host mark
+client key LeftMouseButton 800
+host wait log "card024: host relay press \(Fire 1\) t=\d+: pawn " since-mark timeout=10
+# A grounded Hopper's Fire is Swoop, blocked while Walking; the Hopper Jump proves the copy's Hopper abilities.
+# No client mark here: the client's card073 check runs from the Two mark.
+host mark
+client key SpaceBar 100
+host wait log "playlog: host t=\d+ ability slot \d+ server-copy( \(client request\))?: BP_BugForm_JumpAbility_Hopper_C" since-mark timeout=10
+try client wait log "playlog: client t=\d+ ability slot \d+ client-own: BP_BugForm_JumpAbility_Hopper_C" since-mark timeout=5
+# Switch 2: Two on the host (P4), on the ground since the walk (no warp since).
+host mark
+client mark
+host key Two
+host wait log "card210: host form look of \S+ \(host-own\): equipped 1, .*\(on change," since-mark timeout=10
+host wait log "card208: host t=\d+ form 1 of \S+ \(host-own\) equipped: BugForm sent to 1 client" since-mark timeout=10
+client wait log "card208: client t=\d+ BugForm 1 for the host pawn \S+: EquipWeaponByClass\(\S+\), equipped 0 -> 1" since-mark timeout=10
+client wait log "card210: client form look of \S+ \(other\): equipped 1, .*\(on change," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(other\): equipped 1, .*\(\+1 s," since-mark timeout=10
+host wait log "card210: host form look of \S+ \(host-own\): equipped 1, .*\(\+1 s," since-mark timeout=10
+client look 45 -10
+client shot c210-host-two
+host shot c210-host-two
+# Switch 3 and 4: One on the client, then One on the host (P5).
+host mark
+client mark
+client key One
+host wait log "card210: host t=\d+ Equip 0 from \S+: tag - none needed, EquipWeapon on the server copy" since-mark timeout=10
+host wait log "card210: host form look of \S+ \(server-copy\): equipped 0, .*\(on change," since-mark timeout=10
+host wait log "card210: host form look of \S+ \(server-copy\): equipped 0, .*\(\+1 s," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(client-own\): equipped 0, .*\(on change," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(client-own\): equipped 0, .*\(\+1 s," since-mark timeout=10
+host wait log "card208: host t=\d+ form 0 of \S+ \(server-copy\) equipped: BugForm sent to 1 client" since-mark timeout=10
+client wait log "card208: client t=\d+ BugForm 0 for the own pawn \S+: " since-mark timeout=10
+host look 225 -10
+client shot c210-client-one
+host shot c210-client-one
+host mark
+client mark
+host key One
+host wait log "card208: host t=\d+ form 0 of \S+ \(host-own\) equipped: BugForm sent to 1 client" since-mark timeout=10
+client wait log "card208: client t=\d+ BugForm 0 for the host pawn \S+: EquipWeaponByClass\(\S+\), equipped 1 -> 0" since-mark timeout=10
+client wait log "card210: client form look of \S+ \(other\): equipped 0, .*\(on change," since-mark timeout=10
+client wait log "card210: client form look of \S+ \(other\): equipped 0, .*\(\+1 s," since-mark timeout=10
+host wait log "card210: host form look of \S+ \(host-own\): equipped 0, .*\(on change," since-mark timeout=10
+host wait log "card210: host form look of \S+ \(host-own\): equipped 0, .*\(\+1 s," since-mark timeout=10
+client look 45 -10
+client shot c210-host-one
+host shot c210-host-one
+# P5: all down; the client's own death runs the bug StartDeath; the host's real death is the card 211 proof.
+client mark
+host mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+client wait log "card196: client t=\d+ bug StartDeath \(form ASC cancel\)" since-mark timeout=20
+try client wait log "card044: client t=\d+ death screen " since-mark timeout=10
+host wait log "(?<!WARN )card211: host t=\d+ real-death hit \d+: landed " since-mark timeout=20
+host wait log "(?<!WARN )card043: host real death: \d+ hits, Health -?\d+\.\d+" since-mark timeout=10
+sleep 3
+host quit
+client quit

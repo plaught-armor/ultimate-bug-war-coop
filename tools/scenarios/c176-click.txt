@@ -1,0 +1,95 @@
+# Card 176 (from c175-flare-fire.txt): the host mutes a server copy's 2D component sounds (the low-ammo click) and
+# still plays its own. Carries card 175 (short presses that may leave the copy short) and card 174's flare in hand.
+# No second flare: no known route gives a second charge (objective rewards after ShootingRange_SO1 are unknown).
+# Predictions in docs/cards/176-server-copy-component-sounds-2d.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c176-click.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Charge: objective rewards, by the c104e route (the client's server copy earned 10000 at Assault_SO1 and
+# 20000 ready at ShootingRange_SO1). Assault_SO1: the server copy warped into BP_PlayerPresence_C_2.
+host mark
+client mark
+host warp client BP_PlayerPresence_C_2 300
+try host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=4
+# Card 100: a teleport may not start the overlap; walk into the volume (c105-proof did the same).
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=10
+# ShootingRange_SO1: the client takes the range Morita (E, relayed by card 054).
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+client wait near 6427 11587 200 300 timeout=10
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(ShootingRange_SO1\)" since-mark timeout=10
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 20000 1 " since-mark timeout=5
+client wait log "card104: client t=\d+ TacCharge 20000 1 " since-mark timeout=5
+# Both players at the c119 throw spot, facing the open field.
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+# Card 175: short presses (60-120 ms, automatic Morita, before any flare). Each waits for its release line, the
+# relay release or the card 175 held release.
+client look point 11700 14500 140
+host mark
+client key LeftMouseButton 60
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 80
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 100
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 120
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 70
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 90
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 110
+host wait log "card024: host relay release \(" since-mark timeout=5
+host mark
+client key LeftMouseButton 60
+host wait log "card024: host relay release \(" since-mark timeout=5
+# The press: Four runs the client's own local throw (card 174) and is relayed to the server copy (card 100).
+host mark
+client mark
+client key Four
+host wait log "card100: host t=\d+ TacSupport slot 0 from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=5
+client wait log "card169: client t=\d+ \S+: spawned BP_FlareVisuals_C" since-mark timeout=3
+client shot c176-flare-held
+# c176-r1: the short presses spend the card104 line cap (kC104Lines), so the DoAction and ActivateFlare lines are not
+# written. The throw and the flare are waited on through card 169 and card 098 lines, which have their own caps.
+host wait log "card169: host t=\d+ held BP_FlareVisuals_C of the server copy destroyed during first person montage AM_FlareThrow" since-mark timeout=8
+host wait log "card098: host spawn BP_SupportFlare_C " since-mark timeout=5
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 0 0 " since-mark timeout=5
+client wait log "card104: client t=\d+ copy of host \d+: /Game/Blueprints/Combat/BP_SupportFlare\.BP_SupportFlare_C " since-mark timeout=5
+client wait log "card104: client t=\d+ TacCharge 0 0 " since-mark timeout=5
+client wait log "card169: client t=\d+ held BP_FlareVisuals_C\S* \(BP_FlareVisuals_C\) destroyed " since-mark timeout=3
+host wait log "card169: host t=\d+ held \S+ \(BP_FlareVisuals_C\) destroyed " since-mark timeout=3
+client shot c176-after-strike
+# Card 176: the client empties its magazine; the server copy's low-ammo clicks are muted on the host.
+host mark
+client key LeftMouseButton 4500 timeout=20
+# c176-r3: the 8 short presses already spend the 8-line mute cap (kC160Cap), so the burst writes no mute line. The
+# cap line (written once, at the 9th mute) is waited on instead; the full count comes from the map line after travel.
+host wait log "diag: card176 mutes \.\.\. further events not logged" timeout=5
+client shot c176-after-burst
+# The live count on each mute line during the burst shows whether earlier muted components were destroyed. Then the
+# host empties its own magazine: its own clicks play (no mute line in this window).
+host mark
+host key LeftMouseButton 6000 timeout=20
+host shot c176-host-burst
+# c176-r3 (card 176 count, card 178): the client's burst release is sent after its frame (card178 line). Then the host
+# travels; c99_arm_map on the new map prints the full mute count of the old map.
+client wait log "card178: client t=\d+ primary release sent after the frame" timeout=5
+host mark
+host travel next
+host wait log "card160: map: host skipped server copy effects: .* muted \d+ 2D component sounds" since-mark timeout=150
+client wait log "reconnected \(" timeout=120

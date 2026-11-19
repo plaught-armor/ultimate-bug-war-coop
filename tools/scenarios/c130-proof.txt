@@ -1,0 +1,128 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 130 proof (FED_C2M1 by UBWCOOP_TRAVEL, FAST=1), items 13 and 14, card 124 driver.
+# Item 13: LOS_O01_SO01 completes when the bugs at the LOS point (about 224500 38900 8600) are cleared (playtest
+# client log, 72465632). The client walks there and does the shooting, so the step can complete under its copy's
+# acting scope; the host log must then show the marker BeginPlay moved out of it, and the host shot must show the
+# next marker. Item 14: the host downs the client, then itself, next to a Morita trooper; the pick-up lines carry the
+# player's slot (0 host, 1 client). Natural downs in the fight also count; times are checked against the down lines.
+# Run: SCENARIO=tools/scenarios/c130-proof.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c130r 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+# Item 14 first, at the landing zone before the LOS wave: c130t, c130u and c130v went all down in that fight, and
+# all down is game over (no pick-up after it). Slot 1 (client), then slot 0 (host), each next to a Morita trooper.
+host warp actor BP_AI_Trooper_Morita_C 300
+host warp client BP_AI_Trooper_Morita_C 900
+sleep 2
+# c130w: warrior bugs reach the landing zone too (host 88 -> 0 HP in 1.6 s); thin them before each scripted down.
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host down client
+host wait log "card130: host t=\d+ AI pick-up done: .*picked up player .* \(slot 1\)" count=1 timeout=60
+client shot c130-client-picked
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host down host
+host wait log "card130: host t=\d+ AI pick-up done: .*picked up player .* \(slot 0\)" count=1 timeout=60
+host shot c130-host-picked
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+& client goto 224500 38900 8600 sprint
+& host goto 223800 38200 8600 sprint
+join
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try host wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=60
+try host wait log "card130: host BeginPlay of BP_ObjectiveMarkerActor_C runs outside" timeout=10
+sleep 2
+host shot c130-host-marker
+client shot c130-client-marker
+host objectives
+client objectives
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_Trooper_Morita_C
+sleep 30
+host shot c130-npc-picked
+try client look actor BP_AI_Trooper_Morita_C 60 timeout=8
+client shot c130-npc-picked
+host quit
+client quit

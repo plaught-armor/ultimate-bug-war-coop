@@ -1,0 +1,40 @@
+# Card 384 (one take, one ammunition credit on the client): the client walks over the range's MoritaSmall ammo pickup
+# on the way to the Morita Mk1 weapon pickup and takes the weapon. FED_C1M1, FAST=1, GOD=1. Build b68.
+# Static trace and predictions (senior, 2026-11-15, written before the run; ammo.cpp c384_pair, c384_local_add):
+# 1. Client "card384: client t=.. local AddAmmunitions AmmunitionType.Morita 0 to 120: 0 already given by the host's
+#    frame, count now 120", then "card071: client t=.. Ammo AmmunitionType.Morita +120 (card 384: 120 already credited
+#    locally): 120 to 120". (c276b67 without the fix: "+120: 120 to 240".)
+# 2. Host "card071: host .. AddAmmunitions on server copy .. Morita asked 120, 0 to 120"; no later host
+#    "AmmoMirror .. AmmunitionType.Morita 120 to 240" row: the client's AmmoMirror carries Morita 120.
+# 3. Any further credit (the weapon pickup's own ammunition) shows the same shape: client count after the pair of
+#    rows equals the host copy's "to" count. If the host frame comes first, the card384 row reads "N already given".
+# 4. FATAL/ERROR 0, no new WARN class.
+# Budget: 1 run. Expected wall: about 1.5 min.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c384-one-credit.txt FAST=1 GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c384b68 300
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host mark
+client mark
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client wait log "card384: client t=\d+ local AddAmmunitions AmmunitionType\.Morita" since-mark timeout=20
+client wait log "card071: client t=\d+ Ammo AmmunitionType\.Morita \+\d+ \(card 384: \d+ already credited locally\)" since-mark timeout=10
+client wait log "card072: client t=\d+ AmmoMirror sent: .*AmmunitionType\.Morita \d+" since-mark timeout=10
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+sleep 2
+both inventory
+client shot c384-client
+client quit
+sleep 2
+host quit

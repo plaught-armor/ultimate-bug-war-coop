@@ -1,0 +1,42 @@
+# Card 074 step 1: log where each grenade throw goes on both sides (UBWCOOP_C74_LOG=1). The client takes the frag
+# pickup and throws frag and incendiary; then the host walks to a second frag pickup (_1) and throws.
+# Run: SCENARIO=tools/scenarios/c74-diag.txt HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C74_LOG=1" CLIENT_ENV="UBWCOOP_C74_LOG=1" DEPLOY=1 run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto actor BP_GrenadeAmmoPickup_Frag_C 500
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+client shot after-pickup
+client wait log "GrenadeItem .*Frag.* our count 0 to 1" timeout=10
+# The client throws along yaw 0 at pitch -25 from about (6520, 11370): both cameras face the ground ahead of it.
+client look 0 -15
+host look point 7300 11400 60
+client key G
+sleep 1
+host shot frag-throw-1
+client shot frag-throw-1
+sleep 3
+host shot frag-boom
+client shot frag-boom
+client key G
+sleep 4
+client shot after-incendiary
+host goto actor BP_GrenadeAmmoPickup_Frag_C_1 80 timeout=200
+sleep 2
+client goto actor BP_GrenadeAmmoPickup_Frag_C_1 500 timeout=200
+client look point 14400 13300 150
+sleep 2
+host look 0 -15
+host key G
+sleep 1
+host shot host-throw-1
+client shot host-throw-1
+sleep 3
+host shot host-boom
+client shot host-boom
+sleep 2
+client quit
+sleep 2
+host quit

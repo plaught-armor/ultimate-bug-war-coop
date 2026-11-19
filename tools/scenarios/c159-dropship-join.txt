@@ -1,0 +1,48 @@
+# Card 159 run: the dropship join snapshot (troop and transport classes), one FAST=1 pair run on FED_C1M1 (GOD=0).
+# The first join gets a J round and a C check round 5 s later; then the client disconnects (card 045 reconnects it)
+# and the rejoin gets a second J and C round. Run c (card 159 run 3) adds the L frames (live lines, spline-end holds)
+# and a batched card 165 client burst (host shooter candidates). Predictions in docs/cards/159-dropships-on-join.md. Every state step
+# waits for its log line.
+# Run: SCENARIO=tools/scenarios/c159-dropship-join.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host wait log "card159: host dropship snapshot \(join\) to .*: \d+ of \d+ sent" timeout=60
+client wait log "card159: client t=\d+ dropship \S+ at join: " timeout=10
+host wait log "card159: host dropship snapshot \(check\) to .*: \d+ of \d+ sent" timeout=15
+client wait log "card159: client t=\d+ dropship \S+ check: " timeout=10
+try client wait log "card159: client t=\d+ dropship \S+ live: " timeout=10
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# Card 165 diagnostic (batched): the client takes a Morita and fires one burst; the host logs its shooter candidates.
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client look point 6900 12300 100
+client mark
+client key LeftMouseButton 800
+try client wait log "card157: client t=\d+ HitClaim shot \d+ miss" since-mark timeout=10
+try host wait log "card165: host t=\d+ launch .*controller \S+ side \d+ \(server copy \d+\)" timeout=10
+sleep 3
+client shot c159-client-first
+host shot c159-host-first
+# Rejoin: a second J round and check round.
+client mark
+host mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card159: host dropship snapshot \(join\) to .*: \d+ of \d+ sent" since-mark timeout=60
+client wait log "card159: client t=\d+ dropship \S+ at join: " since-mark timeout=10
+host wait log "card159: host dropship snapshot \(check\) to .*: \d+ of \d+ sent" since-mark timeout=15
+client wait log "card159: client t=\d+ dropship \S+ check: " since-mark timeout=10
+sleep 2
+client shot c159-client-rejoin
+host shot c159-host-rejoin
+client quit
+sleep 2
+host quit

@@ -1,0 +1,27 @@
+# Card 079 step 1: solo host (SOLO=1) on FED_C4M1, card 043 off. The host enters a pod mech; with
+# UBWCOOP_C79_KILL=1 the mech takes lethal hits 8 s later. The card079 lines show the game's own destruction
+# (HandleDeathEvent, the mech's StartDeath, self-destruct, DeathComplete) and which pawn the PC holds afterwards.
+# Run: SCENARIO=tools/scenarios/c79-solo.txt SOLO=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_C79_LOG=1 UBWCOOP_C79_KILL=1" run65.sh <tag> 600
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+host warp actor BP_BaseMech_C 300
+sleep 3
+host look actor BP_BaseMech_C 150
+sleep 1
+host key E
+host wait log "card075: host EnterMech after" timeout=10
+sleep 3
+host shot enter
+host wait log "card079: host t=[0-9]+ test kill hit 1" timeout=20
+sleep 2
+host shot hit
+host wait log "card079: host t=[0-9]+ test kill over" timeout=20
+sleep 3
+host shot dead
+sleep 12
+host shot after
+sleep 2
+host quit

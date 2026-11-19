@@ -1,0 +1,85 @@
+# Card 132 corpse pose journal proof plus the gore proof, one run on FED_C2M1 (FAST=1).
+# Part 1 (live): both players stand by the c133 spawn points; the host spawns and kills three WarriorBugs in the
+#    client's view. Once the host has sent each settled pose and the client has applied it, both sides take a shot of
+#    the corpses at once. The client then shoots the posed corpses (client hits after the pose).
+# Part 2 (late join): the client disconnects, the host spawns and kills three more there while it is away; card 045
+#    reconnects the client, its first Pong gets the pose replay (rows, bytes, frames logged), and both take a shot.
+# Part 3: the gore proof (c132-gore-proof.txt): autoplay on both, a hit-chunk shot, a far death, then the host fights
+#    on for a fixed 120 s. No step waits on a number of deaths the run does not control; the pose waits are tries
+#    with a timeout, and the counts are read from both logs afterwards.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-pose-proof.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card132: host pose snap .* snap 1:" count=3 timeout=30
+try client wait log "card132: client pose apply .* host root \((-?\d+), (-?\d+), (-?\d+)\)" count=3 timeout=20
+# Both go 1200 uu above and 300 back from the last applied corpse and look down at its root; the shot is taken at
+# once, before the fall (a camera at ground level ended up inside the slope).
+# The two shots are taken one after the other from the same point and rotation, so a corpse sits at the same pixel
+# on both sides (posed corpses are static, so the shots need not be at the same instant). The host steps 1200 uu up
+# out of the client's frame before the client takes its shot.
+try host warp actor point {g1} {g2-300} {g3+1200}
+try host look point {g1} {g2} {g3}
+host shot pose-live
+try host warp actor point {g1} {g2-300} {g3+2400}
+try host warp client point {g1} {g2-300} {g3+1200}
+try client look point {g1} {g2} {g3}
+client shot pose-live
+client key LeftMouseButton 2000
+sleep 2
+both shot pose-live-hit
+# Part 2: late join.
+client disconnect
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+client wait log "card045: client t=\d+ reconnected" timeout=120
+# The replay applies come seconds after the reconnect line, so the wait for them starts right after it ("new":
+# only lines written after the wait began, not the live part's applies). The host replay line is read from the log
+# afterwards: a wait log with no groups here would clear {g1}..{g3}.
+try client wait log "card132: client pose apply .*: \d+ bodies, host root \((-?\d+), (-?\d+), (-?\d+)\)" new timeout=60
+try client wait state pawn=client-own timeout=60
+# Card 046 late-join spawn proof: 10 s after the client has its pawn, its z (the timeout line of this try prints the
+# last state, z included; no state ever has z=none) and a client shot of where it stands.
+sleep 10
+try client wait state pawn=client-own z=none timeout=1
+client shot rejoin-10s
+try host warp actor point {g1} {g2-300} {g3+1200}
+try host look point {g1} {g2} {g3}
+host shot pose-late
+try host warp actor point {g1} {g2-300} {g3+2400}
+try host warp client point {g1} {g2-300} {g3+1200}
+try client look point {g1} {g2} {g3}
+client shot pose-late
+# Part 3: the gore proof.
+host autoplay on
+client autoplay on
+try client wait log "card042: client gore response for BP_AI_\w*Bug\w*: \d+ parts, [1-9]\d* chunks spawned at \((-?\d+), (-?\d+), (-?\d+)\)" new timeout=150
+try both look point {g1} {g2} {g3}
+try both shot hit-chunk
+client autoplay off
+try client wait log "card039: client death gore for \S+ at \((-?\d+), (-?\d+), (-?\d+)\);.*bodies synced[^,]*, gore location moved \d{4,} uu" new timeout=90
+try host warp client point {g1+300} {g2} {g3+100}
+try both look point {g1} {g2} {g3}
+try both shot far-death
+sleep 120
+host autoplay off
+host quit
+client quit

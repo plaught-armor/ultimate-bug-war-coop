@@ -1,0 +1,16 @@
+# Card 123 item 2, try 2 (FED_C2M1 by UBWCOOP_TRAVEL, FAST=1): the start path where c122q held its first Pong
+# (5008 ms). The client log must show "Pong held", then "minimap origin ... set" with a nonzero hold, then the
+# client walking (goto lines "moved N").
+# Run: SCENARIO=tools/scenarios/c123-hold.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c123b 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+try client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=20
+try client key W 2000
+sleep 2
+host shot c123-hold
+client shot c123-hold
+host quit
+client quit

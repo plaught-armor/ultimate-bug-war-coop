@@ -1,0 +1,38 @@
+# Card 125 diagnosis: both mount (as in c125-proof.txt) and the probe logs each gunner's view and camera chain.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 5
+# The client's mount, as in c125-probe.txt (card 123): the host walks near turret A first, so the client's server
+# copy goes to the nearest other turret B.
+host warp actor BP_MountableTurret_C 400
+host warp client BP_MountableTurret_C 100
+sleep 3
+host warp client BP_MountableTurret_C 90 behind
+client wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" timeout=5
+host warp client point {g1} {g2} {g3}
+client wait near {g1} {g2} {g3} 60 timeout=6
+sleep 1
+client wait near {g1} {g2} {g3} 60 timeout=6
+client look actor BP_MountableTurret_C
+client key E
+host wait log "card123: host TurretMount from" timeout=10
+client wait log "AcknowledgePossession.*BP_MountableTurret_C" timeout=10
+# The host mounts turret C, its own play: the free one 1400 uu along the client's row (-71175, -45940), so each
+# side sees the other's rounds. Turret A is out of the fight: wild bugs knock its gunner off (run c125x).
+host warp actor point -71175 -45700 1500
+sleep 1
+host warp actor BP_MountableTurret_C 90 behind
+sleep 1
+host look actor BP_MountableTurret_C
+host key E
+sleep 3
+client shot mounted
+host shot mounted
+sleep 3
+client key E
+host key E
+sleep 3
+client quit
+sleep 2
+host quit

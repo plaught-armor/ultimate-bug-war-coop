@@ -1,0 +1,9 @@
+# c244 skip ledger (user rule 2026-11-18): ids completed on the host and replayed on the client with 0 failed
+# block waits, AND whose Complete adds no step (no host Add within 6 s in c244b220a; `objective complete` skips the
+# level script's add, card 284 c284_warn_chain_skip). Chain parents (LZ_SO1, LZ_O1, Bridge_SO2, Bridge_SO3) and O1
+# parents stay played. Regenerate with SKIP=0 for the full soak. Remove an id when a card touches its path or it fails.
+# c244b222b dropped: Park_SO2_A, Park_Marker (WARN card284 parent completed); Stadium_SO1_B/C/D (Add Stadium_SO2
+# after the last of B/C/D never ran, Stadium_SO1_A then stuck open).
+# c244b222d emptied (senior order): the 4 ids ran by `objective complete`, then the script never completed
+# Park_Marker (CompleteSubObjective(Park_O1, Park_Marker) present in c244b220a, missing here); Park_Marker stuck,
+# 16 STUCK skips. `objective complete` is not a safe skip for this map: the ledger stays empty.

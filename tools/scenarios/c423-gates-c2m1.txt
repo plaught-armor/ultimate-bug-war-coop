@@ -1,0 +1,884 @@
+# Card 423 (with the card 299 nest row): FED_C2M1 to the LOS_O05 add, the three cave gates, a client reconnect.
+# Predictions (b126 b72f9aeefee05d90, card 423): at the LOS_O05 add the host logs 3 "card423: host t=<ms> <gate>
+# destroyed 0 -> 1" rows (BP_DestroyableActor_BugBlocker_C, three of them) and the client 3 "card423: client ...
+# by none|LD: Destroy" rows; zero "WARN card423". After the client reconnect: 3 "card423: client ... by Setup
+# Destroyed" rows from the join pack, and the client shot of the gate shows it open, as the shot before the
+# reconnect. Digest round after the reconnect: 0 mismatches. Card 299: one "card299:" row per side for each nest
+# the client kills at LOS_O02_SO05 (BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 and _7), same mesh name on
+# both sides. "card423: <side> BP_DestroyableActor_Base_C found, IsDestroyed at +0x<off>" at the map load on both.
+# Card 299 (b125): the _0/_7 nests die by the card 163 S path; the row now prints there too. Card 359 step 2:
+# 0 "WARN card191 ... frozen with bone 0", some "card191: client guid ... freeze waited", 0 WARN card140 freeze
+# check. Card 223: hit drift rows carry "card223: frame age N ms", late (>300 ms) ones without WARN.
+# b126: card299 resolves /Script/Aloft.STMeshUpdateComponent (c423b125a: the bare-name lookup gave no row at all) and
+# logs "no STMeshUpdate component (class found|not found)" instead of returning silently. Card 428: 0 client
+# "WARN card132: recv ... text R ... no row" (13 in c423b125a). Gate shots: the host only looks at the gate from where it
+# stands (c423b126a: the host warp to the client's spot overlapped the client's pawn, the host fell through to the kill
+# floor and the reconnecting client spawned beside it at z -21965).
+# b127 74c1fdca882992af: card 359 step 3 (PhysicsBlendWeight 1.0 per body each waited tick): "freeze waited" rows
+# print a weight below 1.000 and end at 0.0-1.0 uu, WARN card191 frozen with bone 0 under 10 (89 in c423b126a);
+# weight 1.000 with the WARN count near 90 refutes it. Card 423 digest: c132_actor_ext answers 1 for a copy inside the
+# c423 wait, so 0 "WARN card132: mismatch ... destroyed host 0001 client 0000" and 0 playlog mismatches. Card 299 skips
+# the K-killed corpse piles (c423b126a: 223 host and 446 client rows). Card 269: the client rest read-back runs at 1 s
+# and 3 s after the play, each row with the animator static mode, time and length.
+# b128 7db4a3ad2e0bede8: card 279 client gib R snap rows give the simulating value; card 423 client copies wait
+# 250 ms for the host destroy row; card 273 state 0: 0 host WARN card273 sticky state 0, gib overflow 0; card 299
+# one "owns N component(s)" row per side for a Bugnest_HumanGameplay nest; card 430: the client's late auto reload
+# is pressed by R after a WindDown end (TRY on the reload wait); card 269: read-backs 1 and 2 print equal pose hashes
+# over N > 0 bones, chariot corpse shot lying; card 428: host map totals at the travel end; line 290: the presence
+# centre inside fall zone 24 falls through to ring points (card336 "presence centre ... skipped" row).
+# b129 674d1a093bbc6c6a: card 432: host "card432: host SetObjectiveVisibility(...) ... changed nothing: not sent"
+# rows (about 27 of 95 sends), client "card432: client replay" / "client objective replays" rows, digest
+# mismatches 0, reconnect journal replay rows below 323; card 433: client "card433: client fx play time" rows.
+# Card 430 in c423b128a: the auto reload ran 1 ms after the WindDown end (fixed); the reload wait now reads since
+# the mark before shot 1's press.
+# b130 13a4e600eb021c80: card 269: the rest play runs over 0.05 s, so after the reconnect every "card269: client rest
+# read-back 1" row has IsPlayingAnimation 0, the totals row says still playing 0, and the chariot corpse shot shows
+# them lying; the digest round after the reconnect has 0 Pose mismatches. Card 137: no "median > 150 uu" WARN.
+# b131 86739fe09499bfb8: card 269: one "card269: client corpse arrival ... static mesh swap back run at once" row per
+# arrival that read "(mesh already hidden)" on b130 (26 there), 0 arrivals "(mesh already hidden)", read-backs print
+# "mesh hidden in game 0" and the animator swap frames; both c269-chariot-corpse shots show the body at the same place.
+# Card 430: after each nuke shot "card430: client t=... reload retry 1 (handle H) = 1" under 1500 ms, the R press
+# finds the reload running, 0 WARN card430. Card 432: a "card432: host map totals" row (not sent / sent). Card 424:
+# WARN card140 freeze check vs "posed again" rows. Card 359: host "card359: host guid ... final: bone 0" rows. Card
+# 434: "card434: host <why>" rows. Card 299: AudioComponent entries name their sound and attach parent.
+# b133 180eb421f35f5a09: card 148: every client "above the ground N (host flagged too M)" row has N == M, 0 WARN card148
+# (b131: 6). Card 140: no "WARN card140: client hit ... ReplicatedMovement.Location" row for a guid with a pose row
+# (the c140-corpse-shots step). Card 359: client WARN card191 rows add the mesh component distance from body 0 and
+# its scale. Card 269: 0 WARN read-back rows (WARN only when the pose hash differs between read 1 and 2). Card 435:
+# the rejoin journal replay row ends "card435: N Add(s) ... without popups, M callout frame(s) not sent" (N > 0, M =
+# the host CalloutObjective rows before it); c435-rejoin-3s/10s show no Touchdown banner. Card 434: cap per map.
+# Route: b11-soak-c2m1 (card 284 objective steps) for LOS_O01, LOS_O02, LOS_O04; LOS_O03 by the host with named
+# pickups (BP_SatchelItemPickup_C_2/_3/_5) and named sites (CAT_1040 SO03a, CAT_1034 SO03b, CAT_1 SO03c, from
+# c241-c2m1-b1): b11's `objective go` for the SO03 sites lands inside BP_FallZones_C (stand point on the canyon
+# floor under the site, card336 rows at z 5051), the c418 named-site pattern does not.
+# b179 e1cde94de299e31b: card 475: at the rejoin "card475: host t=.. score rows R, total N sent to slot S" and client
+# "card475: client t=.. score A -> N (R rows applied, ...)" with N the host total; c475-host-rejoin-10s and
+# c435-rejoin-10s show the same HUD score; digest Score: equal in every round; 0 WARN card475. LOS_O05 SO01-SO03 are
+# driven by the objective verbs before card 300 (SO04 active), then card 300's waiting and closed rows. Card 476:
+# WARN card476 only for freed instigators.
+# b180 4c41c9c8455f774f: card 300: the client still pilots the mech at the closure block; the host counts it by its
+# pilot body: "closed: players past 2 of 2", "row sent to 1 of 1 clients", client "closure ... from the host row";
+# c300-host-in-waiting and c300-closed show the tunnel open then collapsed on both sides. Card 475 rows as in b179.
+# b181 2c293b1ccc9ad233: card 327: 0 WARN card327 PW differs while the client pilots (its own hash skips a mech pawn);
+# card 321/361 pilot check rows once per EnterMech on the host; c306-after-swap host shot faces the dropped pickup.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c423-gates-c2m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c423b129a 1200
+# Expected wall: about 9 min.
+voidsoft
+failsoft
+void unless host dll ebf720195a29235d
+void unless client dll ebf720195a29235d
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host clear 1500 kill
+host objective now
+# --- LOS_O01 "Secure the LZ": SO01 completes at the LZ clear (kill rounds at its stand point), SO02 presence.
+host objective now
+host objective expect LOS_O01_SO01
+try host objective go all
+# b15: waves follow the kills (4, 4, 1 killed in three 15 s rounds, 53 s in all): 3 s rounds, 30 at most.
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01_SO01\)" count=1 try host objective wait LOS_O01_SO01 3
+host objective wait LOS_O01_SO01 30
+# r6: the game completes LOS_O01 as a parent; no live sub-objective row is sent (journal only), the parent rows below are the check.
+host objective now
+host objective expect LOS_O01_SO02
+host clear 1500 kill
+host objective go all
+host objective wait LOS_O01_SO02 15
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O01\)" timeout=8
+# --- LOS_O02 "Nuke Em All": presences, then the client takes the launcher, nukes both nests, loads ammo.
+host objective now
+host objective expect LOS_O02_SO01
+host clear 1500 kill
+# Actorless step (no objective actor, no marker actor): each `objective go` in a row takes the next switched-on
+# presence nearest the sibling marker's actor, 3 at most (run 2: the presence nearest the host was used up).
+host objective go all
+try host objective wait LOS_O02_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O02/LOS_O02_SO01 " count=1 host objective go all
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O02/LOS_O02_SO01 " count=1 try host objective wait LOS_O02_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O02/LOS_O02_SO01 " count=1 host objective go all
+host objective wait LOS_O02_SO01 60
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02_SO01\)" timeout=8
+host objective now
+host objective expect LOS_O02_SO02
+host clear 1500 kill
+host objective go all
+host objective wait LOS_O02_SO02 120
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02_SO02\)" timeout=8
+host objective expect LOS_O02_SO03
+# b180: the clear is centred on the host; c423b180a: the host stood away from the pickup and a warrior bug 49 uu in
+# front of the client took the look (VOID look 3), so no Nuke Launcher and LOS_O02 never completed. The host stands
+# 600 uu from the pickup first, so the 1500 uu clear covers the client's stand.
+host warp actor BP_WeaponPickup_NukeLauncher_C 600
+host clear 1500 kill
+host warp client BP_WeaponPickup_NukeLauncher_C 500
+client goto actor BP_WeaponPickup_NukeLauncher_C 100
+client wait goto timeout=90
+client look actor BP_WeaponPickup_NukeLauncher_C 0 bounds focus=BP_WeaponPickup_NukeLauncher_C
+client shot b11c2-o02-so03-look
+client mark
+client key E
+client wait log "card021: client GiveWeaponByClass\(BP_WeaponDefinition_NukeLauncher_C" since-mark timeout=10
+client inventory
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=15
+# Nests: the step lists no actors (count children); names from the card 241 table (gap: measured, not live).
+host objective expect LOS_O02_SO05b  # b15: SO05 is a container; the doable child
+host clear 3000 kill
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 3200
+& host goto actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 2800
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 2900
+# b15: nest gotos removed ("no path" from the warp point; the look and the shot need no walk).
+host clear 3000 kill
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 0 bounds hit=BP_DestructibleSpawner_Bugnest
+client shot b11c2-o02-nest-b
+client mark
+# c423b133a VOID: a 6500 ms hold fired the nuke twice when the auto reload finished inside the hold (shot at
+# about 2.0 s, next 3.9 s later), spending the launcher. The driver has no press/release pair, so the hold ends at
+# 3000 ms, after the shot and before a second one can fire. Card 439: the b135 3300 ms change is withdrawn (the hold
+# does not decide the SpoolDown race); 3000 is the value before it, a 6500 ms hold spends the launcher (above).
+# b142 (card 439 form 3): 3500 ms here on purpose, so the fire ends with the key still down and the next press
+# (nest-a) fires with no windup on the client; nest-a keeps 3000.
+client key LeftMouseButton 3500
+try client wait log "card296: client t=\d+ spool-up \S+ ended" since-mark timeout=15
+# Card 430: the reload wait below reads since the mark before shot 1's press (c423b128a: a mark here landed after the
+# 6500 ms hold, 158 log lines past the Reload end, and both reload waits timed out).
+try host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02_SO05b\)" timeout=20
+client inventory
+# --- Card 306 (senior, b180 run): the client swaps one tactical support for another by interact. Playtest crash
+# 2026-11-13: the game drops the old support as a pickup, the client's spawn was refused, null was used. Now the
+# client's spawn is an inert actor and the host does the real drop. Predictions: step 1 the client equips the
+# bombing run; step 2 (white phosphorus over it) client "EquipTacticalSupportAbility ... WhitePhosphorus", host
+# "card306: host ... support swap for ...: ... dropped as <id>, ... equipped", no EXCEPTION, and the map-end tally
+# "card306: inert spawns N" with N at least 1 on the client. If step 2 fills a free slot instead (no swap row),
+# the try waits record it and the report says which slot rule applies.
+host clear 1500 kill
+host mark
+client mark
+host warp client BP_TacSuppPickup_BombingRun_C 80
+client look actor BP_TacSuppPickup_BombingRun_C 0 bounds focus=BP_TacSuppPickup_BombingRun_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*config class Config_TacSupp_BombingRun_C" since-mark timeout=10
+client inventory
+host clear 1500 kill
+host mark
+client mark
+host warp client BP_TacSuppPickup_WhitePhosphorus_C 80
+client look actor BP_TacSuppPickup_WhitePhosphorus_C 0 bounds focus=BP_TacSuppPickup_WhitePhosphorus_C
+client shot c306-before-swap
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*config class Config_TacSupp_WhitePhosphorus_C" since-mark timeout=10
+try host wait log "card306: host t=\d+ support swap for " since-mark timeout=10
+try client wait log "card105: client .*BP_TacSuppPickup_BombingRun_C" since-mark timeout=5
+client shot c306-after-swap
+# b181: the host shot faces the dropped bombing run pickup (c423b180c: the host shot was not aimed). The warp picks
+# the pickup nearest the host (c423b181a: the placed one at 171141 2892, not the drop), so the host goes to the
+# drop's card256 rest row first (the host row just before card306 "dropped as").
+try host wait log "card256: host pickup \d+ rest at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=5
+try host warp actor point {g1} {g2} {g3+100}
+try host warp actor BP_TacSuppPickup_BombingRun_C 300
+try host look actor BP_TacSuppPickup_BombingRun_C 0 bounds
+host shot c306-after-swap
+client inventory
+host inventory
+host warp client BP_AmmoPickup_NukesSmall_C 410
+# b131: try, 60 uu (c423b130a: the 10 uu leg past the navmesh path end stuck; a failed line cut the group's later
+# waits to 1 s). The reserve was full anyway (card 430: "Nuke Rounds full").
+try client goto actor BP_AmmoPickup_NukesSmall_C 60
+try client wait goto timeout=60
+host objective expect LOS_O02_SO05a
+host clear 3000 kill
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 3200
+& host goto actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 2800
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 2900
+# b15: nest gotos removed ("no path" from the warp point; the look and the shot need no walk).
+host clear 3000 kill
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 0 bounds hit=BP_DestructibleSpawner_Bugnest
+client shot b11c2-o02-nest-a
+# Card 430 (c423b127a VOID): the client's auto reload after shot 1 came 11.7 s late and ate the next press (card296
+# "fire input released inside the windup"). Wait for the reload row since the mark after shot 1's spool-up; a timeout
+# here is the card 430 signal (TRY-FAIL row stays in the drive log). Still empty (the last nuke animation end is the
+# WindDown): press reload once and wait again, then fire with the same 3000 ms hold as shot 1.
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=20
+when client last "AnimationEnded, key NukeLauncher_(Reload|WindDown), actor BP_Weapon_NukeLauncher_C" "NukeLauncher_WindDown" client key R
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=20
+client mark
+# c423b133a VOID: a 6500 ms hold fired the nuke twice when the auto reload finished inside the hold (shot at
+# about 2.0 s, next 3.9 s later), spending the launcher. The driver has no press/release pair, so the hold ends at
+# 3000 ms, after the shot and before a second one can fire. Card 439: the b135 3300 ms change is withdrawn (the hold
+# does not decide the SpoolDown race); 3000 is the value before it, a 6500 ms hold spends the launcher (above).
+client key LeftMouseButton 3000
+try client wait log "card296: client t=\d+ spool-up \S+ ended" since-mark timeout=15
+try host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02_SO05a\)" timeout=20
+client inventory
+# b15: LOS_O02 completes at the second nest (SO05 2/2); SO03/SO04 are not added after that, so the ammo walk and
+# the SO04 block are gone (b15: "LOS_O02_SO04: not in the map", 21.8 s).
+host objective wait LOS_O02_SO05 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02_SO05\)" timeout=8
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02\)" timeout=8
+# --- LOS_O04 "Hard Landing": presence, then the wave hold (EM C_70, C_71, C_67) by kill rounds.
+host objective now
+host objective expect CrashedDropship_Marker  # b15: LOS_O04_SO01 is a future step here (marker off)
+host clear 1500 kill
+# Actorless step (no objective actor, no marker actor): each `objective go` in a row takes the next switched-on
+# presence nearest the sibling marker's actor, 3 at most (run 2: the presence nearest the host was used up).
+host objective go all
+try host objective wait LOS_O04_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 host objective go all
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 try host objective wait LOS_O04_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 host objective go all
+host objective wait LOS_O04_SO01 60
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O04_SO01\)" timeout=8
+host objective now
+host objective expect LOS_O04_SO02
+host clear 1500 kill
+try host objective go all
+# b15: 9, 24, 12, 11, 1 killed in five 15 s rounds (76 s): 3 s rounds, 30 at most.
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04_SO02\)" count=1 try host objective wait LOS_O04_SO02 3
+host objective wait LOS_O04_SO02 60
+# Card 359 (b189 order): shots dropped; the report reads the frozen-final rows (bone 0 vs body 0 at the last
+# waited tick) from the client log.
+# --- Card 437 part B (b136): fire held across the launcher's last round. After nest-b the launcher holds 1 round in the
+# magazine and 1 in reserve (c423b135b AmmoMirror: Nuke 1 @Nuke 1). One 9000 ms hold fires round 1 at about 2.0 s,
+# the auto reload, round 2 about 3.9 s later (c423b133a), then the launcher empties and drops and the Morita comes up
+# with the key still down. Aimed up, away from the corpses card 140 shoots next. Host rows owed: card437 "press carried
+# to the new weapon", Morita shot s = client shot c within 1, press ended unused 0, 0 WARN card157 found no round. The
+# card 140 taps below then fire the Morita (c423b135b: they spun the launcher, 3 WARN card296). Every wait is a try.
+client inventory
+client look 0 60
+host mark
+client mark
+client key LeftMouseButton 9000
+try host wait log "card437: host t=\d+ Round from \S+ \d+ ms after its held press ended on a weapon change" since-mark timeout=20
+try host wait log "card181: host t=\d+ \S+ press ended \(release \(Fire 0\)\)" since-mark timeout=20
+sleep 2
+client inventory
+# --- Card 440 setup, launcher (b144 review, senior option a): the part B hold drops the launcher with 1 round still in
+# its magazine. The game destroys a loaded drop's pickup about 17 s after the drop (c423b143a 504735631 -> 504752627,
+# c423b144a 505677882 -> 505694844), and the map's own pickup _0 stays disabled: _0 comes back (card095
+# InteractionCollider 0 -> 1) 10.0 s after a drop only when the dropped launcher was empty (b10, c423b133a, c423b140a),
+# never after a loaded drop (c423b143a, c423b144a, client next to it). So the client takes the dropped copy here, gated
+# on its spawn row; it lies at the client's feet, the nearest launcher pickup to both pawns (host about 90 uu away).
+# The client keeps the launcher equipped through the leave (b145 review, option a: unequipping a heavy weapon drops it,
+# GA_Weapon_Heavy_UnequipAbility execDropWeapon, c423b145a); the Morita switch is after the card 440 steps. A miss is
+# a card 440 setup result.
+try client wait log "card104: client t=\d+ copy of host \d+: \S+BP_WeaponPickup_NukeLauncher_C at " since-mark timeout=5
+host clear 1500 kill
+try host warp client BP_WeaponPickup_NukeLauncher_C 500
+try client goto actor BP_WeaponPickup_NukeLauncher_C 100
+try client wait goto timeout=10
+# c423b172a: a WarriorBug walked into the aim 173 uu away after the clear above; clear again right before the look.
+host clear 1500 kill
+try client look actor BP_WeaponPickup_NukeLauncher_C 0 bounds focus=BP_WeaponPickup_NukeLauncher_C
+client shot c440-pickup-look
+client mark
+try client key E
+try client wait log "card021: client GiveWeaponByClass\(BP_WeaponDefinition_NukeLauncher_C" since-mark timeout=10
+client inventory
+# Card 140 (b133, senior): 3 shots into a posed WarriorBug corpse at least 5 s after its stream final row. Prediction:
+# no "WARN card140: client hit ... from the copy's ReplicatedMovement.Location" row for that guid (the posed root).
+# c423b133a: the look found a live WarriorBug; the kill clear first leaves only corpses near the client.
+host clear 3000 kill
+client mark
+try client look actor BP_AI_WarriorBug_C 0 bounds
+try client wait log "cmd: \d+ aim: hit \S+ \(BP_AI_WarriorBug_C\) guid (0x[0-9a-f]+) " since-mark timeout=5
+try client wait log "card152: client stream final guid ({g1}) snap" timeout=20
+sleep 6
+client mark
+client key LeftMouseButton 120
+sleep 0.5
+client key LeftMouseButton 120
+sleep 0.5
+client key LeftMouseButton 120
+try client wait log "card132: client hit \S+ guid {g1} " since-mark timeout=5
+client shot c140-corpse-shots
+# r6: LOS_O04 completes as a parent, as LOS_O01 does; the parent rows below are the check.
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O04\)" timeout=8
+host objectives
+client objectives
+# --- LOS_O03 "Cut Me Some Flak": presence, the client collects three satchels and places them (E hold).
+host objective now
+host objective expect LOS_O03_SO01
+host clear 1500 kill
+# Actorless step (no objective actor, no marker actor): each `objective go` in a row takes the next switched-on
+# presence nearest the sibling marker's actor, 3 at most (run 2: the presence nearest the host was used up).
+try host objective go all
+try host objective wait LOS_O03_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O03/LOS_O03_SO01 " count=1 host objective go all
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O03/LOS_O03_SO01 " count=1 try host objective wait LOS_O03_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O03/LOS_O03_SO01 " count=1 host objective go all
+host objective wait LOS_O03_SO01 60
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03_SO01\)" timeout=8
+# LOS_O03_SO02: the host takes the three satchels by name (c241 a/b/c = _2/_5/_3), c418 host pickup pattern.
+host clear 3000 kill
+host mark
+host warp actor BP_SatchelItemPickup_C_2 120
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_SatchelItemPickup_C_2 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor BP_SatchelItemPickup_C_2
+host mark
+host key E
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target BP_SatchelItemPickup_C" since-mark timeout=3
+host clear 3000 kill
+host mark
+host warp actor BP_SatchelItemPickup_C_5 120
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_SatchelItemPickup_C_5 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor BP_SatchelItemPickup_C_5
+host mark
+host key E
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target BP_SatchelItemPickup_C" since-mark timeout=3
+host clear 3000 kill
+host mark
+host warp actor BP_SatchelItemPickup_C_3 120
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_SatchelItemPickup_C_3 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor BP_SatchelItemPickup_C_3
+host mark
+host key E
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target BP_SatchelItemPickup_C" since-mark timeout=3
+host wait log "card049: host sent CompleteSubObjective\(LOS_O03_SO02, LOS_O03_SO02[abc]\)" count=3 timeout=15
+host objective wait LOS_O03_SO02 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03_SO02\)" timeout=8
+# LOS_O03_SO03: the host plants at the named sites (c418 host plant pattern); objective go lands in the fall zone.
+host clear 3000 kill
+host objective expect LOS_O03_SO03a
+# The site sits on BP_SatchelBuilding_Flakbug_C_2, which turns every 10-15 s for 3-4 s; a turn mid-hold cancels the plant
+# (c423b125a: SO03b turn 547 ms before Cancel). Plant right after a turn ends; the site moves with it.
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_2 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 100
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03a 8
+# One more hold after the next turn ends if this one was cut short.
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_2 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03a 20
+host clear 3000 kill
+host objective expect LOS_O03_SO03b
+# The site sits on BP_SatchelBuilding_Flakbug_C_0, which turns every 10-15 s for 3-4 s; a turn mid-hold cancels the plant
+# (c423b125a: SO03b turn 547 ms before Cancel). Plant right after a turn ends; the site moves with it.
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_0 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 100
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03b 8
+# One more hold after the next turn ends if this one was cut short.
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_0 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03b 20
+host clear 3000 kill
+host objective expect LOS_O03_SO03c
+# The site sits on BP_SatchelBuilding_Flakbug_C_4, which turns every 10-15 s for 3-4 s; a turn mid-hold cancels the plant
+# (c423b125a: SO03b turn 547 ms before Cancel). Plant right after a turn ends; the site moves with it.
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_4 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 100
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03c 8
+# One more hold after the next turn ends if this one was cut short.
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_4 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03c 20
+host objective wait LOS_O03_SO03 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03_SO03\)" timeout=8
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03\)" timeout=8
+# b182 card 292 (no code): the client at the flak bug killed last (Flakbug_C_4, LOS_O03_SO03c): no placement box and
+# no satchel prompt on the dead bug. `client warp actor` is a local move the server undoes (c140l), so the host warps
+# the client's server copy. All try: a miss is a card 292 result and the run goes on.
+host clear 3000 kill
+host mark
+try host warp client BP_SatchelBuilding_Flakbug_C_4 600
+try host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+try client wait near {g1} {g2} {g3} 300 timeout=20
+host clear 3000 kill
+try client look actor BP_SatchelBuilding_Flakbug_C_4 0 bounds
+sleep 2
+client shot c292-dead-flak-client
+# b182 card 286 (no code): the client throws one frag (b40-c354 path: key G 200) toward the dead bug; the shot comes
+# about 300 ms after the release row (one grenade in flight, the host's copy).
+client mark
+try client key G 200
+try client wait log "card286: client t=\d+ own \S+ launch released" since-mark timeout=5
+sleep 0.2
+client shot c286-flight-client
+# --- Card 423: the LOS_O05 add opens the three cave gates (BugBlocker_C_3, _5, _7) on both sides.
+host wait log "card049: host sent AddObjective\(LOS_O05\)" timeout=30
+host wait log "card423: host t=\d+ BP_DestroyableActor_BugBlocker_C_\d+ destroyed 0 -> 1" count=3 timeout=20
+client wait log "card423: client t=\d+ BP_DestroyableActor_BugBlocker_C_\d+ destroyed \d -> 1 by (none|LD: Destroy)" count=3 timeout=20
+host clear 3000 kill
+host mark
+host warp client BP_DestroyableActor_BugBlocker_C_3 900 front
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_DestroyableActor_BugBlocker_C_3
+host look actor BP_DestroyableActor_BugBlocker_C_3
+sleep 2
+both shot c423-gate-before
+# --- Card 299 (senior, b177): the playtest's bug hole nest, BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 (class of the same name, killable-building family,
+# 'K' path; the _0/_7 "nests" above are BP_SatchelBuilding_Plasmabug_C and prove nothing for it). Both players at the
+# nest, shots before, the host kills it by code, rows on both sides, shots 3 s after (receiver-side proof). Every step
+# is a try: a miss is a card 299 result and the later groups still run.
+host clear 3000 kill
+host mark
+try host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 900
+try host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 700
+try host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+try client wait near {g1} {g2} {g3} 300 timeout=20
+host clear 3000 kill
+# c423b177a: both looks reported done, but the client shot showed cave wall. Looks by bounds with the line-clear
+# report (as line 218), 2 s to settle, bugs cleared before each shot.
+try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 0 bounds
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 0 bounds
+sleep 2
+both shot c299-nest5-before
+host mark
+client mark
+try host kill actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5
+try host wait log "card098: host t=\d+ \S+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 Health \S+ -> \S+: kill relayed" since-mark timeout=5
+try client wait log "world K BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 " since-mark timeout=5
+try host wait log "card299: host t=\d+ nest " since-mark timeout=5
+try client wait log "card299: client t=\d+ nest " since-mark timeout=5
+sleep 2
+host clear 3000 kill
+try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 0 bounds
+try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_5 0 bounds
+sleep 2
+both shot c299-nest5-after
+# --- Card 440 setup, ammunition (b139, senior): the client took the dropped launcher after part B (above) and takes
+# Nuke ammo here, so the rejoin has a launcher with rounds to restore. Each step waits on its row (card327 player row
+# with the launcher and Nuke ammo over 0); every step is a try, a miss is a card 440 setup result.
+host clear 1500 kill
+host mark
+try host warp client BP_AmmoPickup_NukesSmall_C 410
+try client goto actor BP_AmmoPickup_NukesSmall_C 60
+try client wait goto timeout=60
+try host wait log "card327: host t=\d+ player row .*weapons [^;]*NukeLauncher[^;]*; ammo .*AmmunitionType\.Nuke [1-9]" since-mark timeout=20
+# Card 446 (b146, senior): one client grenade throw before the leave, so the rejoin has a changed item count to keep
+# (starting Frag 2, 1 after the throw). Bugs near the client are cleared by code first. A miss is a card 446 result.
+host clear 1500 kill
+host mark
+client key G
+try host wait log "card073: host t=\d+ \S+ on server copy \S+ \(\S+\): GrenadeItem sent: \S+BP_GrenadeItem_Frag_C 1," since-mark timeout=10
+client inventory
+client shot c440-before-leave
+# --- Reconnect (b135): its own group, so a failed step in the gate group above no longer cuts these waits to 1 s
+# (c423b134a: the client was still on PRESS ANY KEY in the rejoin shots). The client's possession and its screen
+# prompt rows gate the continue. The join pack applies IsDestroyed by Setup Destroyed (no effects).
+host mark
+client mark
+client disconnect
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=120
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+try client ui continue
+client wait state pawn=client-own timeout=120
+client wait log "card423: client t=\d+ BP_DestroyableActor_BugBlocker_C_\d+ destroyed 0 -> 1 by Setup Destroyed" since-mark count=3 timeout=30
+# Card 435 (b133, senior): the join replay sends no old banners (Adds of complete objectives without popups, no
+# callout frames); banners queue one after another, so shots 3 s and 10 s after the rejoin, both without Touchdown.
+sleep 3
+client shot c435-rejoin-3s
+sleep 7
+client shot c435-rejoin-10s
+host shot c475-host-rejoin-10s
+# Card 475 (b179): at the rejoin the host sends its score rows and total after the objective replay; the client applies
+# per tag the host's sum less its own and ends on the host's total. Both rows are logged before the shots above.
+try host wait log "card475: host t=\d+ score rows \d+, total \d+ sent to slot" since-mark timeout=5
+try client wait log "card475: client t=\d+ score -?\d+ -> -?\d+ \(" since-mark timeout=5
+# Card 440 (b137, senior): the host keeps the gone controller's inventory and the rejoined controller takes it, held as
+# a Restore applied after its AssignStartingInventories (launcher back, Health unchanged, no card198 read-back row).
+# The host and client marks above are from before the disconnect, so these since-mark waits cover the rejoin. Every
+# wait is a try: a miss is a card 440 result, not a void.
+try host wait log "card440: host t=\d+ \S+ \(controller \d+\) takes the kept inventory of the gone controller \d+ .*held as a Restore: weapons .*NukeLauncher" since-mark timeout=10
+try host wait log "card143: host t=\d+ Restore applied to .* after its AssignStartingInventories.* weapons restored" since-mark timeout=10
+try host wait log "card143: host weapons from Restore: removed 0, given 1, matches the list" since-mark timeout=10
+try host wait log "card327: host t=\d+ player row .*weapons [^;]*NukeLauncher" since-mark timeout=30
+try client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=60
+# Card 269 (senior, b127 review): a corpse the client never renders may not update its pose. After the join the
+# client looks at the nearest ChariotBug (a rest-row corpse from the gate fights) between its read-backs 1 and 2, or
+# right after; the shot shows a lying corpse or a standing bug. The look row names the actor and its distance.
+try client wait log "card269: client rest read-back 1 BP_AI_ChariotBug_C" since-mark timeout=15
+host mark
+try host warp client BP_AI_ChariotBug_C 600
+try host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+try client wait near {g1} {g2} {g3} 300 timeout=20
+client mark
+try client look actor BP_AI_ChariotBug_C 0 bounds
+# b131 (senior): the host looks at the same corpse, by the point the client's look row names, from beside the client.
+try client wait log "cmd: \d+ look: BP_AI_ChariotBug_C at (-?\d+) (-?\d+) (-?\d+) from" since-mark timeout=5
+try host warp actor BP_PlayerCharacterMI_C 400
+try host look point {g1} {g2} {g3}
+sleep 1
+both shot c269-chariot-corpse
+host clear 3000 kill
+# Card 440 (b137): the client switches to the restored launcher (key Two, as at the pickup) and shoots it.
+client inventory
+client mark
+client key Two
+try client wait log "card057: client USTWeaponSwitchAbility::BeginWeaponSwitch\(GA_WeaponSwitchAbility_C\)" since-mark timeout=5
+sleep 2
+client inventory
+client shot c440-launcher-after-rejoin
+# b145 review (option a): the Morita switch after the card 440 steps. The client mark before key Two covers the equip.
+# b144b: key One landed 109 ms into the launcher equip and both sides refused the switch (host CanActivateAbility of
+# GA_WeaponSwitchAbility_C = 0); the client kept the launcher. Wait for the equip ability to end first.
+try client wait log "card439: client t=\d+ EndAbility BP_Weapon_EquipAbility_NukeLauncher_C " since-mark timeout=5
+try client key One
+try client wait log "playlog: client t=\d+ weapon slot 0 client-own: BP_Weapon_NukeLauncher_C -> BP_Weapon_MoritaMk1_C" since-mark timeout=5
+host mark
+host warp client BP_DestroyableActor_BugBlocker_C_3 900 front
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_DestroyableActor_BugBlocker_C_3
+host look actor BP_DestroyableActor_BugBlocker_C_3
+sleep 2
+both shot c423-gate-after
+# Digest round after the reconnect: 0 mismatches.
+client mark
+host objectives
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches \d+" since-mark timeout=60
+host inventory
+client inventory
+sleep 2
+# --- Card 281 (b187): a hit claim served by a made round. The client holds the Morita (above). One code-spawned
+# WarriorBug 500 uu ahead of the client after a kill clear, walking at it along the aim line. One normal shot, then
+# `host discard 3` makes the client copy's next 3 rounds misses, so the next 3 real shots' claims find no real round
+# and take made ones. Predictions: host "card281 ... served by a made round" rows, each with a "card157 ... applied
+# ... Health A -> B" row with B below A (or the card165 drop), 0 "found no round", the kill credited to the client,
+# digest 0 below. Every wait is a try: the rows are read after the run.
+host clear 3000 kill
+client mark
+client look point 0 0 0
+client wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+500} {g2} {g3} 180
+sleep 1
+client look point {g1+500} {g2} {g3-50}
+host mark
+client mark
+client key LeftMouseButton 120
+try host wait log "card157: host t=\d+ HitClaim shot \d+ from pc \S+ applied to BP_AI_WarriorBug" since-mark timeout=5
+host mark
+host discard 3
+try host wait log "card281: host t=\d+ cmd \d+: the client copy's next 3 rounds are discarded" since-mark timeout=5
+# b190: c423b189a's 3 shots after the discard missed (claims "(miss)", no guid), and only a hit claim (guid set) can
+# take a made round, so all 3 dropped as "found no round". Each shot now follows a look at the nearest live
+# WarriorBug's bounds (`live`: the kill clear leaves corpses nearer) and the wait for its aim row naming the bug.
+# c423b189a: the first bug was dead by then (shot 17 "Health -57.0 -> -97.0"), so a fresh one is spawned first.
+# Prediction: N "served by a made round" rows with N > 0, 0 WARN card157 "found no round".
+# b190: the spawn takes its groups from the last wait, which was the discard row (no groups), so it FAILed and no
+# bug came. A fresh look + wait gives the client's eye position again first.
+client mark
+client look point 0 0 0
+client wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+500} {g2} {g3} 180
+sleep 1
+client mark
+try client look actor BP_AI_WarriorBug_C 0 bounds live
+try client wait log "cmd: \d+ aim: hit \S+ \(BP_AI_WarriorBug_C\) guid 0x[0-9a-f]+ " since-mark timeout=3
+client key LeftMouseButton 120
+sleep 0.5
+client mark
+try client look actor BP_AI_WarriorBug_C 0 bounds live
+try client wait log "cmd: \d+ aim: hit \S+ \(BP_AI_WarriorBug_C\) guid 0x[0-9a-f]+ " since-mark timeout=3
+client key LeftMouseButton 120
+sleep 0.5
+client mark
+try client look actor BP_AI_WarriorBug_C 0 bounds live
+try client wait log "cmd: \d+ aim: hit \S+ \(BP_AI_WarriorBug_C\) guid 0x[0-9a-f]+ " since-mark timeout=3
+client key LeftMouseButton 120
+try host wait log "card281: host t=\d+ claim shot \d+ from pc \S+ served by a made round" since-mark timeout=10
+try host wait log "card281: host t=\d+ claim shot \d+ from pc \S+ served by a made round" count=3 since-mark timeout=10
+sleep 2
+client shot c281-after-made-rounds
+host clear 3000 kill
+# Digest round after the made rounds: 0 mismatches.
+client mark
+host objectives
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches \d+" since-mark timeout=60
+# Card 437 part B moved before the card 140 corpse shots (b135b VOID line 540: the placed nuke pickup is single use,
+# DisablePickup on the first take, and the rejoin pawn holds the Morita only).
+# --- b179 (senior): drive LOS_O05 SO01, SO02 and SO03 with the objective verbs until LOS_O05_SO04 is active, so the
+# card 300 presences below are live. Each step ends on its completion row; the strict wait at the end of each step
+# stops the route there (a route finding, reported with the step and why). Names come from the live card070 row.
+# SO01: the client boards the mech (card 255 mirror), c257 pattern (warp 300, look, E), a second press if no mirror.
+host objective now
+host wait log "card098: host spawn BP_BaseMech_C \S+ at " timeout=10
+host objective expect LOS_O05_SO01
+host clear 3000 kill
+host warp client BP_BaseMech_C 300
+try client look actor BP_BaseMech_C 150
+client shot o05-so01-mech-look
+client key E
+try host wait log "card255: host t=\d+ OnWantsToBoardMech mirrored to " timeout=15
+unless host log "card255: host t=\d+ OnWantsToBoardMech mirrored to " count=1 host warp client BP_BaseMech_C 250
+unless host log "card255: host t=\d+ OnWantsToBoardMech mirrored to " count=1 try client look actor BP_BaseMech_C 100
+unless host log "card255: host t=\d+ OnWantsToBoardMech mirrored to " count=1 client key E
+unless host log "card255: host t=\d+ OnWantsToBoardMech mirrored to " count=1 try host wait log "card255: host t=\d+ OnWantsToBoardMech mirrored to " timeout=15
+host objective wait LOS_O05_SO01 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O05_SO01\)" timeout=8
+# SO02: three presences at the step's three ActorReference markers (count 3). `go all` stands at actor[0]; then each
+# marker of the live card070 row in turn, host 40 uu and client 100 uu from it, until the step completes.
+host objective now
+host objective expect LOS_O05_SO02
+host clear 3000 kill
+host objective go all
+try host objective wait LOS_O05_SO02 15
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host wait log "card070: host t=\d+ LOS_O05_SO02 actors 3: LOS_O05_SO02 (\S+) (\S+) (\S+)" timeout=5
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp actor {g2} 40
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp client {g2} 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 try host objective wait LOS_O05_SO02 25
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host wait log "card070: host t=\d+ LOS_O05_SO02 actors 3: LOS_O05_SO02 (\S+) (\S+) (\S+)" timeout=5
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp actor {g3} 40
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp client {g3} 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 try host objective wait LOS_O05_SO02 25
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host wait log "card070: host t=\d+ LOS_O05_SO02 actors 3: LOS_O05_SO02 (\S+) (\S+) (\S+)" timeout=5
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp actor {g1} 40
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 host warp client {g1} 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" count=1 try host objective wait LOS_O05_SO02 25
+host objective wait LOS_O05_SO02 5
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O05_SO02\)" timeout=8
+# SO03: one presence at the step's marker; a second go after a clear if the first does not complete it.
+host objective now
+host objective expect LOS_O05_SO03
+host clear 3000 kill
+host objective go all
+try host objective wait LOS_O05_SO03 30
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO03\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO03\)" count=1 try host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO03\)" count=1 try host objective wait LOS_O05_SO03 30
+host objective wait LOS_O05_SO03 5
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O05_SO03\)" timeout=8
+host objective now
+host objective expect LOS_O05_SO04
+# c423b179a: with SO04 active the closure presences gave no row at all (gated at BeginPlay, no entry edge); the card
+# 300 trace has the closure after LOS_O05_SO04 completes and SO05 is added, so drive SO04 (marker) too.
+host clear 3000 kill
+host objective go all
+try host objective wait LOS_O05_SO04 30
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO04\)" count=1 host clear 4000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO04\)" count=1 try host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O05_SO04\)" count=1 try host objective wait LOS_O05_SO04 30
+host objective wait LOS_O05_SO04 5
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O05_SO04\)" timeout=8
+host objective now
+# --- Card 300 (senior, b177): the tunnel closure group (BP_PlayerPresence_C_78/79/81) waits for every living player.
+# Host enters alone: the host row must say "players past 1 of 2, waiting" and nothing closes. Then the client
+# enters: "closed: players past 2 of 2" on the host, the F row on the client. Every step is a try: a miss is a card
+# 300 result (the presence may be off before LOS_O05_SO04), not a void.
+host clear 6000 kill
+host mark
+client mark
+try host warp actor BP_PlayerPresence_C_78 10
+try host wait log "card300: host t=\d+ closure \S+ wanted by entry of .*: players past 1 of 2, waiting" since-mark timeout=8
+unless host log "card300: host t=\d+ closure \S+ wanted by entry of " count=1 try host warp actor BP_PlayerPresence_C_79 10
+unless host log "card300: host t=\d+ closure \S+ wanted by entry of " count=1 try host wait log "card300: host t=\d+ closure \S+ wanted by entry of " since-mark timeout=8
+unless host log "card300: host t=\d+ closure \S+ wanted by entry of " count=1 try host warp actor BP_PlayerPresence_C_81 10
+unless host log "card300: host t=\d+ closure \S+ wanted by entry of " count=1 try host wait log "card300: host t=\d+ closure \S+ wanted by entry of " since-mark timeout=8
+# b180: both look at the tunnel mouth (card 300 doc: BP_DestroyableActor_HiveEntrance_C_1) for the shots; c423b180b's
+# shots faced away. The closed row is tagged host/standalone (c423b180b), so its waits take both tags.
+try host look actor BP_DestroyableActor_HiveEntrance_C_1 0 bounds
+try client look actor BP_DestroyableActor_HiveEntrance_C_1 0 bounds
+sleep 3
+both shot c300-host-in-waiting
+try host warp client BP_PlayerPresence_C_78 10
+unless host log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" count=1 try host wait log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" since-mark timeout=6
+unless host log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" count=1 try host warp client BP_PlayerPresence_C_79 10
+unless host log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" count=1 try host wait log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" since-mark timeout=6
+unless host log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past" count=1 try host warp client BP_PlayerPresence_C_81 10
+try host wait log "card300: host(/standalone)? t=\d+ closure \S+ closed: players past 2 of 2" since-mark timeout=15
+try host wait log "card300: host t=\d+ closure \S+ row sent to 1 of 1 clients" since-mark timeout=5
+try client wait log "card300: client t=\d+ closure \S+ from the host row" since-mark timeout=10
+host clear 6000 kill
+try host look actor BP_DestroyableActor_HiveEntrance_C_1 0 bounds
+try client look actor BP_DestroyableActor_HiveEntrance_C_1 0 bounds
+sleep 3
+both shot c300-closed
+# --- Card 428 (senior, b126 review): the host log ended before its map-end totals twice (no map end before quit). End
+# the map by the game's EndLevel and the host's Next (the c399 chain block), so the host prints its card177/card269
+# map totals ("removed" against the client's "removed by the host") before the quit.
+host mark
+client mark
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+try client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 try host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 timeout=120
+host wait log "card177: host sprite death map totals: " since-mark timeout=10
+host wait log "card269: host rest rows map totals: " since-mark timeout=10
+try client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+sleep 2

@@ -1,0 +1,39 @@
+# Card 098: the bombing run's strike, measured. FED_C1M1; the TacSupport steps before the pickup are completed by
+# command, and the level script then shows the support pickup itself (SetObjectiveVisibility TacSupport_SO5); the host
+# walks to it, takes it with E, and calls the strike with 4 and fire. The card075/098 spawn lines show what the strike
+# spawns and whether it replicates; the client watches the strike area.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host wait log "SetObjectiveVisibility\(TacSupport_SO5\) bools 11" timeout=30
+sleep 2
+host goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 150 timeout=60
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 600
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+host wait log "DisablePickup on BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=5
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 3
+host key Four
+sleep 1
+host key LeftMouseButton
+sleep 6
+client shot c98bomb-client-strike
+host shot c98bomb-host-strike
+sleep 8
+client shot c98bomb-client-strike2
+host objectives
+client objectives
+host quit
+client quit

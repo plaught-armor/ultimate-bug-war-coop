@@ -1,0 +1,50 @@
+# Card 369: the host's pause menu QUIT with a client connected is a seamless travel (no drop, no reconnect), and the
+# session then starts the next mission seamless as well. Prediction: docs/cards/369-host-pause-quit-seamless.md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c369-host-quit.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c369-host-quit 420
+# No failsoft. Judged from the logs after the run: client 0 NetworkFailure, 0 "session dropped", 0 "reconnected",
+# 0 card290 travel rows after its first join; host 0 "card140: host Logout" before the client's quit.
+# The two short sleeps follow a menu click that has no log row of its own (as in c350-solo-quit.txt).
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# 1. The host quits to the menu from its pause menu.
+host key Escape 150
+sleep 2
+host shot c369-pause-menu
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+sleep 2
+host ui click ConfirmQuitToMainMenu
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend\?FromLevelQuit.* started by ServerTravel" since-mark timeout=20
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=120
+client wait log "card350: client t=\d+ ClientTravel ./Game/Maps/3D_Frontend/3D_Frontend\?FromLevelQuit.* \(seamless 1\)" since-mark timeout=30
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client wait log "card350: client t=\d+ HasOption\(.., FromLevelQuit\) from the host's travel options: 1" since-mark timeout=30
+client mark
+# Still the same connection: a host row arrives in the hangar.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+host shot c369-host-hangar
+client shot c369-client-hangar
+# 2. The host starts the mission again from the hangar: a second seamless travel, the client still in the session.
+host mark
+host travel restart
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C1M1" since-mark timeout=20
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+client mark
+host ui continue
+try client ui continue
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+sleep 4
+host shot c369-host-mission
+client shot c369-client-mission
+client quit
+sleep 2
+host quit

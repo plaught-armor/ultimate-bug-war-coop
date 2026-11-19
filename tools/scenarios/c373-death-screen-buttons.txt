@@ -1,0 +1,146 @@
+# Card 373 proof (b57 78025485639b5da3, no build): the two other host death-screen buttons, RESTART MISSION and Exit,
+# clicked with a client through the real click path (`host ui click`, card 121: detour_process_event), FED_C1M1,
+# FAST=1, GOD=0. Both players are put down by code as in c371 (client first, so the all-down decision fires).
+# Trace (restart.cpp c45_browse_enter, c346_host_seamless, menu_c350.cpp, WB_PlayerDeathScreen bytecode):
+#  - RestartMission (BndEvt__WB_PlayerDeathScreen_RestartMission_K2Node_ComponentBoundEvent_3_) calls
+#    STGameInstance:RestartCurrentLevel -> OpenLevel -> Browse with the mission map, valid 1. With 2 players the host's
+#    c346_host_seamless runs ServerTravel (b54 c44_press rows, FED_C2M1), so the client follows seamlessly with no
+#    disconnect. c346 returns before c290_host_travel, so there is no card290 travel row, no card294 hold and no card294
+#    "restart done" row on this path; the senior's rule A row is predicted absent (a mismatch to report, not a strand).
+#  - Exit (BndEvt__WB_PlayerDeathScreen_Exit_K2Node_ComponentBoundEvent_6_) calls GetSTGameInstance then
+#    STCommonUtilityLibrary:OpenMenuLevel (imports 51/52, CallMath at 0x5132). The asset has no BuildString and no
+#    FromLevelQuit/ChapterID names, so the Blueprint adds no options. The exe's only menu map string is
+#    "MainMenu_InteriorScene", the one ReturnToMainMenu opens (card 344). Prediction: the c344-no-confirm chain, a
+#    Browse URL with valid 0 and the card344 "no listen added" row, then the engine's "?closed" fallback, valid 1, which
+#    c346 carries seamlessly to /Game/Maps/3D_Frontend/3D_Frontend?closed. Nobody is dropped or stranded. But the
+#    frontend options hold only "closed", so the host's HUD and the client's card350 store answer HasOption(FromLevelQuit)
+#    0: predicted WARNING (FTUE photosensitivity) screen on both hangar shots, the card 350 gap on this path. The run's
+#    "card045: host ... Browse URL" rows settle the URL.
+# Phase C (senior, after c373b57b): from the title screen the pair goes on into the next mission together.
+# Trace: the title screen (WB_SPCAMPOS_1_TitleScreenWidget_v2, from the frontend HUD on the FromGame route) is a local
+# widget on each side; it sets UIOnly input and opens the frontend menu on a key press; it sends nothing over the net.
+# The host's key presses (Enter on its window, the same real-key route as c346-persistent's hangar launch) take it to
+# the hangar and launch the highlighted mission; that OpenLevel has valid 1 and 2 players, so c346_host_seamless runs
+# ServerTravel to FED_C1M1 as in c346/c369. The client's title widget belongs to the old frontend world and is
+# removed with it at the seamless travel (UUserWidget leaves the viewport when its world's level is removed), so it
+# neither blocks the travel nor survives it; the client needs no key press. On FED_C1M1 the card 135 press-to-start
+# screen and the card 320 hold apply as on every mission load: host continue, IntroStart, the client's GameStarted,
+# the client's continue, IntroDone, "hold off". Card 344's 60 s bound only fires if the client does not confirm,
+# which the scenario does. Predictions: card346 seamless rows on both sides to FED_C1M1, no disconnect, both pawns
+# possessed and Up, the client's card156 +5 s row without WARN (input GameOnly, no death or title widget), a digest
+# round with 0 mismatches, 0 card344/card355 rows; FATAL/ERROR 0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c373-death-screen-buttons.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 600
+# Expected wall: about 6 min.
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# --- A. Both down, then RESTART MISSION.
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+host wait log "card044: host death screen: 5 widgets" since-mark timeout=20
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+host shot dead-a-host
+client shot dead-a-client
+host mark
+client mark
+host ui click BndEvt__WB_PlayerDeathScreen_RestartMission
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C1M1.* started by ServerTravel" since-mark timeout=30
+client wait log "card346: client t=\d+ seamless map change done: world FED_C1M1" since-mark timeout=120
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock \d+ " since-mark timeout=60
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot restart-host
+client shot restart-client
+# --- B. Both down again, then Exit.
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" since-mark timeout=60
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+host wait log "card044: host death screen: 5 widgets" since-mark timeout=20
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+host shot dead-b-host
+client shot dead-b-client
+host mark
+client mark
+host ui click BndEvt__WB_PlayerDeathScreen_Exit
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=120
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+host shot exit-host
+# --- C. From the title screen (3D_Frontend?FromGame) the host starts the next mission; the client does nothing until
+# the mission's press-to-start screen (card 135/320), as in c346-persistent.txt. Enter on the host window (real key),
+# re-pressed until the host's Browse to a FED map: the title screen, then the hangar's highlighted mission. c373c57:
+# the hangar launches the save's highlighted mission (FED_C3M2 in this prefix), so the waits take any FED_C<n>M<n> map.
+host mark
+client mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/" since-mark timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d" since-mark timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C\dM\d" since-mark timeout=10
+client wait log "card350: client t=\d+ ClientTravel ./Game/Maps/FED/FED_C\dM\d.* \(seamless 1\)" since-mark timeout=30
+client wait log "card346: client t=\d+ seamless map change done: world FED_C\dM\d" since-mark timeout=120
+host wait log "card135: host t=\d+ screen prompt ready: .* on FED_C\dM\d" since-mark timeout=120
+# c373b69: on a hangar-launched map the host's pawn is not a player character while the card 344 hold keeps the world
+# paused (state pawn=other), and UBWCOOP_AUTODROPSHIP presses the host's continue itself about 2 s after the prompt. So
+# the client continues first (inside the 60 s card 344 window); the pawn waits come after the hold ends.
+try host ui continue
+client wait log "card135: client GameStarted t=\d+ on FED_C\dM\d" since-mark timeout=60
+client ui continue
+client wait log "card320: client t=\d+ IntroDone" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after" since-mark timeout=30
+host wait state pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s: own pawn" since-mark timeout=30
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot next-host
+client shot next-client
+sleep 2
+client quit
+sleep 2
+host quit

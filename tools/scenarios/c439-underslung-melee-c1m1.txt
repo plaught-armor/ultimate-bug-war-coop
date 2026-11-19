@@ -1,0 +1,117 @@
+# Card 439 open items (senior, 2026-11-16): the last underslung round (c439g) and EquippedWeapon.Melee, FED_C1M1.
+# Join block and rifle pickup are c141-underslung.txt unchanged.
+# Run: LANE=2 SCENARIO=tools/scenarios/c439-underslung-melee-c1m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      tools/run_pair.sh <tag> 600
+# Rules: docs/STATE.md "Gameplay test scenario rules".
+# Predictions (written before the run):
+#  c439g  the press that fires the last underslung round gives one client row "card439: client t=<ms> Switch (N, 0)
+#         was sent inside the own Fire: held, sent after its Round"; the host then logs "card141: host ... copy weapon
+#         BP_Weapon_MoritaMk1_C underslung 0 (want 0)"; the host press row of that shot has client rounds = copy
+#         rounds; 0 host "became a credit" rows. No client row: the underslung round does not go through
+#         USTWeaponFireAbility::Fire on the client, the hold never arms, c439g is dead code and comes out.
+#  melee  after the client's V: client card169 spawn and destroy rows; the rifle burst after it reaches the host
+#         (shot rows); no "WeaponSystem.EquippedWeapon.Melee" in a client card430 row and no client
+#         "card439 ... host tag map change of WeaponSystem.EquippedWeapon.Melee" row left at count 1 after the
+#         ability ended. A Melee tag change that is passed and stays: Melee joins the dropped tag names.
+
+void unless host dll d99dcd4bd6123245
+void unless client dll d99dcd4bd6123245
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# The client takes the frag before the host moves: the host's walk to the rifle rack crosses the frag pickup (c155c).
+client mark
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+client wait log "card073: client t=\d+ GrenadeItem BP_GrenadeItem_Frag_C \d+: our count" since-mark timeout=15
+# FED_C1M1 starts unarmed: both take a Morita from the rack and equip it (key Two; a pickup does not equip).
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# The rack re-enables its pickup about 10 s after a take (c155d: the client pressed E while it was still disabled).
+# card145 world E row carries the re-enable (it changes the components first, so the card095 per-row line, logged only on a change, does not appear).
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 \S+ \S+ \S+ 1 .*: applied" timeout=20
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client key E
+# b168: the host's rack take runs the level script GiveMorita, and card 267 mirrors its AddWeapon to the client copy, so the copy holds the Morita before the client's E (c439b168b); no since-mark.
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" timeout=10
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1" timeout=10
+# The capture-the-flag door pair; the client walks north through door _0.
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+# Client rifle and ADS; host rifle comes after the underslung.
+client look point -3674 30000 600
+host look point -3454 30000 600
+client key LeftMouseButton 400
+sleep 1
+# Underslung on (Q held past its 0.5 s InputTriggerHold).
+host mark
+client key Q 800
+host wait log "card141: host t=\d+ Switch \(\d+, 0, underslung, want 1\) " since-mark timeout=10
+host wait log "card141: host t=\d+ copy weapon BP_Weapon_MoritaMk1_C underslung 1 \(want 1\)" since-mark timeout=5
+sleep 1
+# Fire every underslung round (8 at the start). The auto switch back comes inside the Fire of the last one.
+host mark
+client mark
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+try client wait log "card439: client t=\d+ Switch \(\d+, \d+\) was sent inside the own Fire: held, sent after its" since-mark timeout=10
+try host wait log "card141: host t=\d+ copy weapon BP_Weapon_MoritaMk1_C underslung 0 \(want 0\)" since-mark timeout=10
+sleep 1
+# Rifle burst after the auto switch (primary rounds on both sides).
+host mark
+client key LeftMouseButton 400
+host wait log "playlog: host t=\d+ shot s seq=\d+ " since-mark timeout=10
+sleep 1
+# Melee (V): the host's own first, the control; then the client's.
+host mark
+host key V
+try host wait log "card169: host t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 2
+client mark
+client key V
+client wait log "card169: client t=\d+ \S+: spawned .* for its own ability" since-mark timeout=5
+client wait log "card169: client t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 2
+# Rifle burst after the melee: a Melee tag left on the pawn would block it.
+host mark
+client mark
+client key LeftMouseButton 400
+host wait log "playlog: host t=\d+ shot s seq=\d+ " since-mark timeout=10
+sleep 1
+# Second melee straight after a burst, then a burst again.
+client mark
+client key V
+client wait log "card169: client t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 2
+host mark
+client key LeftMouseButton 400
+host wait log "playlog: host t=\d+ shot s seq=\d+ " since-mark timeout=10
+sleep 2
+client quit
+sleep 2
+host quit

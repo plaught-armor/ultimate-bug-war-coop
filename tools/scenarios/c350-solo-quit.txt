@@ -1,0 +1,23 @@
+# Card 350 step 1 (SOLO=1, host only): single player leaves FED_C1M1 by the pause menu's QUIT and its confirm
+# (ConfirmQuitToMainMenu, the game's own path, as c121-save-quit). The shot in 3D_Frontend shows whether the game
+# itself shows the photosensitivity WARNING screen after a quit to the menu. Prediction: docs/cards/350-...md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SOLO=1 SCENARIO=tools/scenarios/c350-solo-quit.txt
+#      FAST=1 GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c350-solo-quit 300
+void unless host dll a4a709a1b9ed4c46
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+host ui continue
+host wait log "card135: host continued t=\d+ on FED_C1M1" timeout=30
+host mark
+host key Escape 150
+sleep 2
+host shot c350-pause-menu
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+sleep 2
+host shot c350-quit-confirm
+host ui click ConfirmQuitToMainMenu
+host wait log "card052: t=\d+ world 3D_Frontend" since-mark timeout=90
+sleep 4
+host shot c350-host-menu
+sleep 4
+host shot c350-host-menu2
+host quit

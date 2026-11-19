@@ -1,0 +1,133 @@
+# Card 418 (with 408 F4): one satchel planted from each side on FED_C3M1, both logs.
+# Predictions (b121, card 418 fix: host StartTimer sends the arm): 1: host plant logs "card418: host ... fuse ...
+# started: arm sent to 1 of 1 clients", client logs "card418: client ... arm of <site> from the host: StartTimer run,
+# armed 1"; 2: client plant, the client's own hold arms it ("armed already (own hold)") or the host arm runs, never
+# twice; 3: no WARN card418. Card 408 F5: client card408 turn rows carry "row age N ms, timeline at P" with P >= 0 on
+# own turns; map totals give the aged count. Card 408 F4: the building's destroy effects on both sides.
+# Route from c242-c3m1 (Resort_SO1 presence, Resort_SO2 pickups, Resort_SO3 plants): CAT_289 is at Flakbug_C_0
+# (Resort_SO3_A), CAT_0 at Flakbug_C_2 (Resort_SO3_B).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c418-satchel-c3m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c418b158b 900
+# Expected wall: about 5 min.
+void unless host dll d8f61a2f0a8eb107
+void unless client dll d8f61a2f0a8eb107
+# Join block as c399-fast-chain (map, hold, both continue, ride, landing), without the 413/416 shots.
+host wait state map=FED_C3M1 timeout=300 void
+client wait state map=FED_C3M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card320: host t=\d+ hold off" timeout=30
+client wait log "card399: client t=\d+ ride on" timeout=30
+host wait log "card399: host t=\d+ release" timeout=180
+client wait log "card399: client t=\d+ ride off" timeout=30
+try client wait log "card399: client t=\d+ landing facing" timeout=10
+try host wait state pawn=host-own timeout=60
+try client wait state pawn=client-own timeout=60
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# Resort_SO1: both players onto BP_PlayerPresence_C_8 (it adds Resort_SO2).
+host clear 3000 kill
+host warp actor BP_PlayerPresence_C_8 40
+host warp client BP_PlayerPresence_C_8 60
+host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Resort_SO1\)|card097: host t=\d+ subsystem ObjectiveComplete\(Resort_SO1\))" timeout=20
+client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Resort_SO1\)|card097: client t=\d+ subsystem ObjectiveComplete\(Resort_SO1\))" timeout=30
+# Resort_SO2: the host takes pickup 1, the client takes pickup 2.
+host mark
+host warp actor BP_SatchelItemPickup_C_1 120
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_SatchelItemPickup_C_1 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor BP_SatchelItemPickup_C_1
+host mark
+host key E
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target BP_SatchelItemPickup_C" since-mark timeout=3
+host mark
+host warp client BP_SatchelItemPickup_C_2 120
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_SatchelItemPickup_C_2 0 bounds focus=BP_SatchelItemPickup_C_2
+client mark
+client key E
+# Resort_SO2 completes only after the plants (c242, c418b116b): the client pickup is proven by the host relay row.
+host wait log "card054: host t=\d+ relayed Use #\d+: BP_PlayerCharacterMI_C Interact on BP_SatchelItemPickup_C" since-mark timeout=5
+# Card 455 step 2 (b157): the server copy's pickup sound is skipped on the host (card 160) and relayed to the client,
+# which plays it once. The host mark is from before the client warp, after the host's own pickup.
+try host wait log "card160: host t=\d+ skipped server copy .*MS_ITEM_PickupSatchelItem" since-mark timeout=5
+try host wait log "card455: host t=\d+ relayed hurt sound \S*MS_ITEM_PickupSatchelItem.* \(sent\)" since-mark timeout=5
+try client wait log "card455: client t=\d+ played hurt sound \S*MS_ITEM_PickupSatchelItem" since-mark timeout=5
+# Host plant at CAT_289 (Flakbug_C_0, Resort_SO3_A); the client stands near and faces the building (408 F4 shot).
+host clear 3000 kill
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289 100
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host mark
+host warp client BP_SatchelBuilding_Flakbug_C_0 900 front
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_SatchelBuilding_Flakbug_C_0
+host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289
+# Card 456 (senior order): the building turns 14 to 20 s apart and a turn moves the site out of the interact trace
+# (b157a/b157b failed holds). Wait for its turn row, then for its "timeout" row (Timeout Fire Burst): that row's yaw
+# equals the next turn's start yaw in every b157/b158 pair, so the turn has ended by it. Try: a building that does not
+# turn in 30 s keeps its site still. Then re-place from the site, look, clear, press (about 5 s, next turn 8.7 s or more).
+host mark
+try host wait log "card408: host t=\d+ turn BP_SatchelBuilding_Flakbug_C_0 yaw" since-mark timeout=30
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_0 yaw" since-mark timeout=10
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289 100
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+ \S+ \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289 " since-mark timeout=3
+host wait stand {g1} {g2} {g3} 300 timeout=4
+host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_289
+# Card 456: bugs near the site cleared right before the press (c418b157b: ChariotBugs and shunt rows inside the hold).
+host mark
+host clear 3000 kill
+host wait log "cmd: \d+ clear kill: \d+ killed, \d+ left" since-mark timeout=5
+host mark
+client mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Resort_SO3_A\)|card097: host t=\d+ subsystem ObjectiveComplete\(Resort_SO3_A\))" since-mark timeout=15
+sleep 1
+both shot c418-h-plant
+client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Resort_SO3_A\)|card097: client t=\d+ subsystem ObjectiveComplete\(Resort_SO3_A\))" timeout=30
+# Client plant at CAT_0 (Flakbug_C_2, Resort_SO3_B); the host stands near and faces the building.
+host clear 3000 kill
+host mark
+# Card 456: placed from the site, not a fixed point: BP_SatchelBuilding_Flakbug_C_2 turns (card408 rows), so the site
+# moves between runs (c418b158a: no focus from the b121 point); 100 uu put b157a's camera inside the mesh (aim 0 uu).
+host warp client SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_0 250 front
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+host warp actor BP_SatchelBuilding_Flakbug_C_2 900 front
+host look actor BP_SatchelBuilding_Flakbug_C_2
+# Card 456 (senior order): the building turns 14 to 20 s apart and a turn moves the site out of the interact trace
+# (b157a/b157b failed holds). Wait for its turn row, then for its "timeout" row (Timeout Fire Burst): that row's yaw
+# equals the next turn's start yaw in every b157/b158 pair, so the turn has ended by it. Try: a building that does not
+# turn in 30 s keeps its site still. Then re-place from the site, look, clear, press (about 5 s, next turn 8.7 s or more).
+host mark
+try host wait log "card408: host t=\d+ turn BP_SatchelBuilding_Flakbug_C_2 yaw" since-mark timeout=30
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_2 yaw" since-mark timeout=10
+host mark
+host warp client SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_0 250 front
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_0 0 bounds focus=SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_0
+client shot c456-client-focus
+host mark
+host clear 3000 kill
+host wait log "cmd: \d+ clear kill: \d+ killed, \d+ left" since-mark timeout=5
+host mark
+client mark
+client key E 3500 timeout=20
+host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Resort_SO3_B\)|card097: host t=\d+ subsystem ObjectiveComplete\(Resort_SO3_B\))" since-mark timeout=15
+sleep 1
+both shot c418-c-plant
+client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Resort_SO3_B\)|card097: client t=\d+ subsystem ObjectiveComplete\(Resort_SO3_B\))" timeout=30
+sleep 3

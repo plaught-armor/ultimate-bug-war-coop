@@ -1,0 +1,81 @@
+# Audit proof (SYNC_AUDIT third pass, player state row "One player Downed or Out, the other Up | host pause-menu
+# RESTART CHECKPOINT"): never run with a player down. b67 cc1d4251720f389d, FED_C1M1, FAST=1, GOD=0.
+# Static trace and predictions (senior, 2026-11-15, written before the run):
+# 1. `host down client`: client "Up -> Downed"; the host stays Up, so no all-down, no death screen either side.
+# 2. Host pause menu RESTART CHECKPOINT (clicks as c376b60 phase A): "card121: host ... save engine load runs (Load,
+#    context WB_Pause_Menu_C", card290 travel row "(in-place load)", client card294 "host restart (in-place load)".
+#    The only save is the map's first checkpoint (no client pawn in it): card371 "no player pawn after the load",
+#    Reload "none", the client rejoins on a login pawn.
+# 3. Host: c45_respawn_check runs NO per-map reset (stale is false: not all down, no death screen), so 0
+#    "card045: host ... respawn in place" rows since the mark; the downed entry of the destroyed copy pawn leaves by
+#    the backstop: one "card043: host entry \d+ (Downed) left: pawn gone" row. No "-> Dead" row.
+# 4. Client after the rejoin: Up on a new pawn, walks (goto arrives), 0 death screens built; host Up at the checkpoint.
+# 5. The down path still works on the new pawns: a second `host down client` gives a new "Up -> Downed" row on the
+#    client (no stale entry or hold blocks it).
+# 6. Digest round after: mismatches only card 218's spawner. FATAL/ERROR 0; WARN classes as c376b60 phase A.
+# A failure of 3 (a reset row, or no "pawn gone" row and the entry kept) or of 4/5 is a defect to card, not to chase.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c383-restart-checkpoint-client-down.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh c383b67 420
+# Expected wall: about 3 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+# --- 1. Client down, host Up.
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+client shot down-client
+# --- 2. Host pause menu RESTART CHECKPOINT.
+host winkey Escape 150
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host ui click BndEvt__WB_Pause_Menu_LoadLastSave
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_LoadLastSave" since-mark timeout=5
+try host wait log "card121: host t=\d+ save engine load runs" since-mark timeout=3
+when host last "card121: (ui click|host t=\d+ save engine load runs)" "ui click" host ui click RestartCheckpoint
+host wait log "card121: host t=\d+ save engine load runs \(Load, context WB_Pause_Menu_C" since-mark timeout=10
+host wait log "card290: host t=\d+ travel row sent to 1 of 1 clients: .*\(in-place load\)" since-mark timeout=5
+client wait log "card294: client t=\d+ host restart \(in-place load\)" since-mark timeout=15
+host wait log "card143: host t=\d+ Reload to BP_PlayerController_C .*sent now" since-mark timeout=10
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=60
+client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built 0" since-mark timeout=60
+# --- 3. The stale entry leaves by the backstop; no per-map reset row, no Dead row.
+host wait log "card043: host entry \d+ \(Downed\) left: pawn gone" since-mark timeout=15
+try host wait log "card045: host t=\d+ respawn in place|card043: host t=\d+ .* -> Dead" since-mark timeout=3
+# --- 4. Both Up, the client walks.
+host wait state pawn=host-own timeout=30
+client wait state pawn=client-own timeout=30
+host wait stand -1769 1820 296 800 timeout=15
+client wait stand -1769 1820 296 1500 timeout=15
+host shot after-host
+client shot after-client
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+client goto 6654 11259 97 120
+client wait goto timeout=30
+# --- 5. The down path on the new pawns.
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+client shot down2-client
+# --- 6. Digest round.
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+sleep 2
+client quit
+sleep 2
+host quit

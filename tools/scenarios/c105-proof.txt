@@ -1,0 +1,66 @@
+# Card 105 proof: client throw, pod children on both sides, client takes one, fire and reload counts, host throw, late join.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host warp client BP_PlayerPresence_C_2 300
+sleep 2
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+sleep 3
+host warp client BP_PlayerPresence_C_24 10
+sleep 3
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+sleep 2
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+sleep 3
+client shot c104-client-range
+client objectives
+host warp actor BP_PlayerPresence_C_1 10
+sleep 2
+sleep 3
+host warp client BP_WeaponPickup_MoritaMk1_C_1 120
+sleep 2
+client look actor BP_WeaponPickup_MoritaMk1_C_1
+client key E
+sleep 3
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host objective complete TacSupport_SO5
+sleep 3
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 10
+sleep 2
+client look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+client key E
+sleep 2
+client key Four
+sleep 2
+client key LeftMouseButton
+sleep 8
+client objectives
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 3
+client key One
+sleep 2
+client key LeftMouseButton
+sleep 1
+client key LeftMouseButton
+sleep 1
+client key LeftMouseButton
+sleep 1
+client key R
+sleep 4
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 12
+host objectives
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+sleep 8
+client objectives
+host objectives
+host quit
+client quit

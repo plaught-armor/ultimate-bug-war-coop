@@ -1,0 +1,79 @@
+# Batch b50 (senior order 2026-11-15): card 364 (the hold stays on while a connected client has no IntroStart) and
+# card 365 (RESTART MISSION under seamless travel). Predictions: docs/cards/364-...md, 365-...md. Build b50:
+# f63840e619112273. GOD=0 (the card 043/045 test downs the pawns by DealDamage).
+# Run 1 (b50): the test armed solo on FED_C1M1 (host on foot 3.5 s before the client's PC joined: `players 1`), so
+# run 2 first travels next to FED_C2M1 (seamless: the client's PC is in the world there, the pair test waits for it).
+# That travel's hold is card 364 sample 1 (host continues at its prompt ready). The card 045 test (UBWCOOP_C45_TEST=1
+# with UBWCOOP_C43_TEST=1, both roles) then drives itself on FED_C2M1:
+# phase 0, 20 s after both are on foot, the host then the copy go down (game over) and the host presses RESTART MISSION.
+# That restart is the seamless ServerTravel to the loaded map (card 365) and its hold is the card 364 subject: the host
+# continues as soon as its own screen prompt is ready. Phase 1: the copy goes down, out, is revived by the host, then
+# game over and RESTART CHECKPOINT (in-world reload, card 045, not card 365's subject; its waits are try). Phase 2: done.
+# Expected wall: about 6 min.
+# Run: LANE=2 SCENARIO=tools/scenarios/b50-c364-c365.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C43_TEST=1 UBWCOOP_C45_TEST=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_C43_TEST=1 UBWCOOP_C45_TEST=1" tools/run_pair.sh b50r2 600
+void unless host dll cd14c3d92a441cf0
+void unless client dll cd14c3d92a441cf0
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# --- 0. Seamless travel to FED_C2M1 at once (before the C1M1 solo test's first hit, 30 s after the host's on foot).
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+host wait log "card320: host t=\d+ hold on " since-mark timeout=120
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=90
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+# --- 1. Card 045 test phase 0: both down, game over, RESTART MISSION (the test presses it).
+host wait log "card045: host t=\d+ test phase 0: on foot" since-mark timeout=90
+# New marks here: the C2M1 hold rows are done (both on foot); the restart rows come 20 s later at the earliest.
+host mark
+client mark
+host wait log "card045: host t=\d+ test restart 1: RESTART MISSON \(RestartMission\)" since-mark timeout=180
+# --- 2. Card 365: the restart is a seamless travel to the loaded map; a missing row ends the run (stop and report).
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C2M1" since-mark timeout=15
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+# --- 3. Card 364: the host continues as early as its screen takes it.
+host wait log "card320: host t=\d+ hold on " since-mark timeout=120
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=90
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+# --- 4. Both on foot after the restart (card 045 phase 1 row); death screens gone on the client.
+host wait log "card045: host t=\d+ test phase 1: on foot" since-mark timeout=60
+sleep 3
+host shot b50-after-restart-host
+client shot b50-after-restart-client
+# --- 5. Phase 1: one down and revive after the restart, then game over and RESTART CHECKPOINT.
+host wait log "card043: host test drain hit" since-mark timeout=90
+host mark
+client mark
+host wait log "card045: host t=\d+ test restart 2: RESTART CHECKPOINT" since-mark timeout=150
+try host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=30
+try client ui continue
+try host wait log "card045: host t=\d+ test phase 2: on foot" since-mark timeout=90
+try host wait log "card045: host test done" since-mark timeout=20
+sleep 2
+host shot b50-end-host
+client shot b50-end-client
+client quit
+sleep 2
+host quit

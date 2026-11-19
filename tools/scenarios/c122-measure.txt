@@ -1,0 +1,24 @@
+# Card 122 (copy of c115-measure; also the co-op half of the card 122 proof) (FED_C2M1, FAST=1): both players warp into the first WarriorBug group and fight for about 45 s; the host
+# log carries the card115 ticket-set dump and the 5 s windows (aware bugs, attack checks, requests, grants, holders).
+# Run: SCENARIO=tools/scenarios/c115-measure.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c115a 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 900
+host warp actor BP_AI_WarriorBug_C 900
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1000 timeout=15
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1000 timeout=15
+sleep 15
+host shot c122-fight
+client shot c122-fight
+sleep 15
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1000 timeout=15
+sleep 12
+host quit
+client quit

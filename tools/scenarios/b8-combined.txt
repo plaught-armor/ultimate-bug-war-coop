@@ -1,0 +1,162 @@
+# Build b8 combined run (senior b8 orders, item C). Not run yet: the senior reads the diffs first. One pair, FAST=1,
+# GOD=0 (downs and the all-down death need it), starts on FED_C1M1, travels to FED_C2M1.
+# Rules (docs/STATE.md "Gameplay test scenario rules"): `host clear <r> kill` before each client step and after every
+# load or reconnect; every state-dependent step waits on its log line; both DLLs checked first.
+# Predictions (checked against both logs after the run):
+#  306  client takes the nuke first (support weapon swap by interact): zero re-pickup of the inert spawn; the tally
+#       row "card306: inert spawns N, null returned to game callers 0" prints at every LoadMap enter, zero counts too.
+#  296  client fires the nuke with a re-press during the spool: host "re-press ... held during the spool".
+#  302  client takes nuke ammo with the host 300 m (30000 uu) away: pickup sounds "acting copy <copy> (overlap)".
+#  284  LOS_O01_SO01 by the c177 hand stand (227245, 39891, 8615), before any restart; the level script adds SO02
+#       itself. c126 z fix: `objective now` gives SO01 a stand (the presence's full z extent), not "stand none".
+#       A later `objective complete` of a script-chained step logs "WARN card284: ... also completed its parent".
+#  309  save, mass corpse kill, checkpoint load (the playtest burst): host map totals "0 rows dropped" and the
+#       card309 counts; client 0 E rows for an unknown id, every R round matched.
+#  294  twice: (1) host down, client alive, host checkpoint load: client "host restart", "restart done ... death
+#       screens built 0, respawns in the old world 0"; (2) both down: "second CompleteDeath skipped", "restart done ...
+#       death screens built 1, respawns in the old world 0". Host rows "card143: ... Reload ... sent now, ahead of N
+#       queued frames" and "card290: ... travel row ... sent now, ahead of N queued frames".
+#  297  client boards the mech: "card297: client ... mech ... enter: ..." then owned tag +/- rows as it fires.
+#  298  "card298: client ... possession" and "camera re-init" rows: pitch limits and the camera set per mount.
+#  291  host ragdoll rows gain "mesh tick enabled N, mesh visible N, significance S" (rows only).
+# Run (after the senior's go): systemd-run --user --scope -q -p MemoryMax=12G env LANE=2
+#      SCENARIO=tools/scenarios/b8-combined.txt FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh b8-combined 3600
+# (lane 2: build-b5/dwmapi-b8-5c1988ea9e92dd6c.dll copied into game2/ by hand; no DEPLOY.)
+# Run 1 (22:42) voided at the nuke look: the client's look ran 630 ms after `warp client` and the client pawn had not
+# moved yet (98155 uu). Each `warp client` before a look now waits for the client's own pawn near the host's warp row.
+# Senior review 2026-11-13 changes: (1) 294 both cases clear right after the load and after the client's reconnect;
+# (2) SO01 placed by `objective go` (c126 z fix), the hand point only as a logged fallback (`unless` row "skipped" =
+# the stand path ran); (3) nuke aim, below; sleeps after warps replaced by look within= gates.
+# Nuke blast (296): the radius is not readable from the asset (BP_ProjectileInitData_NukeLauncher is an unversioned
+# zen package, no property names). Logged evidence instead: b7b-2 fired twice from this pickup (client at about
+# 139879 12159 10914, pickup 139715 12082 10741) at P 59.7-59.9 Y -0.3, and neither run log holds a
+# GameplayCue.Impacts.NukeLauncherRound row (the projectile never came down in the run); an old run's P -5 shot
+# impacted 35 ms after firing. So the shot goes at pitch 60 (not 30), yaw 0, and the host stands 1500 uu off the
+# pickup only to clear bugs (b7b-2's client was downed before firing by a WarriorBug at the pickup, host 97100 uu away).
+failsoft
+void unless host dll 5c1988ea9e92dd6c
+void unless client dll 5c1988ea9e92dd6c
+host wait state map=FED_C1M1 pawn=host-own timeout=300
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# --- FED_C2M1 (306 tally row at this LoadMap enter on both sides).
+host mark
+client mark
+host travel next
+client wait log "reconnected \(" since-mark timeout=120
+host wait state map=FED_C2M1 pawn=host-own timeout=180 void
+client wait state pawn=client-own timeout=120
+host wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+client wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+host ui continue
+host warp actor BP_WeaponPickup_NukeLauncher_C_0 1500
+host clear 6000 kill
+# --- 306 / 296: the client takes the support weapon first (nuke, swap by interact) and fires it, re-press in the spool.
+host mark
+client mark
+host warp client BP_WeaponPickup_NukeLauncher_C_0 150
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_WeaponPickup_NukeLauncher_C_0 within=300
+client key E
+client wait log "card021: client GiveWeaponByClass\(BP_WeaponDefinition_NukeLauncher_C" since-mark timeout=10
+client inventory
+client look 0 60
+client key LeftMouseButton 300
+sleep 0.4
+client key LeftMouseButton 3000
+client wait log "card296: client t=\d+ spool-up \S+ ended" since-mark timeout=15
+try host wait log "card296: host t=\d+ re-press of \S+ held during the spool" since-mark timeout=5
+client shot b8-296-client-after-fire
+# --- 302: the host 300 m from the ammo; the client takes nuke ammo.
+host clear 6000 kill
+host warp actor BP_AmmoPickup_NukesSmall_C_0 30000
+host mark
+client mark
+host warp client BP_AmmoPickup_NukesSmall_C_0 300
+client goto actor BP_AmmoPickup_NukesSmall_C_0 10 timeout=30
+client wait goto timeout=30
+client wait log "acting copy \S+ \(overlap\)" since-mark timeout=10
+# --- 284 + c126: LOS_O01_SO01 by the hand stand, before any restart.
+host objective now
+host objective expect LOS_O01_SO01
+try host objective go host
+unless host log "objective go: host kind \S+ .* inside 1" count=1 host warp actor point 227245 39891 8615
+host clear 6000 kill
+try host objective go client
+unless host log "objective go: client kind \S+ .* inside 1" count=1 host warp client point 227345 39891 8615
+host mark
+host objective wait LOS_O01_SO01 90
+host wait log "card049: host sent AddSubObjective\(LOS_O01, LOS_O01_SO02\)" since-mark timeout=30
+host shot b8-284-host-so01-done
+host objectives
+# --- 309 + 294 (1): save; mass corpse kill; host down, client alive; checkpoint load (the playtest burst).
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+host clear 20000 kill
+sleep 2
+host mark
+client mark
+host down host
+host travel checkpoint
+host wait log "card143: host t=\d+ Reload to \S+ \(copy \S+\): sent now, ahead of \d+ queued frames" since-mark timeout=60
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+host clear 6000 kill
+client wait log "card294: client t=\d+ host restart \(" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=120
+host clear 6000 kill
+client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built 0, respawns in the old world 0" since-mark timeout=90
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+try host wait log "card132: host decal map totals: .*card309: " since-mark timeout=5
+# --- 294 (2): both down: death screens, the host's checkpoint load.
+host mark
+client mark
+host down client
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=40
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+host clear 6000 kill
+client wait log "card294: client t=\d+ host restart \(" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=120
+host clear 6000 kill
+try client wait log "card294: client t=\d+ second CompleteDeath skipped" since-mark timeout=30
+client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built 1, respawns in the old world 0" since-mark timeout=90
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+client shot b8-294-client-after-restart
+# --- 297 / 298: objectives to O05 by command (setup only; each script-chained skip logs WARN card284), the client
+# boards the mech and fires.
+host objective complete LOS_O02
+host objective complete LOS_O04
+host objective complete LOS_O03
+host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O05\)" timeout=60
+host wait log "card098: host spawn BP_BaseMech_C " timeout=120
+host clear 6000 kill
+host mark
+client mark
+host warp client BP_BaseMech_C 250
+host wait log "cmd: \d+ warp: server copy \S+ \(.*\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+client wait near {g1} {g2} {g3} 300 timeout=20
+client look actor BP_BaseMech_C within=400
+client key E
+host wait log "card255: host t=\d+ OnWantsToBoardMech mirrored to " since-mark timeout=15
+client wait log "card297: client t=\d+ mech \S+ enter: " since-mark timeout=20
+client wait log "card298: client t=\d+ mech \S+ possession: " since-mark timeout=5
+try client wait log "card298: client t=\d+ mech \S+ camera re-init: " since-mark timeout=10
+client shot b8-297-client-in-mech
+client look 0 20
+client key LeftMouseButton 2000
+client wait log "card297: client t=\d+ mech \S+ tag \+" since-mark timeout=10
+client shot b8-297-client-mech-fire
+host objectives
+client objectives
+client quit
+sleep 2
+host quit

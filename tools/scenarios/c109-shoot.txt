@@ -1,0 +1,29 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 109 (FED_C2M1, FAST=1): the client warps near the bugs and the host downs it (`down client`); while Downed the
+# client fires two bursts with a reload between them. The host stays at the start, so it stands.
+# Run: SCENARIO=tools/scenarios/c109-shoot.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_ENEMYAUDIT=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_ENEMYAUDIT=1 UBWCOOP_C69_LOG=1" tools/run_pair.sh c109a 240
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 1500
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+client shot c109-fight
+host down client
+client wait log "own pawn Up -> Downed" count=1 timeout=15
+client shot c109-downed
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 2000 timeout=15
+sleep 1
+client key R
+sleep 3
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 2000 timeout=15
+client shot c109-after
+sleep 2
+host shot c109-end
+host quit
+client quit

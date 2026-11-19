@@ -1,0 +1,96 @@
+# Card 152 run c152-r2: a falling corpse follows the host's ragdoll, the r2 mechanism (the client's streamed copy
+# simulates with gravity off and is teleported to each sample). The route is r1's (FED_C2M1, the checkpoint field
+# slope at 229312 38956: bugs spawned at z 9000 drop to the slope and slide). Part 2 is rifle kills of a group
+# (MoritaMk1, UBWCOOP_GRANT_WEAPON on the host) and then six quick kills (the moving peak), in place of r1's nuke.
+# The run ends with a travel (the LoadMap enter path logs the stream totals), not with a quit at the field.
+# Predictions in docs/cards/152-ragdoll-fall-stream.md "Run c152-r2". Every state step waits for its log line; the
+# 2 s after each spawn is the copy's replication (a corpse killed before its copy has a NetGUID streams nothing).
+# Run: LANE=2 SCENARIO=tools/scenarios/c152-r2.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=MoritaMk1" tools/run_pair.sh c152-r2 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+client wait near 229512 38956 9100 600 timeout=60
+both look point 229312 39856 8900
+# Part 1: three WarriorBugs killed in the air over the slope, in the client's view.
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 2
+host mark
+client mark
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=3 since-mark timeout=10
+client wait log "card152: client stream start .* at sample \d+ \(live\): simulating, gravity off" count=3 since-mark timeout=10
+client wait log "card152: client bone check guid 0x[0-9a-f]+ sample \d+ \(live\):" count=3 since-mark timeout=10
+client wait log "card152: client stream final guid" count=3 since-mark timeout=20
+host shot fall-final
+client shot fall-final
+# Part 2a: rifle kills of a group. Four WarriorBugs on the field in front of the host, who fires the MoritaMk1 at
+# them (god mode on the host: they reach it and attack). Kills come one by one as the bugs charge into the stream.
+host spawn bug 229112 40456 9000 270
+host spawn bug 229312 40456 9000 270
+host spawn bug 229512 40456 9000 270
+host spawn bug 229712 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+client mark
+host key LeftMouseButton 6000
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=1 since-mark timeout=10
+host look point 229312 39456 8950
+host key LeftMouseButton 6000
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=4 since-mark timeout=20
+try client wait log "card152: client stream final guid" count=4 since-mark timeout=30
+host shot rifle-final
+client shot rifle-final
+# Part 2b: six WarriorBugs killed in quick succession (the moving peak). The 24 per step cap is out of reach here.
+both look point 229312 39856 8900
+host spawn bug 229012 39656 9000 0
+host spawn bug 229212 39656 9000 0
+host spawn bug 229412 39656 9000 0
+host spawn bug 229612 39656 9000 0
+host spawn bug 229112 40056 9000 0
+host spawn bug 229512 40056 9000 0
+sleep 2
+host mark
+client mark
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=6 since-mark timeout=10
+try client wait log "card152: client stream final guid" count=6 since-mark timeout=30
+host shot group-final
+client shot group-final
+# Part 3: the late join. The replay sends end state only (finding (d)): no stream sample goes to the rejoined PC.
+client disconnect
+host mark
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+sleep 2
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card132: host pose snap .* snap 1:" count=2 since-mark timeout=20
+client wait log "card045: client t=\d+ reconnected" timeout=120
+try client wait log "card132: client pose apply .*: \d+ bodies, host root" new timeout=60
+try client wait state pawn=client-own timeout=60
+# Part 4: the travel. The LoadMap enter path logs both sides' stream and wait totals for FED_C2M1.
+host mark
+client mark
+host travel next
+try host wait log "card152: host pose stream map totals" since-mark timeout=60
+try client wait log "card152: client stream gravity map totals" since-mark timeout=60
+client wait log "reconnected \(" timeout=120
+try client wait state pawn=client-own timeout=120
+try host wait state pawn=host-own timeout=120
+host quit
+client quit

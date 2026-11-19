@@ -1,0 +1,79 @@
+# Card 132 bug projectile check (FED_C2M1 by UBWCOOP_TRAVEL, FAST=1): both players on autoplay with the client in,
+# about 10 minutes of wild bugs. Every pooled projectile launch is logged on both sides (card132: launch) and counted
+# per class per side with each digest round (card132: <side> round <r> launches). Paired shots every 30 s show shots in
+# flight on both screens.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-proj.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c132p1 1200
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host autoplay on
+client autoplay on
+sleep 30
+host shot c132p-01
+client shot c132p-01
+sleep 30
+host shot c132p-02
+client shot c132p-02
+sleep 30
+host shot c132p-03
+client shot c132p-03
+sleep 30
+host shot c132p-04
+client shot c132p-04
+sleep 30
+host shot c132p-05
+client shot c132p-05
+sleep 30
+host shot c132p-06
+client shot c132p-06
+sleep 30
+host shot c132p-07
+client shot c132p-07
+sleep 30
+host shot c132p-08
+client shot c132p-08
+sleep 30
+host shot c132p-09
+client shot c132p-09
+sleep 30
+host shot c132p-10
+client shot c132p-10
+sleep 30
+host shot c132p-11
+client shot c132p-11
+sleep 30
+host shot c132p-12
+client shot c132p-12
+sleep 30
+host shot c132p-13
+client shot c132p-13
+sleep 30
+host shot c132p-14
+client shot c132p-14
+sleep 30
+host shot c132p-15
+client shot c132p-15
+sleep 30
+host shot c132p-16
+client shot c132p-16
+sleep 30
+host shot c132p-17
+client shot c132p-17
+sleep 30
+host shot c132p-18
+client shot c132p-18
+sleep 30
+host shot c132p-19
+client shot c132p-19
+sleep 30
+host shot c132p-20
+client shot c132p-20
+host autoplay off
+client autoplay off
+host objectives
+client objectives
+sleep 10
+host quit
+client quit

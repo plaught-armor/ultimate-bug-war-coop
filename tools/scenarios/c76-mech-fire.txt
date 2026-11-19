@@ -1,0 +1,89 @@
+# Card 076 probe (c76): card 075's pod run on FED_C4M1, then each side fires a mech at the nearest warrior bug.
+# The client enters a pod mech (as c75b), fires primary 3 s and secondary once, and leaves; then the host enters the
+# same mech, fires the same way and leaves. Both logs carry the card076 lines (UBWCOOP_C76_LOG=1). Shots on both
+# sides during each side's fire: three 1 s bursts, shots after each. Before firing, each side's mech is warped
+# 1000 uu short of the nearest warrior bug so the rounds can reach it. (Warping the watching side near the mech too
+# got it downed by the bugs in c76d and c76e, so the watcher stays where it is.)
+# Run: SCENARIO=tools/scenarios/c76-mech-fire.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_C76_LOG=1" CLIENT_ENV="UBWCOOP_C76_LOG=1" run65.sh c76c 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+client shot pods
+host shot pods
+host warp client BP_BaseMech_C 300
+host warp actor BP_BaseMech_C 450
+client wait log "card075: client t=[0-9]+ mechs 0 -> [1-9]" timeout=120
+sleep 3
+client look actor BP_BaseMech_C 150
+host look actor BP_BaseMech_C 150
+sleep 1
+client shot pad
+client key E
+host wait log "card075: host MechEnter from" timeout=10
+client wait log "possess: AcknowledgePossession.*BP_BaseMech_C" timeout=10
+sleep 3
+client shot enter
+host warp client BP_AI_WarriorBug_C 1000
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_BaseMech_C 100
+sleep 1
+client shot c-aim
+client key LeftMouseButton 1000 timeout=15
+client shot c-fire1
+host shot c-fire1
+client key LeftMouseButton 1000 timeout=15
+client shot c-fire2
+host shot c-fire2
+client key LeftMouseButton 1000 timeout=15
+client shot c-fire
+host shot c-fire
+sleep 1
+client key RightMouseButton 300 timeout=10
+sleep 1
+client shot c-alt
+host shot c-alt
+sleep 2
+client key E 2500 timeout=15
+host wait log "card075: host MechLeave from" timeout=10
+sleep 3
+client shot leave
+host look actor BP_BaseMech_C 0
+host shot leave
+sleep 2
+host warp actor BP_BaseMech_C 300
+sleep 1
+host look actor BP_BaseMech_C 150
+host key E
+sleep 2
+sleep 3
+host warp actor BP_AI_WarriorBug_C 1000
+sleep 2
+host look actor BP_AI_WarriorBug_C 50
+client look actor BP_BaseMech_C 100
+sleep 1
+host shot h-aim
+host key LeftMouseButton 1000 timeout=15
+host shot h-fire1
+client shot h-fire1
+host key LeftMouseButton 1000 timeout=15
+host shot h-fire2
+client shot h-fire2
+host key LeftMouseButton 1000 timeout=15
+host shot h-fire
+client shot h-fire
+sleep 1
+host key RightMouseButton 300 timeout=10
+sleep 1
+host shot h-alt
+client shot h-alt
+sleep 2
+host key E 2500 timeout=15
+sleep 3
+host shot h-leave
+client quit
+sleep 2
+host quit

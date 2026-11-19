@@ -1,0 +1,76 @@
+# Card 145 run: pickup enable rows ('E' placed, 'N' card 104 copy), one FAST=1 pair run on FED_C1M1 (GOD=0).
+# Host weapon take (an 'E' row keyed by name and location), crate kills next to both players (relayed drops: 'P' then
+# 'N'), a client walk over the drops (the client's own overlap is blocked; the host's take sends 'N 0'), the resupply
+# rack (key Four, c140 order), a wait for a pickup respawn ('E 1'), two digest rounds, then travel next (card 026 rtt).
+# Predictions in docs/cards/145-crate-drop-pickups.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c145-pickups.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+sleep 2
+# Placed weapon take on the host: one 'E ... 0' row, applied on the client at the same place.
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+host wait log "card098: host t=\d+ world E BP_WeaponPickup_MoritaMk1_C_\d+ .* 0: sent to 1 of 1" timeout=10
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_\d+ .*: (applied|already)" timeout=10
+# Crate drops: both players next to crates 04_C_5 and 04_C_6 (7544 6629, 7568 6514).
+host warp actor point 7300 6400 100
+host warp client point 7300 6750 100
+client wait near 7300 6750 100 300 timeout=10
+host look point 7556 6570 0
+client look point 7556 6570 0
+sleep 1
+host mark
+client mark
+host kill actor BP_KillableCrate_04_C_5
+host kill actor BP_KillableCrate_04_C_6
+try host wait log "card098: host t=\d+ world P \S*Pickup\S* .*sent to 1 of 1" since-mark timeout=10
+try client wait log "card104: client t=\d+ copy of host \d+: \S*Pickup" since-mark timeout=10
+try client wait log "card145: client t=\d+ world N " since-mark timeout=10
+sleep 4
+client shot c145-client-drops
+host shot c145-host-drops
+# The client walks over the drops: its own overlap is blocked on the copy, the host's take sends 'N 0'.
+host warp client point 7556 6570 100
+sleep 3
+client shot c145-client-taken
+host shot c145-host-taken
+# The resupply rack (c140 order): its pickups are card 104 copies with 'M' and 'N' rows.
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+sleep 1
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "SetObjectiveVisibility\(TacSupport_SO41\) bools 11" timeout=60
+try host wait log "card098: host t=\d+ world P \S*ResupplyRack" timeout=30
+sleep 8
+client shot c145-client-rack
+host shot c145-host-rack
+# A respawn of a taken placed pickup ('E ... 1'), then two digest rounds.
+try host wait log "card098: host t=\d+ world E \S+ .* 1: sent to 1 of 1" timeout=90
+client mark
+client wait log "card132: client t=\d+ digest round \d+ begins" since-mark timeout=40
+client wait log "card132: client t=\d+ digest round \d+ begins" since-mark count=2 timeout=40
+client wait log "card132: client round \d+: actors .* mismatches 0 " since-mark count=2 timeout=10
+client mark
+host travel next
+client wait log "card120: client t=\d+ minimap origin" since-mark timeout=240
+client mark
+client wait log "card026: client pong \d+ from pc .*: rtt " since-mark timeout=30
+sleep 5
+client quit
+sleep 2
+host quit

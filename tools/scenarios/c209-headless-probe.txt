@@ -1,0 +1,22 @@
+# Card 209 headless probes (senior 2026-11-13): SOLO=1 host only, FED_C1M1 FAST, about 2 minutes. One file for both
+# probes. It asks: does the game boot to the map, do test verbs answer (state line, ammo fill, objectives), does a shot
+# write a file, and does the game exit clean on wineserver -k (run_pair kills it after the scenario; no quit verb).
+# Probe 1: GAME_ARGS=-nullrhi. Probe 2: WRAP="gamescope --headless -w 640 -h 360 --".
+# Run (probe 1):
+#   systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c209-headless-probe.txt SOLO=1
+#   DEPLOY=1 FAST=1 GAME_ARGS=-nullrhi HOST_EXTRA_ENV="UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen
+#   UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh c209-nullrhi 300
+failsoft
+void unless host dll c328f2f6a759ece0
+host wait state map=FED_C1M1 pawn=host-own timeout=240 void
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host shot probe-hud
+host ammo fill
+host objectives
+host warp actor BP_PlayerPresence_C_2 300
+sleep 3
+host look actor BP_PlayerPresence_C_2
+host shot probe-look
+sleep 30
+host wait state map=FED_C1M1 pawn=host-own timeout=10

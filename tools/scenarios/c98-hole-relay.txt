@@ -1,0 +1,32 @@
+# Card 098 proof: the host's bug hole death reaches the client (WorldOp) and a rejoining client (journal replay).
+# FED_C2M1 (HOST_EXTRA_ENV UBWCOOP_TRAVEL). `kill actor` on a satchel building calls ReceiveOnSatchelExploded(false)
+# through the hooked path, as a satchel's explosion does.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 700
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 900
+sleep 2
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c98p-client-before
+host kill actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+host wait log "card098: host t=\d+ world S BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 .*sent to 1 of 1" timeout=15
+client wait log "card098: client t=\d+ world S .*applied" timeout=5
+sleep 6
+host shot c98p-host-after
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c98p-client-after
+# Rejoin.
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card098: host t=\d+ world journal replay to .*: 1 of 1" timeout=60
+client wait log "card098: client t=\d+ world S .*applied" count=2 timeout=10
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 900
+sleep 4
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c98p-client-rejoin
+host quit
+client quit

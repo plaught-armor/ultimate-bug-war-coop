@@ -1,0 +1,24 @@
+# Card 073 step 1: the host's own grenade path (baseline). The host takes a frag pickup, fires, throws, throws again.
+# Run: SCENARIO=tools/scenarios/c73-host-diag.txt HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C73_LOG=1" \
+#      CLIENT_ENV="UBWCOOP_C73_LOG=1" run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+host shot after-pickup
+host look 0 -30
+host key LeftMouseButton 800
+sleep 2
+host key G
+sleep 4
+host shot after-throw
+client shot after-host-throw
+host key G
+sleep 3
+host shot after-second-g
+sleep 2
+client quit
+sleep 2
+host quit

@@ -1,0 +1,121 @@
+# Card 376 proof (b60 a48aa4475e889bf7 run c376b60; b61 bd0f098555615ca2 card 376 fix; b62 6d664b81169d8df2 part 2; b63 e7cc13d4e1756cc2 part 2 redo): pause-menu restarts with both players Up, FED_C1M1, FAST=1, GOD=0.
+# Owed by STATE.md / card 294: "pause-menu restart while both live, one transition on the client". No run had clicked
+# the client's own pause-menu buttons before (card 055: the client's pause menu lists RESTART CHECKPOINT and RESTART
+# MISSION; only the death screen's buttons are disabled on the client).
+# Menu open: `winkey Escape` (card 222: the real key; `key Escape` never opened the client's menu in c171-r1), proved
+# by the card067 "WB_Stack_C RequestGamePause" dump. Clicks: `ui click` (card 121, through detour_process_event).
+# Confirm functions (static, WB_Pause_Menu.uasset name map): the pause menu holds three parameterless confirm events,
+# ConfirmQuitToMainMenu (c369, clicked as "stack element 0 of 2": the WB_Binary_Question_Popup is element 1 and the
+# confirm function lives on the pause menu), RestartCheckpoint and RestartLevel (with the K2Node_CreateDelegate bound
+# to the popup's OnLeftOptionSelected). So: button click opens the popup, `ui click RestartCheckpoint|RestartLevel`
+# confirms. Guard: if the button itself already ran the action (no popup), the `when` skips the confirm click, so the
+# action never runs twice; the card121 click row's "of N" settles whether the popup was up.
+# Trace and predictions:
+# A. Host RESTART CHECKPOINT (detour_c121_load, host branch, context WB_Pause_Menu_C, load pawns 1): "card121: host
+#    ... save engine load runs (Load, context WB_Pause_Menu_C ...)", c294_host_load("in-place load") -> card290 travel
+#    row "(in-place load)"; client card294 "host restart (in-place load)". The only save is the map's first checkpoint,
+#    taken before the client's pawn existed (as c371b59), so card371 "no player pawn after the load" and the card143
+#    Reload "none"; the client rejoins ("reconnected" try 1), card307 spawns it beside the host, and one card294
+#    "restart done ... death screens built 0". No card043 transition either side. Both Up at the checkpoint after.
+#    Digest round after the load: mismatches only card 218's spawner.
+# B. Client RESTART CHECKPOINT: detour_c121_load client branch: file io success false, one "card121: client ... save
+#    engine load skipped (Load, context WB_Pause_Menu_C ...)". No Browse row, no card045 follow row, no host card121
+#    load row. Unknown (Blueprint): the client's screen after the failed load; shot 3 s after, then close the menu by
+#    the card 222 path, then a short client walk that arrives (goto result row).
+# C. Client RESTART MISSION. Senior's prediction was the card045 follow; the static trace says otherwise:
+#    RestartCurrentLevel -> OpenLevel -> a local Browse to /Game/Maps/FED/FED_C1M1 while in the host's session, and
+#    c45_browse_enter runs c154_client_refuses first (restart.cpp:284: local, non-menu map, not closed/failed, in
+#    session) -> "WARN card154: client ... own Browse to \"/Game/Maps/FED/FED_C1M1\" refused: in the host's session,
+#    the host chooses the map", Browse returns Failure; c45_client_browse never runs. Predicted: that WARN row once, 0
+#    card045 "session dropped" / "try" / "reconnected" rows in a 15 s window, the client still in the session (a host
+#    card132 round reaches it), no host travel row. Unknown: the engine's reaction to the Failure return (card 345
+#    chose Success for its own refusal for that reason) and the client's screen; shot.
+# D. Host RESTART MISSION: c346_host_seamless (as c373b57b phase A): host "card346 ... seamless travel to
+#    ./Game/Maps/FED/FED_C1M1 ... started by ServerTravel", client "card346 ... seamless map change done: world
+#    FED_C1M1", 0 client reconnect rows, the card 135/320 hold: client GameStarted, IntroDone, host "hold off", then
+#    both pawns, a digest round with mismatches only card 218's spawner.
+# Negative windows: `when` reads the whole log, so each test regex also matches the phase's own marker row (the
+# click, the card154 refusal, the card350 ClientTravel); the fail step runs only when a card045 row came after it.
+# Totals: FATAL/ERROR 0; WARN class diff against c371b59 (A) and c373b57b (D); card154 is the one predicted new row.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c376-pause-restart.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 600
+# Expected wall: about 5 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# b61 rerun (card 376 fix, docs/cards/376-client-restart-mission-drop.md): A and B proved on b60 (c376b60) and cut;
+# C and D need only both players in the session on FED_C1M1. C predictions: the WARN card154 row once, then for 15 s no
+# card052 travel failure, no "closed" Browse option, no card045 session dropped / try / reconnected row, no new
+# AcknowledgePossession on the client (same pawn); host: no Logout, no join replay (read from the host log after the
+# run). Client shot 3 s after the confirm. A pause menu still up or a paused client is a second defect: shot and rows,
+# then the RESUME button click closes it and the run goes on to D.
+# --- C. The client's RESTART MISSION: card 154 refuses the client's own mission Browse and reports success.
+# Both on the c371/c376b60 stands first (proven standable), so the client's walk after C starts from a known point.
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+client winkey Escape 150
+client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+client ui click BndEvt__WB_Pause_Menu_RESTARTLEVEL_button
+client wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_RESTARTLEVEL_button" since-mark timeout=5
+client wait log "card376: client t=\d+ pause menu BndEvt__WB_Pause_Menu_RESTARTLEVEL_button\S* not run" since-mark timeout=3
+client shot c-popup-client
+# The confirm itself, called directly (a popup opened before the session, or any other route to it): not run either.
+client ui click RestartLevel
+client wait log "card376: client t=\d+ pause menu RestartLevel not run" since-mark timeout=3
+try client wait log "card045: client t=\d+ Browse URL|card067: seen WB_Loading_Screen_Final_C|card052: t=\d+ travel failure|card045: client t=\d+ (session dropped|try \d+ at|reconnected)|possess: AcknowledgePossession" since-mark timeout=5
+when client last "card376: client t=\d+ pause menu|card045: client t=\d+ Browse URL|card067: seen WB_Loading_Screen_Final_C|card052: t=\d+ travel failure|card045: client t=\d+ (session dropped|try \d+ at|reconnected)|possess: AcknowledgePossession" "Browse URL|WB_Loading_Screen|card052|session dropped|try \d+ at|reconnected|possess" client wait log "card376: a Browse, loading screen or drop followed the refused restart" timeout=1
+client shot c-after3-client
+client shot c-after15-client
+try client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=1
+when client last "card067: dump \d+ in \S+ \(WB_Stack_C Request" "RequestGamePause" client ui click BndEvt__WB_Pause_Menu_RESUME_button
+try client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=4
+when client last "card067: dump \d+ in \S+ \(WB_Stack_C Request" "RequestGamePause" client winkey Escape 150
+when client last "card067: dump \d+ in \S+ \(WB_Stack_C Request" "RequestGamePause" client wait log "card376: client still paused after RESUME and Escape" timeout=1
+client wait state pawn=client-own timeout=10
+client goto 6654 11259 97 120
+client wait goto timeout=30
+client shot c-closed-client
+host shot c-host
+# --- D. The host's RESTART MISSION: seamless, the client follows with no reconnect.
+host mark
+client mark
+host winkey Escape 150
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host ui click BndEvt__WB_Pause_Menu_RESTARTLEVEL_button
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_RESTARTLEVEL_button" since-mark timeout=5
+try host wait log "card346: host t=\d+ seamless travel to" since-mark timeout=3
+host shot d-popup-host
+when host last "card(121: ui click|346: host t=\d+ seamless travel to)" "ui click" host ui click RestartLevel
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C1M1.* started by ServerTravel" since-mark timeout=30
+client wait log "card350: client t=\d+ ClientTravel ./Game/Maps/FED/FED_C1M1. \(seamless 1\)" since-mark timeout=30
+client wait log "card346: client t=\d+ seamless map change done: world FED_C1M1" since-mark timeout=120
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1" since-mark timeout=60
+try client ui continue
+client wait log "card320: client t=\d+ IntroDone" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after" since-mark timeout=30
+host wait log "playlog: host t=\d+ clock \d+ " since-mark timeout=60
+try client wait log "card045: client t=\d+ (session dropped|try \d+ at|reconnected)" since-mark timeout=1
+when client last "card350: client t=\d+ ClientTravel|card045: client t=\d+ (session dropped|try \d+ at|reconnected)" "card045" client wait log "card376: client D reconnected" timeout=1
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot d-after-host
+client shot d-after-client
+sleep 2
+client quit
+sleep 2
+host quit

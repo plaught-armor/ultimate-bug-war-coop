@@ -1,0 +1,94 @@
+# Card 374 proof (b57 78025485639b5da3, no build): the client leaves by its own death screen's Exit, the host, alone on
+# its death screen, clicks RESTART CHECKPOINT, then the client comes back. FED_C1M1, FAST=1, GOD=0. Both are put down by
+# code as in c371 (client first, so the all-down decision fires); the client's death screen has 3 buttons disabled and
+# Exit enabled. Both clicks go through the real click path (`<role> ui click`, card 121).
+# Trace:
+#  - The client's Exit runs the same Blueprint as the host's (c373b57b): STCommonUtilityLibrary:OpenMenuLevel, a local
+#    Browse to /Game/Maps/3D_Frontend/3D_Frontend?FromGame. In restart.cpp c45_browse_enter: c154_client_refuses
+#    passes it (menu map), c345_client_stays passes it (no FromLevelComplete), then c45_client_browse: in session,
+#    local, follow Off, and no FromLevelQuit option (line ~82 only covers the pause menu QUIT), so the follow is armed:
+#    "card045: client ... session dropped (Browse to local map \"/Game/Maps/3D_Frontend/3D_Frontend\"): reconnect to
+#    ...". After the frontend loads, "local map loaded ... first try in 3000 ms", then the try and "reconnected".
+#    Prediction: the client IS pulled back into the host's session within about 10 s of its Exit. That breaks the
+#    user's rule (a player who pressed Exit stays out until it chooses to rejoin): a card 373 defect, stop and report.
+#  - Host side: the host is already Dead with g_c43.all_down set, so card 366 (all down when the last teammate left)
+#    does not fire again; card 355 only fires during the card 320 hold. Neither fires, and neither should: the host
+#    stays on its death screen with its buttons working.
+#  - RESTART CHECKPOINT with no client: the c371 in-place load with no copy PC, so 0 card371 and 0 card143 Reload rows
+#    to a client (if the client is still away), and "card045: host ... respawn in place"; host Up at the checkpoint.
+#  - The client's return: there is no relaunch-free client rejoin command in drive.py (`disconnect` only feeds the
+#    same card 045 follow; UBWCOOP_TRAVEL turns the lobby panel keys off). The predicted follow is the rejoin here.
+#    It joins as a new player: card307 spawn beside the Up host, the card 135 join replay, a digest round with 0
+#    mismatches apart from card 218's spawner.
+# c374a57 (b57) confirmed the pull-back: "session dropped" then "reconnected" 5710 ms after the Exit (card 373).
+# b58 30caa5dfea45b55b (card 373 fix, restart.cpp c45_client_browse: a local in-session Browse with FromGame arms no
+# follow) predictions: the card373 "no reconnect" row once; 0 card045 "session dropped", "try" and "reconnected" rows
+# in a 15 s window; the client stays on 3D_Frontend (net mode 0, shot front-client). Host as c374a57: respawn in place,
+# Up at the checkpoint, 0 card366/355/344 rows. The rejoin is `client travel join` (card 374 test command: c52_join,
+# the lobby join button's path, with the run's UBWCOOP_TRAVEL address): card374 and card052 "join armed" rows, world
+# FED_C1M1 net mode 3, card307 spawn beside the host, the card135 join replay and card320 confirm, a digest round with
+# mismatches only card 218's spawner, FATAL/ERROR 0, no new WARN class.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c374-client-exit-rejoin.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 420
+# Expected wall: about 3 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# --- 1. Both down, client first.
+host warp actor point 6554 11459 197
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+host wait stand 6554 11459 97 400 timeout=10
+client wait stand 6654 11459 97 400 timeout=10
+host mark
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+host wait log "card044: host death screen: 5 widgets" since-mark timeout=20
+client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+host shot dead-host
+client shot dead-client
+# --- 2. The client's Exit.
+host mark
+client mark
+client ui click BndEvt__WB_PlayerDeathScreen_Exit
+client wait log "card045: client t=\d+ Browse URL: .* map ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=20
+client wait log "card373: client t=\d+ left the session by the death screen Exit \(FromGame\): no reconnect" since-mark timeout=5
+# --- 3. The host alone clicks RESTART CHECKPOINT.
+host ui click BndEvt__WB_PlayerDeathScreen_LoadLastSave
+host wait log "card045: host t=\d+ respawn in place \(new pawn" since-mark timeout=30
+host wait state pawn=host-own timeout=30
+host wait stand -1769 1820 296 800 timeout=15
+# --- 4. b58: the client stays out. A 15 s window on the follow's rows: the wait is expected to time out (TRY-FAIL);
+# any match fails the run at the `when` step. The client shot shows its own frontend.
+try client wait log "card045: client t=\d+ (session dropped|try \d+ at|reconnected)" since-mark timeout=15
+when client last "card045: client t=\d+ (session dropped|try \d+ at|reconnected)" "." client wait log "card374: pulled back by the follow" timeout=1
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 0\)" since-mark timeout=5
+client shot front-client
+# --- 5. The client rejoins the way a player does: the lobby join button's path (c52_join), `travel join`.
+client mark
+client travel join
+client wait log "card374: client t=\d+ travel join: c52_join" since-mark timeout=5
+client wait log "card052: t=\d+ join armed" since-mark timeout=5
+client wait log "card052: t=\d+ world FED_C1M1 \(package /Game/Maps/FED/FED_C1M1, net mode 3\)" since-mark timeout=60
+host wait log "card135: host t=\d+ join replay" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+try client ui continue
+client wait stand -1769 1820 296 1500 timeout=30
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot back-host
+client shot back-client
+sleep 2
+client quit
+sleep 2
+host quit

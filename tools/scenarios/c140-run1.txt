@@ -1,0 +1,147 @@
+# Cards 140, 142, 148, 135: one combined run (senior, 2026-11-08). FED_C2M1, FAST=1, the host at TimeDilation 2.0.
+# Predictions are in docs/cards/140-npc-movement-send-gaps.md "One run". Lane 2 only (prefix2; save dir backed up).
+#  140: P1-P5 and P(b) from the netbudget gate/pace/stall lines in the fight windows.
+#  142: 0 reason 65 drops at the rejoin (the journal replay goes through the card 140 pace queue).
+#  148: the client applies M and R gib rows (samples > 0, rest checks), bad rows 0; GibPart budget windows reported.
+#  135: UBWCOOP_TEST_SKIP=1 from run_pair: startup movies skipped by movieskip on both sides, any cinematic by the
+#       card 130 skip path.
+# Run: LANE=2 SCENARIO=tools/scenarios/c140-run1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c140a 1200
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=240
+host ui continue
+sleep 3
+host speed 2
+host objectives
+client objectives
+# The fight: both players at the checkpoint field (hb72's soak point), two nukes, then 10 rounds of 3 WarriorBugs.
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+sleep 2
+client wait near 229612 38956 9100 600 timeout=60
+host spawn bug 229312 40456 9000 270
+host spawn bug 229512 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 8
+host spawn bug 229312 40456 9000 270
+host spawn bug 229112 40456 9000 270
+sleep 2
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 8
+both look point 229312 39956 8900
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+both shot c140-fight
+# The rejoin: the journal replay (decals, fx, gibs, corpses from the fight) goes through the pace queue (card 142).
+sleep 5
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+sleep 10
+try host warp client point 229612 38956 9100
+sleep 2
+both look point 229312 39956 8900
+both shot c140-rejoin
+# A short fight after the rejoin, then one digest round.
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+client mark
+try client wait log "card132: client t=\d+ digest round \d+ snapshot" since-mark timeout=90
+sleep 10
+host objectives
+client objectives
+host quit
+client quit

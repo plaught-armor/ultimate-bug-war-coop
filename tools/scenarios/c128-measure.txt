@@ -1,0 +1,40 @@
+# Card 128 measure: the client hitches through the FED_C3M1 dropship flight (twelve 2 s stops 0.3 s apart, like the
+# c125zb client that ran 0.6-2.2 s pong round trips) and, after landing, stops for 70 s, past the 60 s timeouts the
+# c128c run logged. The card128: lines name every close and teardown with its reason and caller chain.
+# Run: SCENARIO=tools/scenarios/c128-measure.txt DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen" CLIENT_EXTRA_ENV="" tools/run_pair.sh c128d 480  (no FAST=1)
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+sleep 5
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+client stall 2
+sleep 0.3
+host wait log "DescendToLandCompleted\(" timeout=90
+sleep 5
+client stall 70
+host wait log "card128: .* (closed|cleaned up)" timeout=10
+client wait log "card128: .* (closed|cleaned up)|card052: .*failure" timeout=90
+sleep 5

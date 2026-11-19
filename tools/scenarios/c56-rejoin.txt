@@ -1,0 +1,57 @@
+# Card 056: pickups taken on the host disappear on the client, and stay gone across a rejoin.
+# The client walks over the frag grenade pickup (taken on the host by its server copy); the host takes the Morita
+# Mk1 weapon pickup with E. Client shots before and after each, then the client disconnects (console "disconnect";
+# card 045's follow reconnects it), gets the host's PickupGone journal at its first Pong, and is shot at both spots.
+# (FED_C1M1's other placed weapon pickup, BP_WeaponPickup_MoritaMk1_C_1, is the TacSupport_SO2 objective's actor.)
+# Run: SCENARIO=tools/scenarios/c56-rejoin.txt HOST_ENV="UBWCOOP_AUTODROPSHIP=1" run65.sh <tag> 520
+# Card 183 run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c56-rejoin.txt DEPLOY=1 FAST=1
+#   HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 900. Card 183 steps: the client's Morita_C_1
+#   pickup and its card 162 line, the host mark, the Logout line, a client shot and the rejoined copy's sound line.
+#   The sleeps are gone (card 183: no dead time); look and shot steps wait for their cmd done lines. The card 056
+#   PickupGone lines no longer exist (card 098/145 world E rows replaced them); the waits match those rows.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+client goto actor BP_GrenadeAmmoPickup_Frag_C 400
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot before-frag
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+host wait log "card098: host t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0: sent to 1 of 1" timeout=15
+client wait log "card145: client t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0 \(.*(applied|already)" timeout=5
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 500
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot after-frag
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client shot before-morita
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 120
+host look actor BP_WeaponPickup_MoritaMk1_C_0
+host key E
+host wait log "card098: host t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0: sent to 1 of 1" timeout=15
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0 \(.*(applied|already)" timeout=5
+client shot after-morita
+host shot after-morita
+# Card 183: a card 162 line from the first server copy. The client takes the other placed Morita (relayed E); the
+# copy's weapon swap plays MS_FLY_Weapon_Drop_Generic with no attenuation (c162-r3, c172-r1, c182-r1).
+host mark
+host warp client BP_WeaponPickup_MoritaMk1_C_1 120
+client look actor BP_WeaponPickup_MoritaMk1_C_1
+client key E
+host wait log "card162: host t=\d+ remote sound MS_FLY_Weapon_Drop_Generic from BP_Weapon" since-mark timeout=10
+# Rejoin.
+host mark
+client disconnect
+host wait log "card140: host Logout: pace queue" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card098: host t=\d+ world journal replay to .*: [1-9]\d* of" since-mark timeout=60
+client key LeftMouseButton 300
+host wait log "(card162: host t=\d+ remote sound|playlog: host t=\d+ audio) \S+ from BP_" since-mark timeout=10
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0 \(.*(applied|already)" count=2 timeout=10
+client wait log "card145: client t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0 \(.*(applied|already)" count=2 timeout=10
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 500
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client shot rejoin-morita
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot rejoin-frag
+client quit
+host quit

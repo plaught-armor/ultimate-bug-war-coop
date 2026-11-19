@@ -1,0 +1,55 @@
+# Card 146 r1 proof, one FAST=1 pair run on FED_C1M1 (GOD=0). Predictions in docs/cards/146-dead-npcs-on-join.md (r1).
+# 1. Bugs spawned beside both players, killed after more than 1 s in the client's view: live deaths, no corpse wait.
+# 2. The client rejoins with those corpses on the ground: each corpse arrival is posed (the arrival clock counts from
+#    the first Pong). 3. A checkpoint save notes the rescue anchor. 4. All down, then the server copy goes below KillZ
+#    (-22000): it goes back to c46_rescue_spot and the client moves its own pawn there (WarpTo).
+# Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c146-proof.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+try host wait log "card146: host t=\d+ checkpoint save by " timeout=60
+failsoft
+# 1. Live deaths in view.
+host warp actor point 12500 14100 400
+host warp client point 12600 14200 400
+client wait near 12600 14200 400 300 timeout=10
+client look point 12300 14100 400
+host spawn bug 12200 13900 400 0
+host spawn bug 12200 14300 400 0
+host spawn bug 12100 14100 400 0
+sleep 3
+client mark
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+client wait log "card038: client death edge BP_AI_WarriorBug_C" since-mark timeout=10
+sleep 10
+# 2. Rejoin with the corpses down.
+client mark
+host mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card137: client corpse arrival .* posed " since-mark timeout=40
+host warp client point 12600 14200 400
+client wait near 12600 14200 400 300 timeout=10
+# 3/4. All down, then the server copy below the kill height.
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=20
+host mark
+client mark
+host warp client point 12600 14200 -23000
+host wait log "card146: host t=\d+ kill floor while all down: " since-mark timeout=15
+client wait log "card146: client t=\d+ WarpTo " since-mark timeout=10
+sleep 2
+client quit
+sleep 2
+host quit

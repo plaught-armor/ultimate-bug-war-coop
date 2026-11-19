@@ -1,0 +1,35 @@
+# Card 396 run 2 (prediction 5, receiver-side visual proof): FED_C3M1 by direct travel, the keep-screen flag on both
+# sides, AUTODROPSHIP off (UBWCOOP_C135_KEEP_SCREEN=1 has no effect with it). FAST=1 without AUTODROPSHIP logs
+# "WARN config: UBWCOOP_SKIP_FLIGHT=1 needs UBWCOOP_AUTODROPSHIP=1 -- off" (expected). Client shots at its
+# GameStarted row, right after (the shot step's own latency, about 250 ms), and after the card 337 "world rendering on
+# ... (title screen up)" row: each must show black or the loading screen, never the map.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c396-r2.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C135_KEEP_SCREEN=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C135_KEEP_SCREEN=1" tools/run_pair.sh c396b83r2 900
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C3M1 timeout=300 void
+host wait log "card135: host t=\d+ screen up: \S+ chapter -?\d+ level -?\d+ \(GetChapterID, GetLevelID\)" timeout=300
+client wait state map=FED_C3M1 timeout=180
+client mark
+# 1. The client's GameStarted: shots at the row and right after it.
+client wait log "\] card135: client GameStarted t=\d+ on FED_C3M1 " since-mark timeout=120
+client shot c396-c-started
+client shot c396-c-started2
+# 2. The cover lifts 500 ms after the screen is up (screen kept): third shot.
+client wait log "card337: client t=\d+ world rendering on after \d+ ms \(title screen up\)" since-mark timeout=30
+client shot c396-c-cover-off
+host shot c396-h-screen
+# 3. Both continue; the hold releases.
+host mark
+host ui continue
+host wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+try host wait log "card320: host t=\d+ hold off .*\(all confirmed\)" since-mark timeout=30
+client shot c396-c-end
+client quit
+sleep 2
+host quit

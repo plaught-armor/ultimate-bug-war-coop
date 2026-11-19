@@ -1,0 +1,25 @@
+# Client bug animation probe (playtest 2026-11-07: arachnids do not animate and show no blood on the client).
+# FED_C2M1, FAST=1, card 041 trace on both sides: every 3 s each side logs its 4 nearest NPCs' animator state
+# (animprobe lines). Screenshots both sides every 15 s.
+# Run: LANE=2 SCENARIO=tools/scenarios/anim-probe.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_C41_ANIM_TRACE=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C41_ANIM_TRACE=1" tools/run_pair.sh ap1 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+host autoplay on
+client autoplay on
+sleep 45
+host shot ap-1
+client shot ap-1
+sleep 15
+host shot ap-2
+client shot ap-2
+sleep 15
+host shot ap-3
+client shot ap-3
+sleep 15
+host autoplay off
+client autoplay off
+host quit
+client quit

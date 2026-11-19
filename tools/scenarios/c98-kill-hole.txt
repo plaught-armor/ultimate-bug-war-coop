@@ -1,0 +1,20 @@
+# Card 098: how a bug hole dies. FED_C2M1 (HOST_EXTRA_ENV UBWCOOP_TRAVEL); the host kills the first LOS bug hole with
+# InstaKillTarget (`kill actor`) and the card098 hooks log every world change it makes; the client watches.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 700
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 900
+sleep 2
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot before
+host kill actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+sleep 6
+host shot after
+client shot after
+host objectives
+client objectives
+host quit
+client quit

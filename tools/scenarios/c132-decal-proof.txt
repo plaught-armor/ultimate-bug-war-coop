@@ -1,0 +1,286 @@
+# Card 132 gore decal relay proof (decal_c132.cpp), on the pose proof (c132-pose-proof.txt) parts 1 and 2: the live
+# and late-join matched-camera shots now also show the host's gore decals on the client. Part 3 changed after hb34:
+# the far-death wait comes first, under autoplay on both (hb34's far deaths came during the hit-chunk wait, before its
+# "new" window), then the hit-chunk shot is deterministic: three bugs spawned and killed by the host, the client
+# shoots the corpses, both look at the first chunk location. Decal counts (pairing, R rounds, rows per minute, cap)
+# are read from both logs afterwards.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-decal-proof.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher UBWCOOP_C41_ANIM_TRACE=1
+#      UBWCOOP_C76_LOG=1 UBWCOOP_C132_FX=1" CLIENT_EXTRA_ENV="UBWCOOP_C41_ANIM_TRACE=1 UBWCOOP_C76_LOG=1 UBWCOOP_C132_FX=1"
+#      tools/run_pair.sh <tag> 900
+# (hb42, hb43: the grant was left out, so the client held only the Morita and step 2b had no NukeLauncher.)
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 1
+# Senior note 2 (hb47 review): one close side-on host shot of a sprite-drawn NPC. Armed here, by the dropship,
+# where troopers stand still; the shot needs one NPC still for 1 s and no scenario warp until it is taken.
+host offshot
+try host wait log "card132: host off-capsule shot mesh" timeout=60
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+# Senior note 4 (hb42 review): the hb39/hb40 crash case. The host's grant gives the client's server copy a
+# NukeLauncher, and card 050 relays it, so the client starts holding it. The client fires it empty at the far sky (no
+# bug is spawned yet, and the impact lands about 21000 uu away), the host drops the empty launcher and card 050 relays
+# the removal, then the grant gives it again. Then a real switch to the Morita (weapon 0). Inventory on all three
+# sides (host-own, server copy and client-own) before the shot, after the regrant and after the switch, and a client
+# HUD shot after the switch.
+both inventory
+client look point 229512 60000 14000
+client mark
+client key LeftMouseButton 3000
+# hb44: the drop is native on both sides (RemoveWeaponFromOwnerInventory ..., pickup 1), not a card 050 removal, so
+# the wait is on that line. Inventory is read at once, before the grant's next 1 s tick gives the launcher back.
+sleep 1
+both inventory
+sleep 1
+both inventory
+client mark
+client key One
+# A key equip writes no card050 line (only a Weapons apply does): the inventory dump shows it.
+sleep 1
+
+both inventory
+client shot hud-after-switch
+# Senior note 7 (hb41 review): a gore decal on a placed destructible (the corpse pile at 228451 3290 7705, Static
+# until it dies) stays attached on both sides, so it dies with the pile. Two bugs die in front of the pile, the host
+# logs a decal attached to it, both shoot it, the host kills the pile, both shoot it again: no decal may float where
+# the pile was on the client.
+# hb42: both bugs spawned, then 3 s passed before the kills; they walked off the pile, and the second kill took a bug
+# 620 uu away, whose decal attached to BlockingVolume_19. hb43: each bug died by InstaKill 1 s after its spawn, and no
+# decal attached to any placed actor (an InstaKill sprays with no shot direction). Now the client, holding the Morita
+# since the note 4 switch, shoots each bug from the far side, so the exit spray goes on towards the pile 150 uu
+# behind it. The host stands out of the line of fire.
+# hb44: the block ran after parts 1 to 3, when the host's decal pool was full (500 live, gore decals never expire),
+# so SpawnDecalAttached returned null and no decal could attach to the pile. It runs right after note 4 now, on a fresh
+# pool.
+# hb45: neither bug died to the client's 2.5 s of fire (both stood in the crate shots), so no gore sprayed at the pile;
+# each is now InstaKilled after the client's hits, so the death spray takes the last hit's direction. The pile kill
+# named the class, which matched an actor whose object name is the class text (at the origin), not the pile; it now
+# names BP_WarriorBug_Corpses_Destructible_01_C_11.
+# hb46: the client's fire went past the bugs into the pile, which has Health 0 from load, so the overkill destroyed it
+# (hidden on the host only: fixed by the card 098 'H' row) before any gore attached. The block now uses a live
+# killable crate (c131k2's BP_KillableCrate_01_C_25, Health 50); the map-load inventory line shows decals=<set>/<mesh
+# roots> for its class. The bug stands 150 uu in front of the crate, the client fires 1 s at it from 400 uu further
+# out, then the host InstaKills it, so the death spray goes on towards the crate.
+# hb48: no crate decal can attach: every KillableCrate class shows decals=0/N in the map-load inventory (a mesh,
+# but bReceivesDecals off, as in vanilla). An ExplosiveBarrel (decals=27/27, mechanism 098K) stands in. Barrel at
+# 196820 3940 7333; the bug stands 150 uu in front of it, the client fires from 400 uu further out, the host (out of
+# the line of fire) InstaKills the bug, so the death spray goes on towards the barrel. Both shots are from 700 uu,
+# outside the blast, and the host kills the barrel from right above it, so it is the nearest one.
+# hb49: the client's 1 s of Morita fire went on past the bug into the barrels (three stand within 160 uu) and blew
+# them up before any decal attached. A 150 ms tap now: its rounds stop in the bug, the InstaKill takes their direction.
+host warp actor point 196420 3390 7433
+host warp client point 196820 3390 7433
+sleep 2
+# hb50: in its 1 s the bug walked 400 uu towards the players, so its death spray (host burst at 196721 3385) fell on
+# open ground. Each bug is now spawned against a barrel and InstaKilled at once, before it can move; no client fire.
+# hb51: 100 ms after the spawn the new bug's health set still read 0, so `kill actor` (live only) skipped it and
+# killed a bug at (228264, 39583), 32 km away. 400 ms lets the health set fill before the bug has walked far.
+# hb52: in those 400 ms the bug walked 236 uu towards the players and its spray fell 60 uu further on their side,
+# on the landscape at y 3541, 400 uu short of the barrel. The bugs now spawn 300 uu beyond the barrels, so the
+# walk brings them to the barrel line and the spray falls back onto it.
+host spawn bug 196820 4150 7333 90
+sleep 0.4
+host kill actor BP_AI_WarriorBug_C
+sleep 1
+host spawn bug 196960 4110 7333 90
+sleep 0.4
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card132: host decal \d+ attached to placed \S+ \S+ " timeout=2
+try client wait log "card132: client decal \d+ attached to placed \S+ \S+ " timeout=2
+host warp actor point 196820 3240 7533
+host look point 196820 3940 7383
+host shot barrel-before
+host warp actor point 196820 3940 8133
+host warp client point 196820 3240 7533
+client look point 196820 3940 7383
+client shot barrel-before
+# Senior hb54 review 4a: the barrel explosion on both sides at the same time. The host looks straight down from
+# above the barrel it kills; the client keeps its 700 uu view. One shot pair at the client's IsDead apply.
+host look point 196820 3940 7383
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+try client wait log "card098: client t=\d+ world K BP_KillableProp_ExplosiveBarrel_C_\d+ .*IsDead now 1" timeout=10
+try both shot barrel-explode
+sleep 3
+client shot barrel-after
+host warp actor point 196820 3240 7533
+host look point 196820 3940 7383
+host shot barrel-after
+# The pile the client's hb46 fire destroyed: the host's hide must reach the client ('H' row) with the overkill burst
+# (a 'B' row naming the placed pile). The client shoots pile _11 until the host hides it.
+host warp actor point 228451 2890 9205
+host warp client point 228451 2790 7905
+sleep 2
+client mark
+client look point 228451 3290 7705
+client key LeftMouseButton 2500
+try client wait log "card098: client t=\d+ world H BP_WarriorBug_Corpses_Destructible_01_C_11 .*hidden now 1" since-mark timeout=10
+client shot pile-after
+# Back to part 1's spot (the crate is 36000 uu away from it).
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card132: host pose snap .* snap 1:" count=3 timeout=30
+try client wait log "card132: client pose apply .* host root \((-?\d+), (-?\d+), (-?\d+)\)" count=3 timeout=20
+# Both go 1200 uu above and 300 back from the last applied corpse and look down at its root; the shot is taken at
+# once, before the fall (a camera at ground level ended up inside the slope).
+# The two shots are taken one after the other from the same point and rotation, so a corpse sits at the same pixel
+# on both sides (posed corpses are static, so the shots need not be at the same instant). The host steps 1200 uu up
+# out of the client's frame before the client takes its shot.
+try host warp actor point {g1} {g2-300} {g3+1200}
+try host look point {g1} {g2} {g3}
+host shot pose-live
+try host warp actor point {g1} {g2-300} {g3+2400}
+try host warp client point {g1} {g2-300} {g3+1200}
+try client look point {g1} {g2} {g3}
+client shot pose-live
+client key LeftMouseButton 2000
+sleep 2
+both shot pose-live-hit
+# Part 2: late join.
+client disconnect
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+# hb41 0x1dc: a bug attacking a player across the rejoin. Spawned after the kills (so they do not take it) 400 uu
+# from the host (GOD), it attacks the host while the client reconnects and through the 10 s after its pawn arrives;
+# the movesync rows for its guid show whether the client copy follows. Part 3's kills take it.
+host warp actor point 229312 38956 9100
+host spawn bug 229312 39356 9000 270
+client wait log "card045: client t=\d+ reconnected" timeout=120
+# The replay applies come seconds after the reconnect line, so the wait for them starts right after it ("new":
+# only lines written after the wait began, not the live part's applies). The host replay line is read from the log
+# afterwards: a wait log with no groups here would clear {g1}..{g3}.
+try client wait log "card132: client pose apply .*: \d+ bodies, host root \((-?\d+), (-?\d+), (-?\d+)\)" new timeout=60
+try client wait state pawn=client-own timeout=60
+# Card 046 late-join spawn proof: 10 s after the client has its pawn, its z (the timeout line of this try prints the
+# last state, z included; no state ever has z=none) and a client shot of where it stands.
+sleep 3
+try client wait state pawn=client-own z=none timeout=1
+client shot rejoin-10s
+try host warp actor point {g1} {g2-300} {g3+1200}
+try host look point {g1} {g2} {g3}
+host shot pose-late
+try host warp actor point {g1} {g2-300} {g3+2400}
+try host warp client point {g1} {g2-300} {g3+1200}
+try client look point {g1} {g2} {g3}
+client shot pose-late
+# Part 3: a far death under autoplay (hb51: none came in 108 s and the user stopped the run; 60 s cap), then a hit-chunk shot, then the host fights on for 30 s.
+host autoplay on
+client autoplay on
+try client wait log "card039: client death gore for \S+ at \((-?\d+), (-?\d+), (-?\d+)\);.*bodies synced[^,]*, gore location moved \d{4,} uu" new timeout=20
+try host warp client point {g1+300} {g2} {g3+100}
+try both look point {g1} {g2} {g3}
+try both shot far-death
+client autoplay off
+host autoplay off
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# hb35: the client fired at a fixed point 400 uu above the ground, no hit, so {g1}..{g3} were still the far death's
+# and the shot looked 6.5 km away. Now it aims at a corpse root from the pose apply (wait started right after the
+# kills, so "new" sees the applies), then the chunk shot looks at the chunk spawn.
+try client wait log "card132: client pose apply .*: \d+ bodies, host root \((-?\d+), (-?\d+), (-?\d+)\)" new timeout=30
+try client look point {g1} {g2} {g3+40}
+# hb40: the client's active weapon was the relayed NukeLauncher, so this LMB fired the nuke and gibbed the scene. The
+# Morita (weapon 0) first.
+# hb41: the client already held the Morita, so key One only toggled the underslung and no Equip went out. Senior
+# note 4 (hb41 review): a real switch, away to weapon 1 and back to weapon 0, with the inventory of the client's own
+# pawn (client log) and of the host's server copy of it (host log) before, between and after; they must agree, and a
+# NukeLauncher kept on the host copy only is a gap.
+# hb42: without the grant, C2M1 gave one weapon, so key Two changed nothing, and key One on the held Morita toggled
+# its underslung shotgun, so this LMB fired pellets and no gore response came. The note 4 switch now runs at the
+# start (the empty NukeLauncher, then key One to the Morita), so the client holds the Morita's primary here.
+both inventory
+# hb40: the response came while the 3 s key was held, before a "new" wait began; the mark covers the hold.
+client mark
+client key LeftMouseButton 3000
+# hb33 to hb36: the wait timed out because the card042 chunk lines had hit their cap by then. The response line has
+# its own cap now, and the client follows the response's last chunk: the shot looks at where it settled, inside its
+# lifetime (the track's "gone after N ms" line gives the lifetime; the shot line's time must be before it).
+try client wait log "card042: client gore response for BP_AI_\w*Bug\w*: \d+ parts, [1-9]\d* chunks spawned" since-mark timeout=20
+try client wait log "card042: client chunk track \S+ settled at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+# The camera about 200 uu from the settled chunk (the pawn's eye is ~60 uu above the warp point), looking at it.
+try host warp client point {g1} {g2-150} {g3+80}
+try both look point {g1} {g2} {g3}
+try both shot hit-chunk
+# Card 132 step 2b: the host's own NukeLauncher round (UBWCOOP_GRANT_WEAPON=NukeLauncher, host only) on the client, by
+# the card 076 copy relay. Both stand side by side looking at a bug 1000 uu ahead; the host fires once; the client
+# shoots the round in flight once the host logs it sent, then both shoot the impact.
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+host spawn bug 229412 39956 9000 180
+sleep 3
+try both look point 229412 39956 8700
+# hb44 to hb49: the 300 ms press sent Fire, but no NukeLauncher launch reached the host's round table; the client's
+# 3000 ms hold fires: the NukeLauncher_WindUp montage runs 2 s before the fire, so a 300 ms press ended mid-windup.
+# hb50: the hold fired (host-own FireProjectile, gibs 28 ms later), but the wait was on the card076 round line, which
+# is a mech/turret relay line capped at 24 and spent on Morita rounds by then. The wait is on the fire itself.
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+client shot nuke-flight
+sleep 1.5
+try both shot nuke-impact
+sleep 3
+try both shot nuke-after
+# Card 132 round explode frames (senior hb52/hb53): every relayed round's impact is the host's, one per round, at the
+# host's point; the client copy plays no impact of its own (no effect, sound, zone or damage). Proof, read from both
+# logs afterwards with UBWCOOP_C132_FX=1 (tools/fx_pair.py pairs every host effect spawn with the client's):
+#   the nuke above (one GrenadeExplode #<n> on the client, its fireball and impact sound, none from the copy);
+#   an AI bug projectile: an ArcherBug's BP_Projectile_Plasmabug_C round, shot on both sides at the same time;
+#   AI Morita and turret trooper rounds from the autoplay round below (copy hits skipped, explode frames played);
+#   a round whose copy hit somewhere else than the host's round: "round copy #<n> ... hit at A" and
+#   "GrenadeExplode #<n> ... host's (B)" with A and B apart, the effect at B;
+#   note 3: the client's pawn (god off for this part: `god host`) stands at the edge of a host nuke blast; its Health
+#   changes on the host (server copy) and on the client (own pawn) must show one damage, the host's.
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+host spawn bug 229412 40956 9000 270 ArcherBug
+try host wait log "card132: host\S* t=\d+ launch #\d+ own BP_Projectile_Plasmabug_C" new timeout=8
+try both look point 229412 40956 9000
+try both shot plasma-flight
+sleep 1
+try both shot plasma-impact
+try host kill actor BP_AI_ArcherBug_C
+# Senior hb54 review 4a: a host frag on both sides at the same time. The host throws its own frag (G) at the ground
+# 900 uu ahead; both look at that point and shoot at the client's relayed explosion (card 130 fx check line).
+host look point 229412 39856 9000
+client look point 229412 39856 9000
+client mark
+host key G
+try client wait log "card130: client fx relayed explosion \+\d+ ms" since-mark timeout=8
+try both shot frag-explode
+# Note 3 (the client at the edge of a second host nuke, god off) and nuke shot 2 moved to card 137: hb59's
+# re-granted launcher had reserve 0 on the host, so the press fired nothing.
+# Test speed (user, after hb56): every sleep and wait cut to its need. hb56 spent 83 s in sleeps and about 230 s in try
+# waits on log lines no build writes any more; those waits now name current lines with short timeouts, or are gone.
+host autoplay on
+
+# One 10 s digest round of autoplay to end on (the whole-map soak is a separate run).
+sleep 10
+host autoplay off
+host quit
+client quit

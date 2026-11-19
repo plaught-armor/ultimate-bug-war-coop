@@ -1,0 +1,57 @@
+# Card 399: FED_C5M1 full ride (FAST=0), the client leaves during the ride and comes back (card 045 follow), then
+# leaves again after the landing and comes back on foot. Predictions: docs/cards/399-client-rides-host-dropship.md
+# ("Leave and join"). Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c399-c5m1-leave.txt FAST=0 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C5M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c399b88l 600
+# Expected wall: about 5 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C5M1 timeout=300 void
+client wait state map=FED_C5M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card320: host t=\d+ hold off" timeout=30
+client wait log "card399: client t=\d+ ride on" timeout=30
+sleep 3
+host shot c399b-h-ride
+client shot c399b-c-ride
+# --- 1. The client leaves during the ride: its server pawn goes, the rider row with it.
+host mark
+client mark
+client disconnect
+host wait log "card399: host t=\d+ rider row \d+ dropped: pawn gone" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait state map=FED_C5M1 pawn=client-own timeout=120
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=30
+try client ui continue
+# Back during the ride (boarded again) or after the landing (on foot beside the host): either is logged.
+try host wait log "card399: host t=\d+ board" since-mark timeout=10
+sleep 3
+host shot c399b-h-back1
+client shot c399b-c-back1
+host wait log "collision: host/standalone DescendToLandCompleted" since-mark timeout=180
+try host wait log "card399: host t=\d+ release" since-mark timeout=5
+try client wait log "card399: client t=\d+ landing facing" since-mark timeout=10
+sleep 3
+host shot c399b-h-landed
+client shot c399b-c-landed
+# --- 2. The client leaves after the landing and comes back: card 307 beside the host, no board.
+host mark
+client mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait state map=FED_C5M1 pawn=client-own timeout=120
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=30
+try client ui continue
+host wait log "card307: host t=\d+ player spawn: PlayerStart .* spawns beside" since-mark timeout=30
+sleep 4
+host shot c399b-h-back2
+client shot c399b-c-back2
+client quit
+sleep 2
+host quit

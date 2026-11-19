@@ -1,0 +1,521 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 130 combined proof, one run (FAST=1, starts FED_C1M1, travels to FED_C2M1).
+# Part 1, FED_C1M1 (items 2/L, 5, 9): the c98-bomb strike. Client must log "card098: client ... applied timeline
+# call" on the TacSupport targets, "card104: client ... swept ... its Blueprint ended it" and the card130 fx checks.
+# Part 2, FED_C2M1 after travel next: item 11 (host sees the Revive prompt over the downed client, then holds E),
+# item 14 (Morita troopers pick up slot 1 and slot 0), item 13 (marker after LOS_O01_SO01, host shot).
+# Run: SCENARIO=tools/scenarios/c130-combined.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c130x6 1800
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+sleep 1
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "SetObjectiveVisibility\(TacSupport_SO41\) bools 11" timeout=60
+host warp actor BP_ResupplyRack_Level0_C 150
+try host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=15
+try host objective complete TacSupport_SO41
+host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=20
+sleep 2
+host warp actor BP_TacSuppPickup_BombingRun_Tutorial_C 10
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 600
+sleep 1
+sleep 1
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+host wait log "DisablePickup on BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=5
+sleep 2
+# c130x4: no bombs without the charge (c119 order).
+host charge 0 20000 1
+try host charge 1 20000 1
+host key Four
+sleep 2
+host key LeftMouseButton
+client wait log "copy of host [0-9]+: /Game/Blueprints/Combat/BP_SupportFlare_Tutorial" timeout=20
+try client wait log "copy of host [0-9]+: \S*BombingRunProjectile_Tutorial" timeout=30
+sleep 3
+host key Four
+sleep 1
+host key LeftMouseButton
+sleep 6
+client shot c130x-client-strike
+host shot c130x-host-strike
+sleep 8
+client shot c130x-client-strike2
+# Item 9: a host frag the client sees (card130 client fx checks).
+try host goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=20
+host key G
+try client wait log "card074: client t=\d+ GrenadeExplode" timeout=15
+client shot c130x-client-grenade
+host objectives
+host travel next
+client wait log "reconnected \(" timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" count=2 timeout=30
+host warp actor BP_AI_Trooper_Morita_C 300
+host warp client BP_AI_Trooper_Morita_C 900
+sleep 2
+# Item 11: both at fixed points 100 uu apart (revive range 200), client downed, host sees the prompt.
+host warp actor point 232629 43682 9092
+host warp client point 232729 43682 9092
+sleep 1
+host down client
+host wait log "card130: host t=\d+ revive prompt shown" timeout=10
+try host look point 232729 43682 9040
+host shot c130x-host-revive-prompt
+try host key E 6000 timeout=15
+sleep 2
+host shot c130x-host-revive-after
+# c130x6: the landing-zone Moritas never take a forced move (now skipped, card130 "does not take forced moves");
+# the downs are where c130x6's troopers did walk to their targets.
+host warp actor point 225200 41100 8700
+host warp client point 225000 41000 8700
+sleep 2
+# c130w: warrior bugs reach the landing zone too (host 88 -> 0 HP in 1.6 s); thin them before each scripted down.
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host down client
+host wait log "card130: host t=\d+ AI pick-up done: .*picked up player .* \(slot 1\)" count=1 timeout=60
+client shot c130-client-picked
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host down host
+host wait log "card130: host t=\d+ AI pick-up done: .*picked up player .* \(slot 0\)" count=1 timeout=60
+host shot c130-host-picked
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+& client goto 224500 38900 8600 sprint
+& host goto 223800 38200 8600 sprint
+join
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client look actor BP_AI_WarriorBug_C 60 timeout=8
+try client key LeftMouseButton 2000 timeout=15
+try client wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=1
+try host wait log "CompleteSubObjective\(LOS_O01, LOS_O01_SO01\)" timeout=60
+try host wait log "card130: host BeginPlay of BP_ObjectiveMarkerActor_C runs outside" timeout=10
+sleep 2
+host shot c130-host-marker
+client shot c130-client-marker
+host objectives
+client objectives
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_Trooper_Morita_C
+sleep 30
+host shot c130-npc-picked
+try client look actor BP_AI_Trooper_Morita_C 60 timeout=8
+client shot c130-npc-picked
+# Item 15: 40 spawn/kill cycles (120 kills of live bugs; kill actor now skips corpses) for the card 038 dead-set peak.
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 6
+host shot c130x-host-churn-end
+client shot c130x-client-churn-end
+host quit
+client quit
