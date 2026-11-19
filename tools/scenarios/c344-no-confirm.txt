@@ -1,0 +1,49 @@
+# Card 344: the client never confirms the title screen (UBWCOOP_C344_NOCONFIRM=1), so 60 s after the host's continue
+# the host returns to the main menu and the client follows. Prediction: docs/cards/344-...md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c344-no-confirm.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C344_NOCONFIRM=1"
+#      tools/run_pair.sh c344-no-confirm 360
+# No failsoft: a missed required step ends the run there.
+# The harness client joins FED_C1M1 after the host's continue, so it is not waited for there (c338-c337 run: "clients
+# 0"). The travel to FED_C2M1 carries the client, and the hold waits for it ("hold waits for client slot 1 (join)").
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+# As c338-c337-c1m1.txt: the host continues its own C1M1 screen before the travel; the client screen may confirm itself.
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+host travel next
+# Card 346: the travel is seamless with a client connected (no reconnect): the client's world row on FED_C2M1.
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+# 1. The hold on FED_C2M1 waits for the client, and the host has continued.
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" since-mark timeout=60
+# Card 346: FED_C2M1 starts the host in the dropship behind its PressToContinue screen; the host continues it.
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=60
+# 2. The client continues at its prompt; its confirm is withheld.
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+client wait log "card344: client t=\d+ IntroDone withheld" since-mark timeout=30
+# 3. The bound: the host goes to the menu by the game's QUIT path.
+host wait log "WARN card344: host t=\d+ 1 client\(s\) did not confirm \(\d+ not loaded, card 364\) within 60000 ms of the host's continue: host returns to the main menu" since-mark timeout=90
+client mark
+# Card 350: the return opens the frontend with the pause menu QUIT's own options.
+host wait log "card350: host t=\d+ return to the menu: OpenLevel\(./Game/Maps/3D_Frontend/3D_Frontend., absolute, .FromLevelQuit\?ChapterID=\d+\?LevelID=\d+.\)" since-mark timeout=10
+host wait log "card320: host t=\d+ hold off after \d+ ms \(map end\)" since-mark timeout=30
+# Card 346: the return is a seamless travel; the host stays the listen server (net mode 2, status 0).
+host wait log "card346: host t=\d+ seamless travel to \S*3D_Frontend" since-mark timeout=30
+host wait log "card052: t=\d+ world \S+ \(package \S*3D_Frontend\S*, net mode 2\): panel on, status 0" since-mark timeout=90
+# 4. The client follows to the host's frontend, still connected (net mode 3, no reconnect: card 345).
+client wait log "card052: t=\d+ world \S+ \(package \S*3D_Frontend\S*, net mode 3\)" since-mark timeout=120
+# Card 350: the client's frontend HUD reads FromLevelQuit from the host's travel options (no WARNING screen).
+client wait log "card350: client t=\d+ HasOption\(.., FromLevelQuit\) from the host's travel options: 1" since-mark timeout=30
+sleep 4
+host shot c344-host-menu
+client shot c344-client-menu
+client quit
+sleep 2
+host quit

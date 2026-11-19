@@ -1,0 +1,22 @@
+# Card 124 proof (FED_C2M1 by UBWCOOP_TRAVEL, FAST=1): both roles walk on foot at the same time, no warp.
+# The client's route crosses the c123a stuck terrain (first stuck 231952 43172 8721, second near 226320 37193 8569).
+# Each role takes a shot during its walk, then both wait goto must reach their targets.
+# Run: SCENARIO=tools/scenarios/c124-parallel.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c124a 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host look 90 0 smooth
+& client goto 226311 37189 8569 sprint
+& host goto 229112 39656 8694
+sleep 4
+host shot c124-walk
+client shot c124-walk
+host wait goto timeout=150
+client wait goto timeout=150
+join
+host shot c124-end
+client shot c124-end
+host quit
+client quit

@@ -1,0 +1,27 @@
+# Card 068 (log only): both players walk the start of FED_C1M1's assault course with UBWCOOP_C68_LOG=1 on both
+# games, taking a shot on each side at each stop, so the host's and the client's minimap chains can be compared
+# (ObjectiveUpdated -> ShowOnMinimap -> AddNewMarker, and the 1 s minimap line). No teleport, no xdotool.
+# Run: SCENARIO=tools/scenarios/c68-minimap.txt STAGGER=5 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C68_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C68_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 5
+host shot start
+client shot start
+host wait log "card049: host sent AddObjective\(Assault_O1\)" timeout=60
+sleep 3
+host shot first-marker
+client shot first-marker
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+sleep 3
+host shot pickup
+client shot pickup
+host goto 4580 13300 105 300
+client goto 5300 13300 105 400
+sleep 3
+host shot range
+client shot range
+client quit
+host quit

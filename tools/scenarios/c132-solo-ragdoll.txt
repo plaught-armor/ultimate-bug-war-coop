@@ -1,0 +1,12 @@
+# Card 132 senior point 4, baseline: a solo host (no client) on FED_C2M1, FAST=1, autoplay fights. The host's
+# card132 ragdoll start lines and movesync corpse rows (tools/movesync.py with the host log only) give the vanilla
+# ragdoll and launch distances, compared with the same lines from a co-op run (c132-gore-proof.txt).
+# Run: LANE=2 SOLO=1 SCENARIO=tools/scenarios/c132-solo-ragdoll.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_C41_ANIM_TRACE=1"
+#      tools/run_pair.sh hb13 420
+host wait state pawn=host-own timeout=240
+host ui continue
+host autoplay on
+try host wait log "card132: host ragdoll start .* of 30 had stale bodies" timeout=270
+host autoplay off
+host quit

@@ -1,0 +1,14 @@
+# Card 122 proof, solo half (SOLO=1): the host alone warps into the first WarriorBug group and fights, timed as c122-measure.
+host wait state pawn=host-own timeout=240
+host ui continue
+sleep 2
+sleep 0
+host warp actor BP_AI_WarriorBug_C 900
+sleep 2
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1000 timeout=15
+sleep 15
+host shot c122-fight
+sleep 15
+sleep 12
+host quit

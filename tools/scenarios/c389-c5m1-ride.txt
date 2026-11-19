@@ -1,0 +1,29 @@
+# Card 389 diagnostic: FED_C5M1 with the real dropship ride (no UBWCOOP_AUTODROPSHIP, FAST=0). The client pawn spawns
+# on foot at the PlayerStart (-33920, 41090, -437), which has no ground (run c388b72: head z -327, -704, -32279).
+# Question: what happens to the client pawn while the host rides. Predictions: docs/STATE.md 2026-11-15 "c389b72".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c389-c5m1-ride.txt FAST=0 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C5M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c389b72 420
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C5M1 timeout=300 void
+client wait state map=FED_C5M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card320: host t=\d+ hold off" timeout=30
+host mark
+# The ride: the first kill floor row for the client's copy, or the ride's end, whichever is first.
+try host wait log "card046: host t=\d+ kill floor" since-mark timeout=150
+host shot c389-host-ride
+client shot c389-client-ride
+try host wait state pawn=host-own timeout=180
+try host wait log "card046: host t=\d+ kill floor warp" since-mark timeout=60
+host shot c389-host-landed
+client shot c389-client-landed
+client quit
+host quit

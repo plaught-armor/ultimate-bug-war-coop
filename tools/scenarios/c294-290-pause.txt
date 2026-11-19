@@ -1,0 +1,71 @@
+# Close-out proofs owed by cards 294 and 290 (senior order 2026-11-17), b177, FED_C1M1, FAST=1, GOD=0. No code change.
+# 1. Card 294 (user decision 2026-11-14): the host's pause-menu RESTART CHECKPOINT while both players are Up. Clicks as
+#    c383 phase 2 (winkey Escape, the card067 RequestGamePause dump, `ui click` card 121, RestartCheckpoint confirm when
+#    the popup is up). The pause menu's other restart, RESTART MISSION, is a seamless ServerTravel (card 346: no travel
+#    row, so no card294 row; proved in c376 phase D) and is not this proof.
+#    Expect on the client: exactly one `card294: client t=... host restart (in-place load)` row, then one
+#    `restart done in N ms: death screens built 0, respawns in the old world 0`; the client back on its own pawn;
+#    0 `card052: t=... <kind> failure` rows after the mark. Client shot after.
+# 2. Card 290 (user decision 2026-11-14): the host quits to the frontend by the pause menu QUIT with the client in the
+#    map (clicks as c369). Since card 369 the quit is a seamless ServerTravel to 3D_Frontend?FromLevelQuit (card346
+#    host row, card350 client ClientTravel row) and the card290 `quit` travel row is not sent (restart.cpp
+#    c346_host_seamless returns first). Expect: the client's card350 ClientTravel FromLevelQuit row, 0 card052 failure
+#    rows after the mark, the client on 3D_Frontend with the lobby panel, and the session held (card113 / card345 rows
+#    on both sides quoted as they are). Client shot after.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c294-290-pause.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      tools/run_pair.sh c294b177a 600
+# Expected wall: about 3 min.
+void unless host dll e7197c28f8ab7bb8
+void unless client dll e7197c28f8ab7bb8
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+host clear 3000 kill
+client shot p0-client-hud
+# --- 1. Host pause menu RESTART CHECKPOINT, both players Up.
+host mark
+client mark
+host winkey Escape 150
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host ui click BndEvt__WB_Pause_Menu_LoadLastSave
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_LoadLastSave" since-mark timeout=5
+try host wait log "card121: host t=\d+ save engine load runs" since-mark timeout=3
+when host last "card121: (ui click|host t=\d+ save engine load runs)" "ui click" host ui click RestartCheckpoint
+host wait log "card121: host t=\d+ save engine load runs \(Load, context WB_Pause_Menu_C" since-mark timeout=10
+host wait log "card290: host t=\d+ travel row sent to 1 of 1 clients: .*\(in-place load\)" since-mark timeout=5
+client wait log "card294: client t=\d+ host restart \(in-place load\)" since-mark timeout=15
+client wait log "card294: client t=\d+ restart done in \d+ ms: " since-mark timeout=90
+host wait state pawn=host-own timeout=30
+client wait state pawn=client-own timeout=60
+host clear 3000 kill
+sleep 3
+host shot p1-host-after-restart
+client shot p1-client-after-restart
+# --- 2. Host pause menu QUIT with the client in the map.
+host mark
+client mark
+host winkey Escape 150
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_QUIT_button" since-mark timeout=5
+sleep 1
+host ui click ConfirmQuitToMainMenu
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend\?FromLevelQuit.* started by ServerTravel" since-mark timeout=20
+client wait log "card350: client t=\d+ ClientTravel ./Game/Maps/3D_Frontend/3D_Frontend\?FromLevelQuit.* \(seamless 1\)" since-mark timeout=30
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=120
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+# Still the same connection: a host row arrives in the hangar.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+sleep 4
+host shot p2-host-frontend
+client shot p2-client-frontend
+client quit
+sleep 2
+host quit

@@ -1,0 +1,177 @@
+# Cards 338, 337, 324, 322: targeted proof, no soak. FED_C1M1 start, card 324 flare holds, travel to FED_C2M1
+# (card 337 on the client's LoadMap), card 324 step 2, then card 338 at the LOS_O03 chasm fall zone. Under 4 minutes.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c338-c337-c1m1.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c338-c337 420
+# Rules: docs/STATE.md "Gameplay test scenario rules". The travel block and the 324 blocks are b11-soak-c2m1.txt's.
+# Predictions (written before the run; checked against both logs):
+#  337  client: one "card337: client t=<ms> world rendering off" per host travel, each followed by "world rendering on
+#       ... (title screen up)"; 0 WARN card337; the shot c337-client-load shows black or the loading/title screen,
+#       never the map.
+#  338  both pawns enter one BP_FallZones_C inside the zone's timer rate: host "fall zone hit slot 0" and "slot 1"
+#       rows, then a card338 row for each pawn's reposition; both pawns end within 600 uu of the zone's recovery
+#       point (b11 r6: (227524, -17297, 6512)); both move under a W key after it (input on); 0 WARN card338.
+#       Fault on build 5 (r6 cmd 144): only the second pawn is moved.
+#  324  as in the card: both 300 ms rows FirstPersonMesh visible 1, hand_r on screen 1; shots show the flare in hold B.
+#  322  report only: per-side tallies of the card322 rows by name on FED_C1M1 and FED_C2M1.
+voidsoft
+failsoft
+void unless host dll d63c0ff755c44609
+void unless client dll d63c0ff755c44609
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+# r4, r6: on C1M1 the client screen confirms itself ("no WB_Stack_C requested a pause"); a try step.
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# --- Card 324 step 1 (C1M1, before the travel): the client's held flare in hand, two holds.
+# Charge: `host charge client` sets the server copy's slot (test only, card 324); the card 104 poll mirrors it to the
+# client. Stand and look: the c175 throw spot (standable in c175), facing the open field.
+# Hold A: shot on the card324 300 ms row (before LMB), LMB, shot after LMB. Hold B: no LMB, shot about 800 ms in.
+# Predictions (card 324): both 300 ms rows FirstPersonMesh visible 1, mesh visible true, hand_r on screen 1; the
+# shots show the flare in hand in hold B; if hold A's after-LMB shot loses it, the fire press is the cause.
+# r6: the card120 row came before the loading screen went up (void HUD shot); the screen confirm is the anchor.
+client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=30
+client shot c324-client-hud
+host clear 1500 kill
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+client look point 11700 14500 140
+host mark
+client mark
+host charge client 0 20000 1
+client wait log "card104: client t=\d+ TacCharge 20000 1 " since-mark timeout=5
+host mark
+client mark
+client key Four
+host wait log "card100: host t=\d+ TacSupport slot 0 from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=5
+client wait log "card324: client t=\d+ BP_FlareVisuals_C own pawn \(\S+\) at 300 ms" since-mark timeout=3
+client shot c324-a-300ms
+client key LeftMouseButton 120
+client shot c324-a-after-lmb
+client wait log "card169: client t=\d+ held \S+ \(BP_FlareVisuals_C\) destroyed " since-mark timeout=5
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 0 0 " since-mark timeout=10
+host clear 1500 kill
+host mark
+client mark
+host charge client 0 20000 1
+client wait log "card104: client t=\d+ TacCharge 20000 1 " since-mark timeout=5
+host mark
+client mark
+client key Four
+host wait log "card100: host t=\d+ TacSupport slot 0 from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=5
+client wait log "card324: client t=\d+ BP_FlareVisuals_C own pawn \(\S+\) at 300 ms" since-mark timeout=3
+# The 800 ms point of the hold: a time, not a state (the 300 ms row is the last row before the destroy).
+sleep 0.5
+client shot c324-b-800ms
+client wait log "card169: client t=\d+ held \S+ \(BP_FlareVisuals_C\) destroyed " since-mark timeout=5
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 0 0 " since-mark timeout=10
+# --- Travel to FED_C2M1 (card 306 tally at its LoadMap on both sides).
+host mark
+client mark
+host travel next
+client wait log "reconnected \(" since-mark timeout=120
+client shot c337-client-load
+# The card 320 hold keeps the host paused until the client confirms its own screen (c330cut run and b11 run 5: the
+# client continue came after the host pawn wait, the hold ran to its 60 s timeout, the host flew alone: 129 s).
+# The client continues at its prompt, so both leave the screen together and watch the same arrival.
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \((?!timeout)" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=180 void
+client wait state pawn=client-own timeout=180
+host wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+client wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+host ui continue
+client ui continue
+# r6: the card120 row came before the loading screen went up (void HUD shot); the screen confirm is the anchor.
+client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" since-mark timeout=30
+client shot b11c2-client-hud
+host shot b11c2-host-hud
+# --- Card 324 step 2 (C2M1 start): the client holds the flare with the Morita equipped (300 ms shot, no LMB), then the
+# host's own pawn holds it with the Morita as the reference shot.
+host clear 1500 kill
+client inventory
+host inventory
+host mark
+client mark
+host charge client 0 20000 1
+client wait log "card104: client t=\d+ TacCharge 20000 1 " since-mark timeout=5
+host mark
+client mark
+client key Four
+host wait log "card100: host t=\d+ TacSupport slot 0 from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=5
+client wait log "card324: client t=\d+ BP_FlareVisuals_C own pawn \(\S+\) at 300 ms" since-mark timeout=3
+client shot c324-m-300ms
+client wait log "card169: client t=\d+ held \S+ \(BP_FlareVisuals_C\) destroyed " since-mark timeout=5
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 0 0 " since-mark timeout=10
+host mark
+host charge 0 20000 1
+host key Four
+host wait log "card324: host t=\d+ BP_FlareVisuals_C own pawn \(\S+\) at 300 ms" since-mark timeout=3
+host shot c324-host-ref
+host charge 0 0 0
+# --- Card 338: host and client into the same fall zone. Point: the LOS_O03_SO01 stand column b16 found inside
+# BP_FallZones_C (card336 rows: ring slots at (230784..230848, -15872..-15808, 5051..5099) skipped).
+host clear 4000 kill
+host mark
+client mark
+host warp actor point 230784 -15824 5200
+host warp client point 230880 -15872 5200
+host wait log "playlog: host t=\d+ fall zone hit slot 0: " since-mark timeout=5
+host wait log "playlog: host t=\d+ fall zone hit slot 1: " since-mark timeout=5
+host wait log "card338: host t=\d+ zone \S+ at \([^)]*\): \S+ repositioned to .*, pending, repositioned before \S+ armed" since-mark count=1 timeout=10
+# r1: the warp column overlaps two zones (rates 0.40 and 0.50 s); each pawn is moved by both and ends at the second
+# zone's point (229289, -23623, 7506). The W presses come at once: the 5 s row (b18: one per pawn, from its newest
+# reposition) must read input 1, movement mode 1 and 100 uu or more moved.
+host wait log "card338: host t=\d+ zone .* repositioned to " since-mark count=4 timeout=10
+host mark
+host key W 700
+client key W 700
+host wait log "card338: host t=\d+ \S+ input 1, moved \d{3,} uu since the reposition, movement mode 1" since-mark count=2 timeout=8
+# r2: no near checks. The column overlaps the zones at (226065, -16502, 5354) and (228289, -24950, 6544); each pawn
+# ends at the point of whichever zone fired last for it ((227524, -17297, 6524) or (229289, -23623, 7506)). The
+# reposition rows and the 5 s rows above are the proof.
+host shot c338-host-after
+client shot c338-client-after
+# --- Card 334 (b19): a settled corpse that re-arrives on the client is held, not left simulating.
+# Stand: the c310 nuke launcher points (standable there). One Warrior spawned 500 uu off, killed by code, settled on
+# the host; the client is warped to the fall zone point (87000 uu away), its copy is torn down, and it comes back.
+# Predictions (card 334 senior trace): the re-arrival apply row reads "(host settled, held)"; the card140 freeze
+# check after it reads simulating 0, held 1, under 10 uu; the digest round after it has 0 Pose mismatches.
+host clear 4000 kill
+host warp actor point 142131 12273 10727
+host warp client point 142131 12123 10727
+client wait near 142131 12123 10727 300 timeout=10
+host clear 3000 kill
+host mark
+client mark
+host spawn bug 141631 12200 10877 0
+host clear 3000 kill
+host wait log "card132: host pose (re)?snap guid 0x[0-9a-f]+ snap \d+: .*, (settled|FROZEN) after " since-mark timeout=40
+client wait log "card132: client pose apply BP_AI_WarriorBug_C guid 0x[0-9a-f]+ snap \d+ \(host (settled, held|frozen, simulation off)\)" since-mark timeout=10
+client look point 141631 12200 10727
+client shot c334-first-copy
+host mark
+client mark
+host warp client point 229289 -23623 7506
+client wait near 229289 -23623 7506 1500 timeout=10
+# The engine closes the copy's channel 5 s after it stops being relevant and logs nothing we hook: a time, not a
+# state. If the copy was not torn down, the arrival wait below fails.
+sleep 8
+host warp client point 142131 12123 10727
+client wait near 142131 12123 10727 300 timeout=10
+client wait log "card137: client corpse arrival BP_AI_WarriorBug_C guid 0x[0-9a-f]+ posed " since-mark timeout=20
+client wait log "card132: client pose apply BP_AI_WarriorBug_C guid 0x[0-9a-f]+ snap \d+ \(host (settled, held|frozen, simulation off)\)" since-mark timeout=10
+client wait log "card140: client pose freeze check guid 0x[0-9a-f]+ snap \d+: .* one tick later \(body \d+\); simulating 0; held 1 " since-mark timeout=10
+client look point 141631 12200 10727
+client shot c334-rearrived
+client wait log "card132: client t=\d+ digest round \d+ snapshot" since-mark timeout=90
+# --- Card 322 part A: the host's FED_C2M1 radio lines reach the client as relays (whole-log waits: the lines
+# start before this step), and a client's own start is skipped
+# (FLAK always; PLASMA only when the client's script copy reaches it: b26 run 14 had one skip row, no duplicate).
+client wait log "card322: client t=\d+ radio start FED_C2M1_DROPSITELANDING\w+ started \(relay\)" timeout=5
+client wait log "card322: client t=\d+ radio start FED_C2M1_INTROFLIGHT\w+ started \(relay\)" timeout=5
+client wait log "card322: client t=\d+ radio start FED_C2M1_FLAKBUGINTRO\w+ started \(relay\)" timeout=5
+client wait log "card322: client t=\d+ radio start FED_C2M1_PLASMABUGINTRO\w+ started \(relay\)" timeout=5
+client wait log "card322: client t=\d+ radio FED_C2M1_(FLAK|PLASMA)BUGINTRO\w+ \(list of \d+\) own start skipped" timeout=5

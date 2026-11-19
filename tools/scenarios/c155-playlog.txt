@@ -1,0 +1,84 @@
+# Card 155 proof: every play-build log line on the right side, in one FAST=1 pair run on FED_C1M1 (GOD=0: the run
+# takes hits and a down). Door pass (c95-proof), client rifle, ADS, underslung, host rifle (remote audio both ways),
+# client frag, pause menu open and close, bug hits on both players, a down and a revive, then a wait past 300 s for
+# the periodic summary; the session-end summary is written at quit. tools/match_shots.py reads both logs afterwards.
+# Run: SCENARIO=tools/scenarios/c155-playlog.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+sleep 2
+# The client takes the frag before the host moves: the host's walk to the rifle rack crosses the frag pickup (c155c).
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+sleep 2
+# FED_C1M1 starts unarmed: both take a Morita from the rack and equip it (key Two; a pickup does not equip) (the weapon lines on both sides).
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+sleep 2
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# The rack re-enables its pickup about 10 s after a take (c155d: the client stood by the rack after the frag and pressed
+# E while it was still disabled).
+client wait log "card095: client t=\d+ collision BP_WeaponPickup_MoritaMk1_C_0 .*InteractionCollider .*0 -> 1" timeout=20
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Item 6: the capture-the-flag door pair; the client walks north through door _0.
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+# Items 3, 5, 7: client rifle and ADS; host rifle.
+client look point -3674 30000 600
+host look point -3454 30000 600
+client key LeftMouseButton 1500
+client key RightMouseButton 1500
+sleep 1
+# The underslung (key Q) does not reach the server copy yet (card 141), so this run fires the rifle only.
+client key LeftMouseButton 400
+sleep 1
+host key LeftMouseButton 1500
+try client wait log "playlog: client t=\d+ audio " timeout=10
+host wait log "playlog: host t=\d+ audio " timeout=10
+# Item 5: the client's frag (aim line on the client, spawn line on the host).
+client look point -3674 30000 600
+client key G
+host wait log "playlog: host t=\d+ grenade spawn " timeout=15
+# Item 4: the pause menu open and close on the client.
+sleep 3
+client key Escape 150
+sleep 2
+client key Escape 150
+sleep 2
+# Item 2: bugs on both players.
+host warp actor point 12500 14100 400
+host warp client point 12600 14200 400
+host spawn bug 12300 13900 400 0
+host spawn bug 12300 14300 400 180
+host spawn bug 12700 13900 400 90
+host wait log "playlog: host t=\d+ hit slot 1 " timeout=40
+try host wait log "playlog: host t=\d+ hit slot 0 " timeout=20
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Down and revive (the downed HUD widgets on the client).
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+sleep 1
+host down client
+sleep 3
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+sleep 3
+# Clock 2 and the rtt line at 60 s, the periodic summary at 300 s.
+host wait log "playlog: host t=\d+ summary \(300 s\)" timeout=300
+client wait log "playlog: client t=\d+ summary \(300 s\)" timeout=30
+client quit
+sleep 2
+host quit

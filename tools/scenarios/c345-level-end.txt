@@ -1,0 +1,50 @@
+# Card 345: the client's own level-end continue must not leave the host's session. Prediction: docs/cards/345-...md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c345-level-end.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c345-level-end 300
+# No failsoft: a missed required step ends the run there.
+void unless host dll 653620cb80ca5f6a
+void unless client dll 653620cb80ca5f6a
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# 1. The level end by the game's own EndLevel (test command), relayed to the client (card 260).
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+host shot c345-host-levelend
+client shot c345-client-levelend
+# 2. The client presses its own Next first: card 345b holds it (no card345 row) and shows the waiting line.
+unless client log "card345b: client t=\d+ own level-end Next not run: waiting for the host" count=1 client ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try client wait log "card345b: client t=\d+ own level-end Next not run: waiting for the host" since-mark timeout=3
+unless client log "card345b: client t=\d+ own level-end Next not run: waiting for the host" count=1 client ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try client wait log "card345b: client t=\d+ own level-end Next not run: waiting for the host" since-mark timeout=3
+unless client log "card345b: client t=\d+ own level-end Next not run: waiting for the host" count=1 client ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+client wait log "card345b: client t=\d+ waiting line shown" since-mark timeout=10
+client mark
+# Still in the session: a host row arrives after the refused Browse.
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=60
+client shot c345-client-held
+# 3. The host presses Next: both land in the host's hangar, connected.
+host mark
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+# Card 345b: the host's Next runs the client's own Next handler; card 346: the travel is seamless (no drop, no reconnect).
+client wait log "card345b: client t=\d+ host's level-end Next: own Next handler \S+ run" since-mark timeout=30
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=10
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client wait log "card350: client t=\d+ HasOption\(.., FromLevelComplete\) from the host's travel options: 1" since-mark timeout=30
+sleep 4
+host shot c345-host-hangar
+client shot c345-client-hangar
+client quit
+sleep 2
+host quit

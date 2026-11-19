@@ -1,0 +1,24 @@
+# Card 130 playtest smoke (FAST=1, FED_C1M1, about 5 min): both players in the map, a few NPC kills, quit.
+# Run: SCENARIO=tools/scenarios/c130-playsmoke.txt DEPLOY=1 FAST=1 tools/run_pair.sh c130p1 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 5
+host spawn bug 11700 13800 400 0
+host spawn bug 12100 13800 400 90
+host spawn bug 11700 14200 400 180
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 10
+host spawn bug 11700 13800 400 0
+host spawn bug 12100 13800 400 90
+sleep 4
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 60
+host shot c130p1-host-end
+client shot c130p1-client-end
+host quit
+client quit

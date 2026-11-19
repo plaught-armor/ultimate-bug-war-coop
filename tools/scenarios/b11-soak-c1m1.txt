@@ -1,0 +1,295 @@
+# Build b11 whole-map soak, map 1 of the Trooper route: FED_C1M1 through mission end and travel to FED_C2M1.
+# Discovery run (voidsoft): every fault shows in one launch; only a later run with no void counts as the soak.
+# Not run yet: waits on the senior's go. DLL build-b5/dwmapi-b11-cf55155bc7a4dd94.dll copied into game2/ by hand.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/b11-soak-c1m1.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh b11-soak-c1m1 3600
+# Rules: docs/STATE.md "Gameplay test scenario rules". Objective steps: card 284 expect / go / wait on live data.
+# Steps the card 284 verbs cannot place (kind other: pickups, tac support calls, the satchel) walk with goto actor
+# (human input, no warp) and act behind a focus= or hit= gated look and a shot. Presence volumes that only add a
+# parent objective (TacSupport, ShootingRange, CaptureTheFlag, Asteroid starts) have no step id for expect; they
+# are walked to by goto actor and gated on the Add row.
+# Predictions (written before the run; checked against both logs):
+#  301  inside 300 s of the FED_C1M1 LoadMap, at each side's first possession of its own pawn (before the HUD shot):
+#       three rows per side, "card301: host|client net audit <class> (pawn +0x6B0 | pawn +0x868 |
+#       TacticalSupportComponent, pawn <class>)". Per process, so FED_C2M1 prints none unless a component was null
+#       at every C1M1 possession (then its row comes at the first C2M1 possession). A missing TacticalSupportComponent
+#       row on a side means prop_object_field returned null: the component was null at every possession in the
+#       window, or the property is not found on the pawn class. The row cannot tell these apart (tac_prop is not
+#       logged); the host row present and the client row absent points at a null client component.
+#  309  host "card132: host decal respawn in place (this map so far) totals: ... 0 rows dropped" at the 294 load,
+#       and "card132: host decal map totals: ... 0 rows dropped ... most D rows in one tick <n>" at the FED_C1M1
+#       map end, n under 512 (b10: 137 after a clear 6000 kill on C2M1).
+#  308  host "card308: host t=<ms> map end: objective journal peak <n> of 512 frames, 0 not recorded" with n near
+#       the b8 C1M1 value 40 (25 steps); "card098: host world relay map totals: ... (peak <m> of 1024 ...), 0 dropped",
+#       m above the b10 3 because the bombing run copies and the range targets' rows land on this map.
+#  304  client "card304: audio rows <n>, owner unresolved 0" with fire rows from the host's Morita and the range
+#       grenade; zero WARN card304.
+#  294  host down, client alive, host checkpoint load: client "card294: client t=<ms> host restart (" then
+#       "restart done in <ms> ms: death screens built 0, respawns in the old world 0"; host "card143: ... Reload to
+#       ... sent now, ahead of <n> queued frames"; client alive through it (state pawn=client-own after).
+#  291  client card152 bone line "card291: component scale (x, y, z)": off 1.000 only on corpses whose bone gap is
+#       constant over their rows; if every scale is 1.000, the next read is the body 0 setup offset (no fix here).
+#  WARN zero new kinds against logs/b10-last-host.log (none) and logs/b10-last-client.log (card152 bone check,
+#       card140 client hit, card152 pose stream map totals).
+voidsoft
+failsoft
+void unless host dll cf55155bc7a4dd94
+void unless client dll cf55155bc7a4dd94
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card301: host net audit " timeout=60
+client wait log "card301: client net audit " timeout=60
+client shot b11s-client-hud
+host shot b11s-host-hud
+# --- Assault_O1: three presence steps, then the panel switch (client E).
+host objective now
+host objective expect Assault_SO1
+host clear 1500 kill
+host objective go all
+host objective wait Assault_SO1 60
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO1\)" timeout=30
+host objective expect Assault_SO2
+host clear 1500 kill
+host objective go all
+host objective wait Assault_SO2 60
+host objective expect Assault_SO3
+host clear 1500 kill
+host objective go all
+host objective wait Assault_SO3 60
+host objective now
+host objective expect Assault_SO4
+host clear 1500 kill
+host objective go all
+client look actor BP_PanelSwitch_WithoutScreen_C_0 0 bounds focus=BP_PanelSwitch_WithoutScreen_C_0
+client shot b11s-assault-so4-look
+client key E
+host objective wait Assault_SO4 30
+host wait log "card049: host sent CompleteObjective\(Assault_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(Assault_O1\)" timeout=30
+# --- TacSupport_01: start presence, Morita pickup, two tac support calls, the resupply rack, the bombing run.
+host clear 1500 kill
+& host goto actor BP_PlayerPresence_C_1 80
+& client goto actor BP_PlayerPresence_C_1 120
+host wait goto timeout=60
+client wait goto timeout=60
+host objective now
+host objective expect TacSupport_SO2
+host clear 1500 kill
+host goto actor BP_WeaponPickup_MoritaMk1_C_1 100
+host wait goto timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C_1 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_1
+host shot b11s-tac-so2-look
+host key E
+host objective wait TacSupport_SO2 30
+host objective expect TacSupport_SO3
+host clear 1500 kill
+try host objective go all
+host look point 11700 14500 140
+host shot b11s-tac-so3-look
+host key Four
+host key LeftMouseButton
+host objective wait TacSupport_SO3 30
+host objective wait TacSupport_SO4 30
+host objective expect TacSupport_SO41
+host clear 1500 kill
+host goto actor BP_ResupplyRack_Level0_C 100
+host wait goto timeout=30
+host objective wait TacSupport_SO41 30
+host objective expect TacSupport_SO5
+host clear 1500 kill
+host goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 60
+host wait goto timeout=30
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C 0 bounds focus=BP_TacSuppPickup_BombingRun_Tutorial_C
+host shot b11s-tac-so5-look
+host key E
+host objective wait TacSupport_SO5 30
+host objective expect TacSupport_SO6
+host clear 1500 kill
+host look point 12665 14500 -482
+host shot b11s-tac-so6-look
+host key Five
+host key LeftMouseButton
+host objective wait TacSupport_SO6 30
+client wait log "copy of host [0-9]+: \S*BP_SupportFlare_Tutorial\.BP_SupportFlare_Tutorial_C" timeout=20
+client wait log "copy of host [0-9]+: \S*BombingRun\S*Projectile" timeout=20
+host objective wait TacSupport_SO7 60
+host wait log "card049: host sent CompleteObjective\(TacSupport_01\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(TacSupport_01\)" timeout=30
+# --- ShootingRange_O1: start presence, pickup, presence, ten range targets by real fire and one grenade.
+host clear 1500 kill
+& host goto actor BP_PlayerPresence_C_4 80
+& client goto actor BP_PlayerPresence_C_4 120
+host wait goto timeout=60
+client wait goto timeout=60
+host wait log "card049: host sent AddSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=30
+host objective expect ShootingRange_SO1
+host clear 1500 kill
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+host wait goto timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host shot b11s-range-so1-look
+host key E
+host objective wait ShootingRange_SO1 30
+host objective expect ShootingRange_SO2
+host clear 1500 kill
+host objective go all
+host objective wait ShootingRange_SO2 60
+host objective now
+host objective expect ShootingRange_SO3
+host clear 1500 kill
+try host objective go all
+host key Two
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_1 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_1
+host shot b11s-range-t1
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_2 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_2
+host shot b11s-range-t2
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_11 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_11
+host shot b11s-range-t11
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_3 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_3
+host shot b11s-range-t3
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_4 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_4
+host shot b11s-range-t4
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_10 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_10
+host shot b11s-range-t10
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_5 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_5
+host shot b11s-range-t5
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_6 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_6
+host shot b11s-range-t6
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_9 " timeout=15
+host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 0 bounds hit=BP_KillableBuilding_Base_TargetRangeTarger_C_9
+host shot b11s-range-t9
+host key LeftMouseButton 1500
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 " timeout=15
+host look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_GrenadeRangeTarget_C_1
+host shot b11s-range-grenade
+host key G
+host objective wait ShootingRange_SO3 30
+client wait log "card049: client t=\d+ replayed IncrementObjectiveCount\(ShootingRange_SO3\)" count=10 timeout=30
+host wait log "card049: host sent CompleteObjective\(ShootingRange_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(ShootingRange_O1\)" timeout=30
+# --- CaptureTheFlag_O1: both-player start presence, laser pickup, presence, satchel pickup and placement.
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," timeout=30
+host clear 1500 kill
+& host goto actor BP_PlayerPresence_C_7 80
+& client goto actor BP_PlayerPresence_C_7 120
+host wait goto timeout=90
+client wait goto timeout=90
+host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2 players inside" timeout=30
+host objective now
+host objective expect CaptureTheFlag_SO1
+host clear 1500 kill
+host goto actor BP_WeaponPickup_LaserMorita_C_0 100
+host wait goto timeout=30
+host look actor BP_WeaponPickup_LaserMorita_C_0 0 bounds focus=BP_WeaponPickup_LaserMorita_C_0
+host shot b11s-ctf-so1-look
+host key E
+host objective wait CaptureTheFlag_SO1 30
+host objective expect CaptureTheFlag_SO2
+host clear 1500 kill
+host objective go all
+host objective wait CaptureTheFlag_SO2 60
+client wait log "card161: client t=\d+ DoorOp state 3 BP_Door_Sliding_Large_C_1: applied" timeout=20
+host objective expect CaptureTheFlag_SO3
+host clear 1500 kill
+host goto actor BP_SatchelItemPickup_CTF_C_0 100
+host wait goto timeout=30
+host look actor BP_SatchelItemPickup_CTF_C_0 0 bounds focus=BP_SatchelItemPickup_CTF_C_0
+host shot b11s-ctf-so3-look
+host key E
+host objective wait CaptureTheFlag_SO3 30
+host objective expect CaptureTheFlag_SO4
+host clear 1500 kill
+host goto actor BP_SatchelPlacementSite_Flag_C 100
+host wait goto timeout=30
+host look actor BP_SatchelPlacementSite_Flag_C 0 bounds focus=BP_SatchelPlacementSite_Flag_C
+host shot b11s-ctf-so4-look
+host key E 3200
+host objective wait CaptureTheFlag_SO4 40
+host wait log "card049: host sent CompleteObjective\(CaptureTheFlag_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(CaptureTheFlag_O1\)" timeout=30
+host objectives
+client objectives
+# --- 294 host down with the client alive + 309 load burst: save, mass corpse kill, host down, checkpoint load.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+host clear 6000 kill
+host mark
+client mark
+host down host
+host wait log "card294: host t=\d+ Down Downed for pawn id \d+ \(slot \d+\) sent now, ahead of \d+ queued frames" since-mark timeout=10
+host travel checkpoint
+host wait log "card143: host t=\d+ Reload to \S+ \(copy \S+\): sent now, ahead of \d+ queued frames" since-mark timeout=60
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+host clear 6000 kill
+client wait log "card294: client t=\d+ host restart \(" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=120
+host clear 6000 kill
+client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built 0, respawns in the old world 0" since-mark timeout=90
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+host wait log "card132: host decal respawn in place \(this map so far\) totals: " since-mark timeout=10
+client shot b11s-294-client-after-restart
+host objectives
+client objectives
+# --- Asteroid_O1 and mission end: both players into the last presence, the level end screen, travel to FED_C2M1.
+host clear 1500 kill
+& host goto actor BP_PlayerPresence_C_11 80
+& client goto actor BP_PlayerPresence_C_11 120
+host wait goto timeout=90
+client wait goto timeout=90
+host wait log "card049: host sent AddObjective\(Asteroid_O1\)" timeout=30
+client wait log "card049: client t=\d+ (replayed )?AddObjective\(Asteroid_O1\)" timeout=30
+host shot b11s-c1m1-end
+client shot b11s-c1m1-end
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" timeout=30
+host mark
+client mark
+host travel next
+host wait log "card308: host t=\d+ map end: objective journal peak \d+ of 512 frames" since-mark timeout=60
+host wait log "card098: host world relay map totals: " since-mark timeout=10
+host wait log "card132: host decal map totals: " since-mark timeout=10
+client wait log "card304: audio rows \d+, owner unresolved \d+" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=180
+host wait state map=FED_C2M1 pawn=host-own timeout=240 void
+client wait state pawn=client-own timeout=120
+host wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+client wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=10
+host ui continue
+client ui continue
+client shot b11s-c2m1-hud
+host objectives
+client objectives
+client quit
+sleep 2
+host quit

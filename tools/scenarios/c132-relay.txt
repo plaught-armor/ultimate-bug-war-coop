@@ -1,0 +1,32 @@
+# Card 132 AI round relay proof (FED_C2M1 by UBWCOOP_TRAVEL, FAST=1): the host relays every pooled launch made outside
+# a FireProjectile task (AI rounds from SpawnPooledProjectile) as a GrenadeSpawn frame with throw number 0; the client
+# spawns a copy. With UBWCOOP_C76_LOG=1 on the client each copy logs (card074: client ... GrenadeSpawn 0 ...), and the
+# paired shots are taken right after a copy line so rounds are in flight on both screens.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-relay.txt DEPLOY=1 FAST=1 CLIENT_EXTRA_ENV="UBWCOOP_C76_LOG=1"
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c132r1 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host autoplay on
+client autoplay on
+client wait log "card074: client t=\d+ GrenadeSpawn 0 " timeout=180
+client shot c132r-01
+host shot c132r-01
+client wait log "card074: client t=\d+ GrenadeSpawn 0 " count=8 timeout=120
+client shot c132r-02
+host shot c132r-02
+client wait log "card074: client t=\d+ GrenadeSpawn 0 .*AIGrenade" timeout=180
+client shot c132r-03
+host shot c132r-03
+sleep 0.5
+client shot c132r-04
+host shot c132r-04
+sleep 60
+host autoplay off
+client autoplay off
+host objectives
+client objectives
+sleep 10
+host quit
+client quit

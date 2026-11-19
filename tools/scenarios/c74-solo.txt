@@ -1,0 +1,20 @@
+# Card 074: solo host (SOLO=1): take the frag pickup set and throw the frag and the incendiary; no GrenadeSpawn or
+# GrenadeExplode frame is sent (no client), and the host's own grenades explode as before.
+# Run: SCENARIO=tools/scenarios/c74-solo.txt SOLO=1 HOST_ENV="UBWCOOP_C74_LOG=1" run65.sh <tag>
+host wait state pawn=host-own timeout=240
+host ui continue
+sleep 3
+host goto actor BP_GrenadeAmmoPickup_Frag_C 80
+sleep 3
+host look 0 -5
+host key G
+sleep 2.8
+host shot frag-boom
+sleep 3
+host key G
+sleep 2.5
+host shot inc-boom
+sleep 1
+host shot inc-fire
+sleep 3
+host quit

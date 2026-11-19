@@ -1,0 +1,51 @@
+# Card 164, run c164-r1 (run 1 of 3). The c201-r2 route (FED_C2M1 with the client in from the start, the map's own
+# troop dropship landings) through its Part 1 kills, then a wait for client digest round 3 and quit. No nuke part.
+# Predictions in docs/cards/164-gate-server-only-actors.md, "Run c164-r1 predictions": rounds 1-3 with 0 mismatches
+# (c201-r2: 9 in round 2, 4 in round 3, all actors riding a flying dropship), the card164 left-out line per round on
+# both sides, card140 attach lines still logged. Every command and argument below ran "ok" in logs/c201-r2.drive
+# (lines 15-50); the card 137 gib window wait is left out (it timed out there and proves nothing here).
+# Run: SCENARIO=tools/scenarios/c164-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher"
+#      tools/run_pair.sh c164-r1 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+client mark
+host ui continue
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+client wait near 229612 38956 9100 600 timeout=120
+both look point 229312 39956 8900
+# Part 1: three rounds of 3 WarriorBug kills 1000 uu out.
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 12
+client shot gibs-kills
+# Round 3 is the last one c201-r2 mismatched in (its dropship _20 group was still descending).
+client wait log "card132: client round 3: actors " since-mark timeout=180
+client shot round3
+host shot round3
+host quit
+client quit

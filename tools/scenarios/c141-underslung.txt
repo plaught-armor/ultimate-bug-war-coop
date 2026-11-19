@@ -1,0 +1,125 @@
+# Card 141 proof, with the card 155 proofs carried into it, in one FAST=1 pair run on FED_C1M1 (GOD=0: the run
+# takes hits and a down). Client rifle and ADS, the underslung on (Q held past its 0.5 s InputTriggerHold) and three
+# shotgun bursts, the underslung off and a rifle burst, Next twice (Q tapped, InputTriggerTap), host rifle (remote
+# audio both ways), client frag, pause menu open and close, bug hits on both players, a down and a revive, then a
+# wait past 300 s for the periodic summary; the session-end summary is written at quit. tools/match_shots.py reads
+# both logs afterwards. Every step that depends on game state waits for its log line (mark, then wait since-mark, so
+# a line written during the step is not missed); sleeps only space key presses.
+# Run: SCENARIO=tools/scenarios/c141-underslung.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# The client takes the frag before the host moves: the host's walk to the rifle rack crosses the frag pickup (c155c).
+client mark
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+client wait log "card073: client t=\d+ GrenadeItem BP_GrenadeItem_Frag_C \d+: our count" since-mark timeout=15
+# FED_C1M1 starts unarmed: both take a Morita from the rack and equip it (key Two; a pickup does not equip).
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# The rack re-enables its pickup about 10 s after a take (c155d: the client pressed E while it was still disabled).
+client wait log "card095: client t=\d+ collision BP_WeaponPickup_MoritaMk1_C_0 .*InteractionCollider .*0 -> 1" timeout=20
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" since-mark timeout=10
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1" timeout=10
+# The capture-the-flag door pair; the client walks north through door _0.
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+# Client rifle and ADS; host rifle comes after the underslung.
+client look point -3674 30000 600
+host look point -3454 30000 600
+client key LeftMouseButton 1500
+client key RightMouseButton 1500
+sleep 1
+# Card 141: the underslung on. The host replays the request on the server copy and the copy's weapon turns underslung.
+host mark
+client key Q 800
+host wait log "card141: host t=\d+ Switch \(\d+, 0, underslung, want 1\) " since-mark timeout=10
+host wait log "card141: host t=\d+ copy weapon BP_Weapon_MoritaMk1_C underslung 1 \(want 1\)" since-mark timeout=5
+sleep 1
+# Three shotgun bursts; each host copy burst has more than one pellet (k).
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+sleep 1.5
+client key LeftMouseButton 150
+try host wait log "playlog: host t=\d+ shot s seq=\d+ w=\S* k=([2-9]|\d\d+) " count=3 since-mark timeout=10
+# The underslung off, then a rifle burst (k=1 on both sides).
+host mark
+client key Q 800
+host wait log "card141: host t=\d+ Switch \(\d+, 0, underslung, want 0\) " since-mark timeout=10
+host wait log "card141: host t=\d+ copy weapon BP_Weapon_MoritaMk1_C underslung 0 \(want 0\)" since-mark timeout=5
+sleep 1
+client key LeftMouseButton 400
+sleep 1
+# Next twice (Q tapped): Morita -> Unarmed -> Morita on the client and on its server copy.
+host mark
+client key Q 100
+host wait log "card141: host t=\d+ Switch \(-1, 1, pawn" since-mark timeout=10
+try host wait log "playlog: host t=\d+ weapon slot 1 server-copy: BP_Weapon_MoritaMk1_C -> " since-mark timeout=10
+sleep 2
+host mark
+client key Q 100
+host wait log "card141: host t=\d+ Switch \(-1, 1, pawn" since-mark timeout=10
+try host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1_C" since-mark timeout=10
+sleep 2
+# Host rifle (remote audio both ways).
+client mark
+host key LeftMouseButton 1500
+try client wait log "playlog: client t=\d+ audio " since-mark timeout=10
+host wait log "playlog: host t=\d+ audio " timeout=10
+# The client's frag (aim line on the client, spawn line on the host).
+client look point -3674 30000 600
+host mark
+client key G
+host wait log "playlog: host t=\d+ grenade spawn " since-mark timeout=15
+# The pause menu open and close on the client.
+sleep 3
+client mark
+client key Escape 150
+try client wait log "playlog: client t=\d+ (widget add|cursor) " since-mark timeout=5
+client mark
+client key Escape 150
+try client wait log "playlog: client t=\d+ (widget remove|cursor) " since-mark timeout=5
+# Bugs on both players.
+host warp actor point 12500 14100 400
+host warp client point 12600 14200 400
+host spawn bug 12300 13900 400 0
+host spawn bug 12300 14300 400 180
+host spawn bug 12700 13900 400 90
+host wait log "playlog: host t=\d+ hit slot 1 " timeout=40
+try host wait log "playlog: host t=\d+ hit slot 0 " timeout=20
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Down and revive (the downed HUD widgets on the client).
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+client wait near 12600 14100 400 150 timeout=5
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+try client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Downed -> Up" since-mark timeout=15
+# Clock 2 and the rtt line at 60 s, the periodic summary at 300 s.
+host wait log "playlog: host t=\d+ summary \(300 s\)" timeout=300
+client wait log "playlog: client t=\d+ summary \(300 s\)" timeout=30
+client quit
+sleep 2
+host quit

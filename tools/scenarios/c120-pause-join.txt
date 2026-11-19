@@ -1,0 +1,22 @@
+# Card 120: the host opens its pause menu before the client joins (run with CLIENT_DELAY_MS=150000), so the pause is in
+# force when the client's first Pong arrives. The host must log "pause lifted", and the client must walk while the
+# host's menu is still open. Then the host closes the menu and both walk.
+# Run: SCENARIO=tools/scenarios/c120-pause-join.txt FAST=1 DEPLOY=1 CLIENT_DELAY_MS=150000 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+host ui continue
+sleep 3
+host key Escape 150
+sleep 2
+host shot c120-host-menu
+client wait state pawn=client-own timeout=180
+host wait log "pause lifted: client connected while paused" timeout=10
+sleep 2
+client goto -3454 9600 148 300 timeout=20
+client shot c120-client-during
+host shot c120-host-during
+host key Escape 150
+sleep 2
+host goto -3454 9686 148 300 timeout=20
+client goto -3454 8800 148 150 timeout=20
+host quit
+client quit

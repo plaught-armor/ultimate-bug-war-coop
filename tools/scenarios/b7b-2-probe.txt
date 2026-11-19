@@ -1,0 +1,122 @@
+# b7b-2 probe (senior order 2026-11-13, option a): host only, FED_C2M1, card 284 stand rows per step. Each step is
+# completed by command; the rows are used for stands only, never for a 300 or 294 conclusion.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SOLO=1 SCENARIO=tools/scenarios/b7b-2-probe.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh b7b-2-probe 1200
+failsoft
+void unless host dll 19701cf1398614b9
+host wait state map=FED_C2M1 pawn=host-own timeout=240 void
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# --- LOS_O01_SO01
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O01_SO01\)" timeout=10
+host objective now
+try host objective complete LOS_O01_SO01
+sleep 3
+# --- LOS_O01_SO02
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O01_SO02\)" timeout=10
+host objective now
+try host objective complete LOS_O01_SO02
+sleep 3
+# --- LOS_O02_SO01
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O02_SO01\)" timeout=10
+host objective now
+try host objective complete LOS_O02_SO01
+sleep 3
+# --- LOS_O02_SO02
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O02_SO02\)" timeout=10
+host objective now
+try host objective complete LOS_O02_SO02
+sleep 3
+# --- LOS_O02_SO03
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O02_SO03\)" timeout=10
+host objective now
+try host objective complete LOS_O02_SO03
+sleep 3
+# --- LOS_O04_SO01
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O04_SO01\)" timeout=10
+host objective now
+try host objective complete LOS_O04_SO01
+sleep 3
+# --- LOS_O04_SO02
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O04_SO02\)" timeout=10
+host objective now
+try host objective complete LOS_O04_SO02
+sleep 3
+# --- LOS_O03_SO01
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO01\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO01
+sleep 3
+# --- LOS_O03_SO02a
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO02a\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO02a
+sleep 3
+# --- LOS_O03_SO02b
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO02b\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO02b
+sleep 3
+# --- LOS_O03_SO02c
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO02c\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO02c
+sleep 3
+# --- LOS_O03_SO02
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO02\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO02
+sleep 3
+# --- LOS_O03_SO03a
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO03a\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO03a
+sleep 3
+# --- LOS_O03_SO03b
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO03b\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO03b
+sleep 3
+# --- LOS_O03_SO03c
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO03c\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO03c
+sleep 3
+# --- LOS_O03_SO03
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O03_SO03\)" timeout=10
+host objective now
+try host objective complete LOS_O03_SO03
+sleep 3
+# --- LOS_O02_SO05a
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O02_SO05a\)" timeout=10
+host objective now
+try host objective complete LOS_O02_SO05a
+sleep 3
+# --- LOS_O02_SO05b
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O02_SO05b\)" timeout=10
+host objective now
+try host objective complete LOS_O02_SO05b
+sleep 3
+# --- LOS_O05_SO01
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O05_SO01\)" timeout=10
+host objective now
+try host objective complete LOS_O05_SO01
+sleep 3
+# --- LOS_O05_SO02
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O05_SO02\)" timeout=10
+host objective now
+try host objective complete LOS_O05_SO02
+sleep 3
+# --- LOS_O05_SO03
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O05_SO03\)" timeout=10
+host objective now
+try host objective complete LOS_O05_SO03
+sleep 3
+# --- LOS_O05_SO04
+try host wait log "card049: host sent Add\w*Objective\((\w+, )?LOS_O05_SO04\)" timeout=10
+host objective now
+try host objective complete LOS_O05_SO04
+sleep 3
+host objective now
+host objectives
+host quit

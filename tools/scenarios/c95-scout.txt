@@ -1,0 +1,14 @@
+# Card 095 scout: list every loaded door (ASTDoor) and the blocker-like actors near the pawn, on both sides, after
+# landing; then from the CTF fight area (-3684, 9763) seen in the 2026-11-05 playtest.
+# Run: SCENARIO=tools/scenarios/c95-scout.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host door list
+client door list
+host goto -3684 9763 199 300 timeout=90
+host door list
+host shot c95-host-ctf
+host quit
+client quit

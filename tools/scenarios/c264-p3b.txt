@@ -1,0 +1,228 @@
+# Card 264/265 probe 3b (c264-p3b): one launch, senior grant 2026-11-13 (after p3). DLL: fire held only while the
+# crosshair trace names the target (no angle check), out-of-radius drop, 400 uu outrank, stand-clear VOID at cap.
+# B) per target and role: own clear, point warp + wait stand at the phase-A stand, look 0 bounds focus=+hit=,
+# shot. C) presence C_52, Switch_C_2 fight 1 and 2 each
+# with the gated look, Morita carbine pickup refill probe, presence C_52 aim row, SKY last (must VOID).
+void unless host dll 75d9c5ce204aa049
+void unless client dll 75d9c5ce204aa049
+failsoft
+host wait state map=FED_C3M2 pawn=host-own timeout=240 void
+client wait state map=FED_C3M2 pawn=client-own timeout=180 void
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Senior 2026-11-13: in every 241-243 run the client stayed on the operation card (WB_Loading_Screen_Final_C, "PRESS
+# ANY KEY TO CONTINUE"), so its key input went to the card. Close it the way c135-r2 does and prove it, fail fast.
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+client shot c243-client-ingame
+void unless client log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" before client log "cmd: \d+ shot \S*c243-client-ingame"
+host shot c264-host-ingame
+both inventory
+# ---- B: own clear, point stand at the phase-A stand, gated look (focus= and hit=)
+host warp actor point -64390 6148 1728
+host wait stand -64390 6148 1726 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -64390 6148 1728
+host wait stand -64390 6148 1726 60 timeout=15
+try host look actor BP_Switch_C_0 0 bounds focus=BP_Switch_C_0 hit=BP_Switch_C_0
+# shot p3bh01: B host BP_Switch_C_0 front 120 gated
+host shot p3bh01
+host warp actor point -64640 6155 1728
+sleep 1
+host warp client point -64390 6148 1728
+client wait stand -64390 6148 1726 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -64390 6148 1728
+client wait stand -64390 6148 1726 60 timeout=15
+try client look actor BP_Switch_C_0 0 bounds focus=BP_Switch_C_0 hit=BP_Switch_C_0
+# shot p3bc01: B client BP_Switch_C_0 front 120 gated
+client shot p3bc01
+host warp actor point -24445 -13482 2030
+host wait stand -24445 -13482 2027 120 timeout=15
+host clear 1500 60 max-left=6
+host warp actor point -24445 -13482 2030
+host wait stand -24445 -13482 2027 60 timeout=15
+try host look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2 hit=BP_Switch_C_2
+# shot p3bh02: B host BP_Switch_C_2 front 170 gated
+host shot p3bh02
+host warp actor point -24445 -13232 2030
+sleep 1
+host warp client point -24445 -13482 2030
+client wait stand -24445 -13482 2027 120 timeout=15
+client clear 1500 60 max-left=6
+host warp client point -24445 -13482 2030
+client wait stand -24445 -13482 2027 60 timeout=15
+try client look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2 hit=BP_Switch_C_2
+# shot p3bc02: B client BP_Switch_C_2 front 170 gated
+client shot p3bc02
+host warp actor point -53674 898 1956
+host wait stand -53674 898 1953 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -53674 898 1956
+host wait stand -53674 898 1953 60 timeout=15
+try host look actor BP_Switch_C_3 0 bounds focus=BP_Switch_C_3 hit=BP_Switch_C_3
+# shot p3bh03: B host BP_Switch_C_3 front 120 gated
+host shot p3bh03
+host warp actor point -53424 892 1956
+sleep 1
+host warp client point -53674 898 1956
+client wait stand -53674 898 1953 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -53674 898 1956
+client wait stand -53674 898 1953 60 timeout=15
+try client look actor BP_Switch_C_3 0 bounds focus=BP_Switch_C_3 hit=BP_Switch_C_3
+# shot p3bc03: B client BP_Switch_C_3 front 120 gated
+client shot p3bc03
+host warp actor point -12839 -13414 2154
+host wait stand -12839 -13414 2023 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -12839 -13414 2154
+host wait stand -12839 -13414 2023 60 timeout=15
+try host look actor BP_Switch_C_6 0 bounds focus=BP_Switch_C_6 hit=BP_Switch_C_6
+# shot p3bh04: B host BP_Switch_C_6 front 120 gated
+host shot p3bh04
+host warp actor point -12839 -13164 2154
+sleep 1
+host warp client point -12839 -13414 2154
+client wait stand -12839 -13414 2023 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -12839 -13414 2154
+client wait stand -12839 -13414 2023 60 timeout=15
+try client look actor BP_Switch_C_6 0 bounds focus=BP_Switch_C_6 hit=BP_Switch_C_6
+# shot p3bc04: B client BP_Switch_C_6 front 120 gated
+client shot p3bc04
+host warp actor point -11540 -1152 3369
+host wait stand -11540 -1152 3243 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -11540 -1152 3369
+host wait stand -11540 -1152 3243 60 timeout=15
+try host look actor BP_Switch_C_8 0 bounds focus=BP_Switch_C_8 hit=BP_Switch_C_8
+# shot p3bh05: B host BP_Switch_C_8 front 120 gated
+host shot p3bh05
+host warp actor point -11790 -1157 3369
+sleep 1
+host warp client point -11540 -1152 3369
+client wait stand -11540 -1152 3243 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -11540 -1152 3369
+client wait stand -11540 -1152 3243 60 timeout=15
+try client look actor BP_Switch_C_8 0 bounds focus=BP_Switch_C_8 hit=BP_Switch_C_8
+# shot p3bc05: B client BP_Switch_C_8 front 120 gated
+client shot p3bc05
+host warp actor point -40129 54428 1820
+host wait stand -40129 54428 1649 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -40129 54428 1820
+host wait stand -40129 54428 1649 60 timeout=15
+try host look actor BP_WallSwitch_C_1 0 bounds focus=BP_WallSwitch_C_1 hit=BP_WallSwitch_C_1
+# shot p3bh06: B host BP_WallSwitch_C_1 front 170 gated
+host shot p3bh06
+host warp actor point -39887 54489 1820
+sleep 1
+host warp client point -40129 54428 1820
+client wait stand -40129 54428 1649 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -40129 54428 1820
+client wait stand -40129 54428 1649 60 timeout=15
+try client look actor BP_WallSwitch_C_1 0 bounds focus=BP_WallSwitch_C_1 hit=BP_WallSwitch_C_1
+# shot p3bc06: B client BP_WallSwitch_C_1 front 170 gated
+client shot p3bc06
+host warp actor point -56838 7645 2187
+host wait stand -56838 7645 2215 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -56838 7645 2187
+host wait stand -56838 7645 2215 60 timeout=15
+try host look actor BP_PanelSwitch_WithoutScreen_C_1 0 bounds focus=BP_PanelSwitch_WithoutScreen_C_1 hit=BP_PanelSwitch_WithoutScreen_C_1
+# shot p3bh07: B host BP_PanelSwitch_WithoutScreen_C_1 front 120 gated
+host shot p3bh07
+host warp actor point -56588 7645 2187
+sleep 1
+host warp client point -56838 7645 2187
+client wait stand -56838 7645 2215 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -56838 7645 2187
+client wait stand -56838 7645 2215 60 timeout=15
+try client look actor BP_PanelSwitch_WithoutScreen_C_1 0 bounds focus=BP_PanelSwitch_WithoutScreen_C_1 hit=BP_PanelSwitch_WithoutScreen_C_1
+# shot p3bc07: B client BP_PanelSwitch_WithoutScreen_C_1 front 120 gated
+client shot p3bc07
+host warp actor point -35446 -23345 1201
+host wait stand -35446 -23345 1179 120 timeout=15
+host clear 1500 45 max-left=2
+host warp actor point -35446 -23345 1201
+host wait stand -35446 -23345 1179 60 timeout=15
+try host look actor BP_SecretPickup_C_2 0 bounds focus=BP_SecretPickup_C_2
+# shot p3bh08: B host BP_SecretPickup_C_2 front 170 gated
+host shot p3bh08
+host warp actor point -35254 -23506 1201
+sleep 1
+host warp client point -35446 -23345 1201
+client wait stand -35446 -23345 1179 120 timeout=15
+client clear 1500 45 max-left=2
+host warp client point -35446 -23345 1201
+client wait stand -35446 -23345 1179 60 timeout=15
+try client look actor BP_SecretPickup_C_2 0 bounds focus=BP_SecretPickup_C_2
+# shot p3bc08: B client BP_SecretPickup_C_2 front 170 gated
+client shot p3bc08
+# ---- C: presence C_52, Switch_C_2 fights with the gate
+# both onto BP_PlayerPresence_C_52 (PowerPlant_SO1)
+host warp actor BP_PlayerPresence_C_52 40
+host warp client BP_PlayerPresence_C_52 60
+sleep 2
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?PowerPlant_SO1\)|card097: host t=\d+ subsystem ObjectiveComplete\(PowerPlant_SO1\))" timeout=30
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?PowerPlant_SO1\)|card097: client t=\d+ subsystem ObjectiveComplete\(PowerPlant_SO1\))" timeout=30
+sleep 10
+# Switch_C_2 fight 1 (spawner)
+host warp actor point -24445 -13532 2030
+host warp client point -24445 -13352 2030
+host wait stand -24445 -13532 2027 120 timeout=15
+client wait stand -24445 -13352 2027 120 timeout=15
+both clear 1500 60 max-left=6
+# shot p3bc09: C fight 1 client after clear
+client shot p3bc09
+host warp actor point -24445 -13532 2030
+host wait stand -24445 -13532 2027 60 timeout=15
+try host look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2 hit=BP_Switch_C_2
+# shot p3bh09: C fight 1 host gated look Switch_C_2
+host shot p3bh09
+both inventory
+# Switch_C_2 fight 2 (spawner)
+host warp actor point -24445 -13532 2030
+host warp client point -24445 -13352 2030
+host wait stand -24445 -13532 2027 120 timeout=15
+client wait stand -24445 -13352 2027 120 timeout=15
+both clear 1500 60 max-left=6
+# shot p3bc10: C fight 2 client after clear
+client shot p3bc10
+host warp actor point -24445 -13532 2030
+host wait stand -24445 -13532 2027 60 timeout=15
+try host look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2 hit=BP_Switch_C_2
+# shot p3bh10: C fight 2 host gated look Switch_C_2
+host shot p3bh10
+both inventory
+# Morita carbine pickup (the only placed Morita source on the map, (-40605, 55854, 1574)): reserve before/after
+host inventory
+host warp actor BP_WeaponPickup_MoritaCarbine_C 80
+sleep 2
+try host look actor BP_WeaponPickup_MoritaCarbine_C 0 bounds
+# shot p3bh11: carbine pickup look
+host shot p3bh11
+host key E
+sleep 3
+host inventory
+# presence C_52 at 300 (aim row only)
+host warp actor BP_PlayerPresence_C_52 300
+sleep 2
+try host look actor BP_PlayerPresence_C_52
+# shot p3bh12: presence C_52 300
+host shot p3bh12
+# SKY (expect VOID, no hit): host point -44724 51871 876
+host warp actor point -44724 51871 876
+host wait stand -44724 51871 876 120 timeout=15
+try host look 0 85 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0
+# shot p3bh13: SKY (expect VOID, no hit)
+host shot p3bh13
+host quit
+client quit

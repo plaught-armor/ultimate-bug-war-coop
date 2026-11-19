@@ -1,0 +1,37 @@
+# Card 132 point 1 (continued save) plus points 2, 3 and the satchel template diagnostic, FED_C2M1 by UBWCOOP_TRAVEL,
+# FAST=1. Autoplay changes the world for 90 s after the map-start checkpoint save, then the host reloads that checkpoint
+# in place (`travel checkpoint`: LoadLatestSave, as RESTART CHECKPOINT does; the client's load is skipped by card 121). The digest rounds before and after the load show whether the
+# client still matches the host's restored state. card121's host load lines prove the load ran.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-load.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c132l2 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host autoplay on
+client autoplay on
+sleep 30
+host objectives
+client objectives
+sleep 5
+sleep 60
+host objectives
+client objectives
+sleep 5
+host shot c132l-before
+client shot c132l-before
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" timeout=30
+sleep 10
+host shot c132l-after
+client shot c132l-after
+host objectives
+client objectives
+sleep 40
+host objectives
+client objectives
+sleep 10
+host autoplay off
+client autoplay off
+host quit
+client quit

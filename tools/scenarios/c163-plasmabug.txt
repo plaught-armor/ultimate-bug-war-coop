@@ -1,0 +1,38 @@
+# Card 163 run: the host's nuke destroys a BP_SatchelBuilding_Plasmabug_C by its Blueprint's damage path (the
+# 2026-11-08 playtest's case, finding 18); the client's copy ends destroyed. One FAST=1 pair run on FED_C2M1.
+# Predictions in docs/cards/163-destructible-deaths.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c163-plasmabug.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GRANT_WEAPON=NukeLauncher"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 1
+# Both 2500 uu from the nearest Plasmabug building, the client beside the host; the client waits out the dropship
+# seat (c136 run 4) before the shot.
+host warp actor BP_SatchelBuilding_Plasmabug_C 2500
+host warp client BP_SatchelBuilding_Plasmabug_C 2500
+sleep 3
+host look actor BP_SatchelBuilding_Plasmabug_C
+client look actor BP_SatchelBuilding_Plasmabug_C
+client shot c163-before
+host mark
+client mark
+host key LeftMouseButton 3000
+host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+host wait log "card163: host t=\d+ \S+ \(BP_SatchelBuilding_Plasmabug_C\) destroyed by a damage event" since-mark timeout=20
+client wait log "card163: client t=\d+ \S+ damage kill applied" since-mark timeout=10
+sleep 1
+client shot c163-edge
+host shot c163-edge
+sleep 5
+client shot c163-5s
+host shot c163-5s
+client mark
+client wait log "card132: client t=\d+ digest round \d+ begins" since-mark count=2 timeout=40
+client wait log "card132: client round \d+: actors .* mismatches 0 " since-mark count=2 timeout=10
+host objectives
+client objectives
+client quit
+sleep 2
+host quit

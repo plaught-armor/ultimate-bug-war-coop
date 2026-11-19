@@ -1,0 +1,74 @@
+# Card 107 run 1 (FED_C1M1, FAST=1): card 106's route; pod pickup by point warp + wait near; mantles with W held through the search.
+# Steps that may fail run under try, so every row gets its run.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 2
+# c105-proof flare route: the range steps, the tutorial objectives by command, then the tutorial pickup.
+host warp client BP_PlayerPresence_C_2 300
+sleep 1
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+host warp client BP_PlayerPresence_C_24 10
+sleep 1
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+sleep 1
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+sleep 1
+host warp actor BP_PlayerPresence_C_1 10
+host warp client BP_WeaponPickup_MoritaMk1_C_1 120
+sleep 1
+client look actor BP_WeaponPickup_MoritaMk1_C_1
+client key E
+sleep 1
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host objective complete TacSupport_SO5
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 10
+sleep 1
+client look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+client key E
+sleep 1
+client key Four
+sleep 1.5
+client key LeftMouseButton
+host wait log "flare BP_SupportFlare_C ActivateFlare" count=1 timeout=25
+# Pod pickup: the host's 'P' row gives the pod MoritaMk1's place; warp 60 uu short (x - 60), wait for the client's own pawn.
+host wait log "world P \S+BP_WeaponPickup_MoritaMk1_C (-?\d+) (-?\d+) (-?\d+) \d+: sent" count=1 timeout=20
+try host warp client point {g1-60} {g2} {g3+100}
+try host warp client point {g1-60} {g2} {g3+100}
+try client wait near {g1-60} {g2} {g3+100} 100 timeout=6
+try client look point {g1} {g2} {g3}
+client key E
+try host wait log "DisablePickup on BP_WeaponPickup_MoritaMk1_C .*placed 0" count=1 timeout=5
+client shot c107-pod-taken
+# Host throw: charge slot 0 by the card 106 test command, then Four and fire.
+host charge 0 20000 1
+host look 0 -35
+host key Four
+sleep 1.5
+host key LeftMouseButton
+try host wait log "flare BP_SupportFlare_C ActivateFlare" count=2 timeout=25
+# Mantle x3: key presses are asynchronous; W 2000 is still held when the search decides (c101g held W ~0.8 s into it).
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 2000 SpaceBar 1000
+try host wait log "card101: host t=\d+ mantle window closes" count=1 timeout=8
+sleep 2
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 2000 SpaceBar 1000
+try host wait log "card101: host t=\d+ mantle window closes" count=2 timeout=8
+sleep 2
+host warp client point -503.1 21795.9 143
+sleep 1
+client look 90 0
+client key W 2000 SpaceBar 1000
+try host wait log "card101: host t=\d+ mantle window closes" count=3 timeout=8
+sleep 2
+client shot c107-mantle3
+host quit
+client quit

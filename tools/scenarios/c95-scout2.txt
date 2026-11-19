@@ -1,0 +1,19 @@
+# Card 095 scout 2: both sides at the capture-the-flag door pair (BP_Door_Sliding_Large_C_0 at (-3674, 9849),
+# _1 at (-4630, 9855)): list the blockers on both, then each tries to walk north through door _0.
+# Run: SCENARIO=tools/scenarios/c95-scout2.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+host door list
+client door list
+host shot c95s2-host-door
+client shot c95s2-client-door
+host goto -3674 10400 150 150 timeout=20
+client goto -3674 10400 150 150 timeout=20
+host shot c95s2-host-after
+client shot c95s2-client-after
+host quit
+client quit

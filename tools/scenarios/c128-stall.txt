@@ -1,0 +1,20 @@
+# Card 128 proof (FED_C3M1, during the transport dropship flight, about 48 s from the autodropship unpause; no FAST=1):
+# - stall 1: the client's game is stopped (SIGSTOP) for 5 s; it must stay in (host keeps its PC, pongs go on) and
+#   walk 300 uu from its spawn with real W input once it runs again;
+# - stall 2: stopped for 25 s, past the card 128 ConnectionTimeout (20 s): the host must log the close with its
+#   reason, and the client must detect the drop on its first tick and return to the main menu with the failure.
+# Run: SCENARIO=tools/scenarios/c128-stall.txt DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen" CLIENT_EXTRA_ENV="" tools/run_pair.sh c128g 480
+host wait log "autodropship: world unpaused" timeout=300
+client wait state pawn=client-own timeout=60
+sleep 3
+client stall 5
+sleep 1
+client wait state pawn=client-own timeout=10
+client goto -61646 -49703 450 150 timeout=30
+sleep 3
+client stall 25
+host wait log "card128: host .* closed: reason 4 ConnectionTimeout" timeout=10
+client wait log "card052: .*network failure" timeout=15
+client wait log "card113: session ended" timeout=15
+sleep 5

@@ -1,0 +1,55 @@
+# Cards 199, 198 and 184, run c199-r1 (run 1 of 3 for each, one build). FED_C2M1 start, the travel to BUG_C1M1 with
+# the client in (the c195-r1 route), a digest round on the bug map, one checkpoint restart in place on the bug map (the
+# c143-restore route: save, then LoadLatestSave; the client rejoins), a digest round after it.
+# Card 199: the host's objective journal and synced PCs reset at LoadMap enter, so the bug map's journal holds the
+# level script's AddObjective(Awaken_O1) and the first-Pong replay carries it; the digest rounds show 0 mismatches.
+# Card 198: the restart's Reload / Restore runs for the bug pawn. Card 184: the world journal and card 104 tables reset
+# at LoadMap enter. Predictions in docs/cards/199-bug-map-objective-missing-on-client.md, 198-restore-playlog-bug-pawn.md
+# and 184-c104-tables-reset-after-loadmap.md, "Run c199-r1 predictions".
+# Every state step waits for its log line. The only sleep is the 2 s after the save (no log line marks the save's
+# write as done; c143-restore uses the same wait).
+# Run: SCENARIO=tools/scenarios/c199-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      tools/run_pair.sh c199-r1 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+# Part 1: the travel to the bug-side map.
+host mark
+client mark
+host travel next
+host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=180
+client wait log "UEngine::LoadMap returned true" count=2 since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card049: host t=\d+ journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=30
+try client wait log "card049: client t=\d+ replayed AddObjective\(Awaken_O1" since-mark timeout=10
+# Part 2: a digest round on the bug map.
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client shot bug-map
+host shot bug-map
+# Part 3: the checkpoint restart in place. Save, then load the latest save; the client rejoins with its Reload state.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+host mark
+client mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+host wait log "card143: host t=\d+ Reload to .* sent" since-mark timeout=10
+client wait log "card143: client t=\d+ Reload received" since-mark timeout=10
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait log "card143: client t=\d+ Restore sent" since-mark timeout=30
+host wait log "card143: host t=\d+ Restore applied" since-mark timeout=20
+client wait state pawn=client-own timeout=30
+try host wait log "card049: host t=\d+ journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=10
+# Part 4: the digest round after the restart.
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client shot after-restart
+host shot after-restart
+host quit
+client quit

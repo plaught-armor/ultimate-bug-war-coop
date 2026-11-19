@@ -1,0 +1,118 @@
+# Card 171 run c171-r1: card 130 items 1, 2, 4 and 11 on one FED_C1M1 pair run (item 13 needs FED_C2M1: not on this
+# run). Findings only, no mod change. Route rationale and the written predictions per item are in
+# docs/cards/171-card130-leftovers.md, "Run c171-r1: route and predictions".
+# Body after the menu block: the c142-r4 route (tools/scenarios/c142-r4.txt lines 23-45), the route that raised the
+# TacSupport range targets in c206-r1 (the TacSupport_SO0/SO3 step runs when both players hold the Morita).
+# UBWCOOP_C132_FX=1 on both sides prints the card 132 "frame window 10000 ms" line (frame count, mean, max).
+# The client joins late (CLIENT_DELAY_MS=120000) so the first menu block runs solo.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c171-r1.txt DEPLOY=1 FAST=1 GOD=0
+#      CLIENT_DELAY_MS=120000 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C132_FX=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1" tools/run_pair.sh c171-r1 900
+host wait state pawn=host-own timeout=240
+host ui continue
+failsoft
+# Item 1, solo: one frame window before the menu, then Escape, OPTIONS, two windows with the menu up, then close.
+host mark
+host wait log "card132: host t=\d+ frame window " since-mark timeout=25
+host mark
+host key Escape 150
+try host wait log "card096: host t=\d+ SetGamePaused\(1\) = 1 \(world paused\), 0 client" since-mark timeout=5
+try host wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host shot c171-i1-solo-pause
+host ui click BndEvt__WB_Pause_Menu_OPTIONS_button
+host shot c171-i1-solo-options
+host mark
+try host wait log "card132: host t=\d+ frame window " count=2 since-mark timeout=25
+host mark
+host key Escape 150
+try host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=4
+when host last "card096: host t=\d+ SetGamePaused" "SetGamePaused\(1\)" host key Escape 150
+host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=10
+host shot c171-i1-solo-closed
+# The client joins.
+client wait state pawn=client-own timeout=300
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=10
+# Item 1, client in: the same block.
+host mark
+host wait log "card132: host t=\d+ frame window " since-mark timeout=25
+host mark
+host key Escape 150
+try host wait log "card096: host t=\d+ SetGamePaused\(1\) skipped: the world keeps running, 1 client" since-mark timeout=5
+try host wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host shot c171-i1-client-pause
+host ui click BndEvt__WB_Pause_Menu_OPTIONS_button
+host shot c171-i1-client-options
+host mark
+try host wait log "card132: host t=\d+ frame window " count=2 since-mark timeout=25
+host mark
+host key Escape 150
+try host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=4
+when host last "card096: host t=\d+ SetGamePaused" "SetGamePaused\(1\)" host key Escape 150
+host wait log "card096: host t=\d+ SetGamePaused\(0\)" since-mark timeout=10
+host shot c171-i1-client-closed
+# Item 4: the host walks to the Morita through BP_TutorialPromptTrigger_C_9 (5186, 2519, 499); a host shot when the
+# trigger fires (the card132 ext line), then the client walks the same path and takes a shot at the trigger.
+host mark
+& host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host wait log "card132: host ext BP_TutorialPromptTrigger_C BP_TutorialPromptTrigger_C_\d+ .* X row sent" since-mark timeout=40
+host shot c171-i4-host-trigger
+host wait goto timeout=40
+host shot c171-i4-host-arrived
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+& client goto actor BP_WeaponPickup_MoritaMk1_C 120
+try client wait near 5186 2519 499 800 timeout=40
+client shot c171-i4-client-trigger
+client wait goto timeout=40
+client shot c171-i4-client-arrived
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ CollisionOp \S+ InteractionCollider 1 result applied" timeout=20
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client mark
+client key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" since-mark timeout=10
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1" timeout=10
+# Item 2: the TacSupport range targets rise (card 098 timeline rows); both stand at the range and take a shot after
+# the next digest round.
+host wait log "card098: host t=\d+ world L BP_KillableBuilding_Base_TacSuppRangeTarget_C_\d+\|Timeline .* sent to 1 of 1" since-mark timeout=30
+client wait log "card098: client t=\d+ world L BP_KillableBuilding_Base_TacSuppRangeTarget_C_\d+\|Timeline .* applied timeline call" since-mark timeout=10
+host warp actor point 12400 13300 400
+host warp client point 12700 13300 400
+client wait near 12700 13300 400 300 timeout=10
+host look point 12065 15300 -100
+client look point 12665 14500 -100
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+host shot c171-i2-host-targets
+client shot c171-i2-client-targets
+host look point 12665 14500 -100
+client look point 12065 15300 -100
+host shot c171-i2-host-targets-b
+client shot c171-i2-client-targets-b
+# Item 11, client side: the host is downed next to the standing client.
+host warp actor point 12500 13300 400
+host warp client point 12650 13300 400
+client wait near 12650 13300 400 200 timeout=10
+client look point 12500 13300 350
+client mark
+host mark
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Downed" since-mark timeout=10
+client wait log "card130: client t=\d+ revive prompt shown for " since-mark timeout=10
+client shot c171-i11-client-prompt
+host shot c171-i11-host-downed
+try client key E 6000 timeout=15
+client wait log "card130: client t=\d+ revive prompt hidden for " since-mark timeout=30
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client quit
+sleep 2
+host quit

@@ -1,0 +1,34 @@
+# Card 469 leftovers on b174, run 3 (C2M1: run 2 c469b174b showed the FED_C1M1 hold self-confirming before the client joins) (senior order 2026-11-17): the card 320 shot pairs. On the c448 route (menu start,
+# client joins after the load) the hold counts clients 0 and goes off by itself about 4 s after it starts, before the
+# host has a pawn (c448b174a, c469b174a), so no shot can land inside it. This route travels both into FED_C2M1
+# (UBWCOOP_TRAVEL), so the hold waits for the client (c460 join block): a shot pair after "hold waits for client
+# slot", a pair after "hold off". Client capped at 20 fps (DXVK/VKD3D env) as in c469b174a for the card 226 rows.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c469b-c1m1-hold.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 DXVK_FRAME_RATE=20 VKD3D_FRAME_RATE=20" tools/run_pair.sh c469b174c 600
+# Expected wall: about 3 min.
+void unless host dll 4efbc7838d907625
+void unless client dll 4efbc7838d907625
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+sleep 2
+host shot c320-h-hold
+client shot c320-c-hold
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host shot c320-h-release
+client shot c320-c-release
+try host wait state pawn=host-own timeout=60
+try client wait state pawn=client-own timeout=60
+sleep 20
+host shot c469-h-play
+client shot c469-c-play
+client quit
+sleep 2
+host quit

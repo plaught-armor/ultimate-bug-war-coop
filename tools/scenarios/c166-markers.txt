@@ -1,0 +1,63 @@
+# Card 166 run (card 161 class fix batched): the client's hit and kill markers for claimed hits, and card 161's
+# close step with the client standing in the door. One FAST=1 pair run on FED_C1M1 (GOD=0).
+# Predictions in docs/cards/166-client-hit-marker.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c166-markers.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 \(.*\) at .* tracked" timeout=30
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 \(.*\) at .* tracked" timeout=30
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Card 161 door close (run a): proven in c166a (client 3 -> 0 30 ms after the host's). Run a's client stood in the
+# doorway and the game's door crush (9999 damage, Actor.Type.Building) downed it, so run b skips the door steps.
+# Card 166: the client takes a Morita and shoots a bug in open ground until it dies.
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host warp actor point 13500 13500 400
+host warp client point 13600 14200 400
+client wait near 13600 14200 400 300 timeout=10
+host spawn bug 13600 15700 400 270
+sleep 2
+# c166c: a host reference burst and shot (what the host's own marker looks like at this size and range).
+host look actor BP_AI_WarriorBug_C
+host key LeftMouseButton 300
+host shot c166-host-marker
+host mark
+client mark
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 600
+client shot c166-client-marker-1
+client wait log "card166: client t=\d+ OnDamageCaused on own pawn " since-mark timeout=10
+host wait log "card166: host t=\d+ OnDamageCaused on server copy .*\(sent\)" since-mark timeout=5
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+client shot c166-client-marker-2
+try client wait log "card166: client t=\d+ OnDeathCaused on own pawn " since-mark timeout=3
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+client shot c166-client-marker-3
+try client wait log "card166: client t=\d+ OnDeathCaused on own pawn " since-mark timeout=3
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+client shot c166-client-marker-4
+try client wait log "card166: client t=\d+ OnDeathCaused on own pawn " since-mark timeout=5
+try host wait log "card166: host t=\d+ OnDeathCaused on server copy .*\(sent\)" since-mark timeout=5
+sleep 2
+client shot c166-client-after
+host shot c166-host-after
+try host kill actor BP_AI_WarriorBug_C
+sleep 2
+# Map totals (card 161, card 166) print at the travel.
+client mark
+host travel next
+client wait log "card120: client t=\d+ minimap origin" since-mark timeout=240
+sleep 5
+client quit
+sleep 2
+host quit

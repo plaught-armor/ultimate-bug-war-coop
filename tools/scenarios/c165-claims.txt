@@ -1,0 +1,89 @@
+# Card 165 run 1 (from c157-claims.txt): the card 165 host launch diag on the client's rounds, then client hit claims, one FAST=1 pair run on FED_C1M1 (GOD=0). Both take a Morita (c155 route), then
+# bugs spawn in front of the client and the client fires scripted bursts at them; the bugs hit the client's pawn
+# (Armour on both sides). A travel next prints the card157 totals lines on both sides. tools/match_shots.py reads both
+# logs afterwards. Predictions in docs/cards/165-client-hit-claims-finish.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c157-claims.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+sleep 2
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+sleep 2
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+# Card 145: the host take removes the pickup on the client too (E 0); it respawns about 10 s later (E 1).
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_\d+ .* 1 \(.*: (applied|already)" timeout=30
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# A miss burst at the ground about 900 uu in front of the client (miss claims: the host's copies replay their ground hits).
+client look point 6900 12300 100
+client mark
+client key LeftMouseButton 800
+client wait log "card157: client t=\d+ HitClaim shot \d+ miss" since-mark timeout=10
+try host wait log "card165: host t=\d+ launch .*controller \S+ side \d+ \(server copy \d+\)" timeout=10
+# Run 4, range-target shot: one short burst from 12600 14200 at a bug behind the range target (12665 14500). The
+# client's round stops on the target (a miss claim); the host's copy must deal the bug no damage.
+host warp actor point 12500 13500 400
+host warp client point 12600 14200 400
+client wait near 12600 14200 400 300 timeout=10
+host spawn bug 12600 15700 400 270
+sleep 2
+host mark
+client mark
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 100
+client wait log "card157: client t=\d+ HitClaim shot \d+ miss BP_KillableBuilding_Base_TacSuppRangeTarget_C" since-mark timeout=10
+sleep 2
+client shot c157-client-range
+host shot c157-host-range
+host kill actor BP_AI_WarriorBug_C
+sleep 2
+# Open ground, 1000 uu east of the range targets: bursts at three bugs (NPC claims, host overlap parks).
+host warp actor point 13500 13500 400
+host warp client point 13600 14200 400
+client wait near 13600 14200 400 300 timeout=10
+host spawn bug 13600 15700 400 270
+host spawn bug 13300 15700 400 270
+host spawn bug 13900 15700 400 270
+sleep 2
+host mark
+client mark
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+client wait log "card157: client t=\d+ HitClaim shot \d+ NPC BP_AI_WarriorBug_C" since-mark timeout=10
+try host wait log "card157: host t=\d+ HitClaim shot \d+ from pc .* applied to BP_AI_WarriorBug_C" since-mark timeout=10
+sleep 1
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+sleep 1
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+sleep 1
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+# The bugs reach the client: hits on its pawn (Armour first, both sides).
+try host wait log "playlog: host t=\d+ hit slot 1 " since-mark timeout=40
+sleep 3
+client shot c157-client-bugs
+host shot c157-host-bugs
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 2
+client mark
+host travel next
+client wait log "card120: client t=\d+ minimap origin" since-mark timeout=240
+try host wait log "card157: host/standalone totals: " timeout=10
+sleep 5
+client quit
+sleep 2
+host quit

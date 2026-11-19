@@ -1,0 +1,18 @@
+# Card 114 (FED_C2M1, FAST=1): the edited difficulty file (Default preset "Arachnid AI to Human Player" = 3.0,
+# Warriors_Medium Human Medium factor = 2.0, one bad line). Both players warp into the first WarriorBug group and
+# stay until a bug hits a player; the logs carry the card114 apply lines, the client's host-values line, the
+# card111 wave line "base 16, difficulty 32" and the damage lines (out = 3 x in for a bug hit on a player).
+# Run: SCENARIO=tools/scenarios/c114-proof.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c114b 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 600
+host warp actor BP_AI_WarriorBug_C 600
+host wait log "card114: host or solo damage .*receiver [^)]*Player" timeout=60
+sleep 5
+host shot c114-fight
+client shot c114-fight
+host quit
+client quit

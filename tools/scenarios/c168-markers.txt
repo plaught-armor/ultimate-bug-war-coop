@@ -1,0 +1,101 @@
+# Card 168 run (card 145 and card 146 batched): the relayed hit marker's visible change on the client, with the
+# host's own marker as the control; card 145's respawn under a standing player; card 146's rejoin spot at +2 and +5 s.
+# One FAST=1 pair run on FED_C1M1 (GOD=0). Predictions in docs/cards/168-hit-marker-visible.md. Every state step
+# waits for its log line.
+# Run: SCENARIO=tools/scenarios/c168-markers.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C146_NO_START=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by " timeout=60
+# Both players armed. The client takes the Morita at 6445 11469 and walks over BP_AmmoPickup_MoritaSmall_C_0
+# (6424 11495 99) on the way, then stands still through the ammo pickup's 30 s respawn (card 145). The host arms
+# after that, while the ammo pickup is down again.
+host mark
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "card098: host t=\d+ world E BP_AmmoPickup_MoritaSmall_C_0 .* 0: sent to 1 of 1" since-mark timeout=10
+# Card 145: the client fires at the sky and reloads, so its Morita reserve is below its 240 maximum when the pickup
+# comes back (ASTAmmoPickup::CanBePickedUp refuses a full reserve). The card 072 mirror carries it to the host's copy.
+client look point 6424 13000 2000
+client key LeftMouseButton 1200
+client mark
+client key R
+client wait log "card072: client t=\d+ AmmoMirror sent: .*AmmunitionType\.Morita ([0-9]|[0-9][0-9]|1[0-9][0-9]|2[0-3][0-9])\b" since-mark timeout=10
+host wait log "card072: host t=\d+ AmmoMirror from .*AmmunitionType\.Morita 240 to ([0-9]|[0-9][0-9]|1[0-9][0-9]|2[0-3][0-9]) " since-mark timeout=5
+host mark
+host wait log "card098: host t=\d+ world E BP_AmmoPickup_MoritaSmall_C_0 .* 1: sent to 1 of 1" since-mark timeout=40
+host wait log "card098: host t=\d+ world E BP_AmmoPickup_MoritaSmall_C_0 .* 0: sent to 1 of 1" since-mark timeout=3
+client mark
+client wait log "card132: client t=\d+ digest round \d+ begins" since-mark count=2 timeout=70
+# The known card 132 spawner and LandingBlocker rows can still come in these rounds. The report checks them for no
+# BP_AmmoPickup_MoritaSmall_C mismatch.
+client wait log "card132: client round \d+: actors " since-mark count=2 timeout=10
+# The host arms (the weapon pickup is back after its 10 s respawn).
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+sleep 2
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Card 168: one bug in open ground. Control first: the host's own burst and its marker animation.
+host warp actor point 13500 13500 400
+host warp client point 13600 14200 400
+client wait near 13600 14200 400 300 timeout=10
+host spawn bug 13600 15700 400 270
+sleep 2
+host mark
+host look actor BP_AI_WarriorBug_C
+host key LeftMouseButton 300
+host wait log "card168: host t=\d+ WB_Hit_Marker PlayAnimation Hit_" since-mark timeout=5
+# The client's bursts until the bug dies: relayed OnDamageCaused, then the client's marker animation.
+client mark
+host mark
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 600
+client wait log "card166: client t=\d+ OnDamageCaused on own pawn " since-mark timeout=10
+client wait log "card168: client t=\d+ WB_Hit_Marker PlayAnimation Hit_" since-mark timeout=5
+host wait log "card166: host t=\d+ OnDamageCaused on server copy .*\(sent\)" since-mark timeout=5
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+try client wait log "card166: client t=\d+ OnDeathCaused on own pawn " since-mark timeout=3
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+try client wait log "card166: client t=\d+ OnDeathCaused on own pawn " since-mark timeout=3
+client look actor BP_AI_WarriorBug_C
+client key LeftMouseButton 1200
+try client wait log "card168: client t=\d+ WB_Hit_Marker PlayAnimation Hit_Kill" since-mark timeout=5
+try host kill actor BP_AI_WarriorBug_C
+sleep 2
+# Card 146: all down at the checkpoint (the host's corpse on the anchor, as in r2), then the client's rejoin.
+host warp actor point -1769 1820 300
+host warp client point -1500 1820 300
+client wait near -1500 1820 300 300 timeout=10
+sleep 2
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host mark
+host down host
+host wait log "card043: host t=\d+ .*host-own.* -> Dead \(all down" since-mark timeout=20
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=20
+sleep 3
+client mark
+host mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+host wait log "card146: host player spawn at the origin with no player Up: spawns at .* \((-?\d+), (-?\d+), (-?\d+)\) instead" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+sleep 2
+client wait near {g1} {g2} {g3} 300 timeout=3
+sleep 3
+client wait near {g1} {g2} {g3} 300 timeout=3
+client quit
+sleep 2
+host quit

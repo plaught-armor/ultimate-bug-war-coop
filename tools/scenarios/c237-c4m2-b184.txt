@@ -1,0 +1,70 @@
+# Card 237 proof (b184 order): the FED_C4M2 Brain Bug arena shield (StaticMeshActor_52, FED_C4M2_Scripting,
+# (17254, -42505, 4998)) toggled on the host by the test-only `levelcall Toggle Brain Bug Boundary` (the level script
+# function block 15401 calls), twice. No objective chain. Predictions: after each toggle, host card095 "collision
+# StaticMeshActor_52 ... sent to 1 of 1 clients" rows (the actor flag and the @<profile>: component row) and client
+# card095 "collision StaticMeshActor_52 ... applied" rows with the same values; 0 StaticMeshActor_52 mismatches in the
+# three digest rounds; host and client shots of the shield from the same stand agree.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c237-c4m2-b184.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M2?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c237b184a 600
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll c145bca0829a932e
+void unless client dll c145bca0829a932e
+host wait state map=FED_C4M2 timeout=240 void
+client wait state map=FED_C4M2 pawn=client-own timeout=180
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+try client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+# 0. Digest round before any toggle.
+host clear 4000 kill
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# 1. First toggle.
+host mark
+client mark
+host levelcall Toggle Brain Bug Boundary
+host wait log "cmd: \d+ levelcall Toggle Brain Bug Boundary on \S+: run" since-mark timeout=5
+try host wait log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to 1 of 1 clients" since-mark timeout=10
+try client wait log "card095: client t=\d+ collision StaticMeshActor_52 .*applied" since-mark timeout=10
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host mark
+host warp actor BP_PlayerPresence_C_176 10
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+host warp client point {g1+150} {g2} {g3}
+client wait near {g1+150} {g2} {g3} 250 timeout=10
+host look point 17254 -42505 4998
+client look point 17254 -42505 4998
+sleep 2
+host shot c237-h-shield-1
+client shot c237-c-shield-1
+# 2. Second toggle, same waits, digest round and shots.
+host mark
+client mark
+host levelcall Toggle Brain Bug Boundary
+host wait log "cmd: \d+ levelcall Toggle Brain Bug Boundary on \S+: run" since-mark timeout=5
+try host wait log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to 1 of 1 clients" since-mark timeout=10
+try client wait log "card095: client t=\d+ collision StaticMeshActor_52 .*applied" since-mark timeout=10
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host look point 17254 -42505 4998
+client look point 17254 -42505 4998
+sleep 2
+host shot c237-h-shield-2
+client shot c237-c-shield-2
+host quit
+client quit

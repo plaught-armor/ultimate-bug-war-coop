@@ -1,0 +1,45 @@
+# Card 098 measurement, FED_C1M1: as card 097 (tutorial steps by command, the host takes the support flare and throws
+# it for the bombing run), with the host closer to the pickup. Both run UBWCOOP_ENEMYAUDIT. `objectives` dumps each
+# side's card098 world-change tally; the client shoots the strike area; both walk to capture the flag.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host objective complete TacSupport_SO3
+host objective complete TacSupport_SO4
+host objective complete TacSupport_SO41
+host objective complete TacSupport_SO5
+sleep 3
+host warp actor BP_TacSuppPickup_BombingRun_Tutorial_C 80
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 500
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+sleep 1
+host key E
+sleep 2
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 4
+host key Four
+sleep 2
+host key LeftMouseButton
+sleep 8
+client shot c98-client-strike
+host shot c98-host-strike
+sleep 12
+host objectives
+client objectives
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+client shot c98-client-ctf
+host objectives
+client objectives
+host quit
+client quit

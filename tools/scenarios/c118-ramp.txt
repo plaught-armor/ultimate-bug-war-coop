@@ -1,0 +1,43 @@
+# Card 118 ramp repro: the first internet playtest's client hit a UE Fatal error running up the FED_C1M1 assault
+# course to vault; its head froze at (-544, 19515, 946) (pawn z 836, the flat top past the y 15600-16300 ramp,
+# before the y 20968 mantle ledge). The host places both pawns side by side (the client through its server copy:
+# a client-side warp is corrected back by the server, run c118a), both face yaw 91, then both run and jump at the
+# same time (`both`: the command goes to host and client together). Then the same at the y 20968 ledge (mantle).
+# Run: SCENARIO=tools/scenarios/c118-ramp.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh <tag> 420
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host warp client point -544 15300 600
+host warp actor point -480 15300 600
+sleep 2
+client wait near -544 15300 600 200 timeout=10
+both look 91 0
+both key W 2500 SpaceBar 1500
+both key W 2500 SpaceBar 1200
+both key W 2500 SpaceBar 800
+both key W 2500 SpaceBar 1800
+sleep 1
+client shot r1
+# Up to the y 20968 ledge from the crash point, several vault tries each.
+host warp client point -544 19515 840
+host warp actor point -480 19515 840
+sleep 2
+client wait near -544 19515 840 200 timeout=10
+both look 91 0
+both key W 3000 SpaceBar 1500
+both key W 2000 SpaceBar 300
+both key W 2000 SpaceBar 300
+both key W 2000 SpaceBar 300
+sleep 1
+client shot r2
+# Back to the ramp foot and one long run up and on, both together.
+host warp client point -544 15300 600
+host warp actor point -480 15300 600
+sleep 2
+client wait near -544 15300 600 200 timeout=10
+both look 91 0
+both key W 9000 SpaceBar 6500 timeout=20
+sleep 3
+both shot r3

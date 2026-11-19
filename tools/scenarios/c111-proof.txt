@@ -1,0 +1,24 @@
+# Card 111 (FED_C2M1, FAST=1): both players warp into the first WarriorBug group and stay 30 s, so the ticket
+# containers fill; the host log carries the card111 budget, limit and peak lines (base and scaled values).
+# Run: SCENARIO=tools/scenarios/c111-proof.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c111a 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 1500
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+client shot c111-fight
+sleep 15
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+sleep 10
+host shot c111-end
+client shot c111-end
+host quit
+client quit

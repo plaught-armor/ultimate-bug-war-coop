@@ -1,0 +1,96 @@
+# Card 276 verdict run (client fire presses on the host copy): rapid taps and one hold through a reload, Morita Mk1,
+# FED_C1M1, FAST=1, GOD=1, no bugs (miss claims at the ground). b67 cc1d4251720f389d.
+# Static trace and predictions (senior, 2026-11-15, written before the run; fire.cpp c276_repress, c24_host_guard):
+# 1. Tap phase (20 taps, 80 ms down, 90 ms up): 20 host "card024: host relay press (Fire 1)" rows since the mark and
+#    20 "card276: host ... press end" rows; every press end row has rounds >= 1 ("no re-press" or "re-press produced
+#    a round"). A row with rounds 0 is the card 276 defect (press lost while the copy's ability was still active).
+# 2. Hold phase (9 s from a full magazine, through the reload): one press end row with rounds within 1 of the
+#    client's ("card175: ... the copy fired N of the client's M rounds", M - N <= 1 before the bound row); re-presses
+#    only with "credit waiting" after the copy's reload.
+# 3. Whole run: 0 "found no round" rows on the host; client claim rows "sent" to host "applied"/miss lag under 100 ms
+#    (tools/match_shots.py); host "card276: host t=... reload press received" count equals the client's
+#    "reload ability" rows.
+# 4. FATAL/ERROR 0, no new WARN class.
+# A failure of 1 or 3 is a defect to card with the rows, not to chase. Budget: 1 run.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c276-tap-hold.txt FAST=1 GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c276b67 360
+# Expected wall: about 3 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client look point 6900 12300 100
+sleep 1
+host mark
+client mark
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client key LeftMouseButton 80
+sleep 0.09
+client wait log "card157: client t=\d+ HitClaim shot \d+ miss" since-mark timeout=10
+sleep 2
+client shot c276-taps
+# Hold through the reload: reload first so the hold starts on a full magazine.
+client key R
+sleep 4
+host mark
+client mark
+client key LeftMouseButton 9000
+client wait log "card276: client t=\d+ reload ability" since-mark timeout=15
+sleep 3
+client shot c276-hold
+host shot c276-host
+host travel next
+client wait log "card120: client t=\d+ minimap origin" since-mark timeout=240
+try host wait log "card157: host/standalone totals: " timeout=10
+sleep 3
+client quit
+sleep 2
+host quit

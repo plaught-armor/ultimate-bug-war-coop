@@ -1,0 +1,25 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 081 proof 3 (co-op, FED_C1M1): with UBWCOOP_C79_DOWN=zipline on the host, the client's copy goes Downed the
+# first time it is within 600 uu of a zipline point. The host warps the client next to BP_ZiplinePoint_C_3 (the
+# client-zipline route's walkable start), the client looks at it and presses E. Expected: the client's trace is
+# hidden (no "E" prompt), the client's own Interact is refused, the host refuses the relayed Use, no card054
+# relayed Use line, and the client does not ride the zipline.
+# Run: SCENARIO=tools/scenarios/c81-down-zipline.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_C79_DOWN=zipline" run65.sh <tag> 420
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+sleep 5
+host warp client BP_ZiplinePoint_C_3 120
+host wait log "card079: host t=[0-9]+ test down" timeout=15
+client wait log "card043: client t=[0-9]+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" timeout=15
+sleep 2
+client look actor BP_ZiplinePoint_C_3
+sleep 1
+client shot downed
+client key E
+host wait log "card081: host t=[0-9]+ relay for .* refused" timeout=15
+sleep 3
+client shot after
+host shot after
+client quit
+host quit

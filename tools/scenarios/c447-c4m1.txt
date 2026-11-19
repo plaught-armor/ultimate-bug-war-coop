@@ -1,0 +1,201 @@
+# Card 447 + card 323 seat table (b147, senior order 2026-11-16): a client that leaves the game while piloting a mech
+# leaves the mech behind (the game's own leave runs first), the host can then board that mech, and the rejoined
+# client sees the host's seat (card 323 step 1 table). FED_C4M1: its two pod mechs stand from the map start (c127-c4m1
+# stage 2: mech A at about 3233 -61494 1669, mech B at about -28886 -83182 279); the FED_C2M1 mech spawns only at
+# LOS_O05 (c241-c2m1.txt:1294), minutes into the objective chain.
+# Order (senior): 1. client enters mech A, leaves the game in it (card447 row); 2. host enters that same mech (the
+# usable-after-leave proof); 3. client rejoins while the host sits in it (card323 seat join replay row), client shots
+# of the host's mech from 600 uu, before and 3 s into a host walk; 4. host leaves, client enters the same mech again
+# (second MechEnter row), shot, leaves. Steps after a failed step 2 or 3 still run (failsoft, try).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c447-c4m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c447b152a 600
+# Expected wall: about 5 min.
+voidsoft
+failsoft
+void unless host dll e7197c28f8ab7bb8
+void unless client dll e7197c28f8ab7bb8
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# c447b147a: without the client's continue the map-start hold stays on (world paused, the mechs never spawn), and the
+# client's leave during the hold sends the host to the menu (card 355). Both confirm, the hold ends, then the two pod
+# mechs spawn (c127-c4m1: about 10 s into the map).
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "card098: host spawn BP_BaseMech_C BP_BaseMech_C at " timeout=60
+# Host 300 uu from mech A (the nearest to the landing point), bugs cleared there (user rule: objective tests clear by
+# code).
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+host clear 4000 kill
+# 1. The client enters mech A (the c127-c4m1 stage 2 steps) and leaves the game while piloting it.
+host mark
+host warp client BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: server copy \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+client wait near {g1} {g2} {g3} 250 timeout=6
+client look actor BP_BaseMech_C 150
+sleep 1
+host mark
+client key E
+host wait log "card075: host MechEnter from BP_PlayerController_C: mech BP_BaseMech_C at \d+ units" since-mark timeout=10
+client mark
+client warp actor point 3233 -61494 1769
+client wait log "cmd: \d+ warp: own pawn BP_BaseMech_C" since-mark timeout=5
+host mark
+client mark
+client disconnect
+host wait log "card447: host t=\d+ \S+ leaves the game in mech \S+: " since-mark timeout=30
+# 2. The host boards the same mech while the client is gone (card 045 reconnects about 9 s after the drop,
+# c423b145a). The host's warp line names the mech it is near and how far; a destroyed mech A would put mech B there.
+# c447b150a: no sleep before E, so the host sits in the mech before the rejoin join replay (about 11 s after the drop).
+host look actor BP_BaseMech_C 150
+host shot c447-mech-after-leave
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \(\S+, \S+, \S+\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+host look actor BP_BaseMech_C 150
+host key E
+host mark
+host warp actor point 3233 -61494 1769
+try host wait log "cmd: \d+ warp: own pawn BP_BaseMech_C" since-mark timeout=5
+# 3. The client rejoins while the host sits in the mech (the c423 reconnect steps). The host and client marks are from
+# before the disconnect, so these since-mark waits cover the rejoin.
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=120
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+try client ui continue
+client wait state pawn=client-own timeout=120
+# The map start join wrote the first card323 row (c423b145a: one per join), so the rejoin row is the second.
+try host wait log "card323: host t=\d+ seat join replay to BP_PlayerController_C" count=2 timeout=30
+client mark
+client warp actor BP_BaseMech_C 600
+try client wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \(\S+, \S+, \S+\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+client look actor BP_BaseMech_C 150
+sleep 1
+# Card 452: the client's CanInteract on the host-piloted mech refuses (no ENTER prompt in the shot).
+try client wait log "card452: client CanInteract on BP_BaseMech_C\S* refused: piloted" since-mark timeout=5
+client shot c447-323-host-in-mech
+# The host walks the mech 3 s; the client's second shot is taken right after.
+host key W 3000 timeout=10
+client shot c447-323-host-mech-walked
+# Card 298 baseline: the host's own look down and up in its mech (same lines as the client's below).
+host mark
+host look 0 -70 smooth
+host wait log "cmd: \d+ look: smooth turn done" since-mark timeout=6
+host shot c298-host-mech-look-down
+host mark
+host look 0 60 smooth
+host wait log "cmd: \d+ look: smooth turn done" since-mark timeout=6
+host shot c298-host-mech-look-up
+host look 0 0 smooth
+# 4. The host leaves the mech (E held 2.5 s, c127-c4m1); its next warp names its MI pawn again. Then the client
+# enters the same mech: the second MechEnter row.
+host key E 2500 timeout=15
+host mark
+host warp actor point 3233 -60994 1769
+try host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C" since-mark timeout=5
+host mark
+host warp client BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: server copy \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+client wait near {g1} {g2} {g3} 250 timeout=6
+client look actor BP_BaseMech_C 150
+sleep 1
+# Card 452: the host has left, so the prompt is back.
+client shot c452-prompt-back
+host mark
+client key E
+host wait log "card075: host MechEnter from BP_PlayerController_C: mech BP_BaseMech_C at \d+ units" since-mark timeout=10
+sleep 1
+client shot c447-client-reentered
+# Card 298: the client walks the mech 3 s. Host baseline (c447b159a): the host's `key W 3000` above logged
+# `card019: host host-own HandleSprintChange(3.000) on BP_BaseMech_C: GE GE_Mech_LateralCancel_C` about 2 s into the
+# walk, no LeftShift (fuel 100 -> 83 by the next host enter row). The same row must appear for the client's walk; the
+# side label may read host-own for the client's mech (card 075 mislabel). c447-client-reentered above is the fuel bar
+# before the walk, c298-mech-after-dash the bar after it. No row: card 298 (c), the client mech fast move has no relay.
+host mark
+client key W 3000 timeout=10
+host wait log "card019: host \S+ HandleSprintChange\(3\.000\) on BP_BaseMech_C" since-mark timeout=5
+client shot c298-mech-after-dash
+# Card 298 (a): the client looks down in the mech by mouse input. Negative pitch is down (c106-combined line 51).
+client mark
+client look 0 -70 smooth
+client wait log "cmd: \d+ look: smooth turn done" since-mark timeout=6
+client shot c298-mech-look-down
+host shot c298-mech-look-down
+client mark
+client look 0 60 smooth
+client wait log "cmd: \d+ look: smooth turn done" since-mark timeout=6
+client shot c298-mech-look-up
+client look 0 0 smooth
+# Card 297 candidate 2 (senior, b177): the client fires its mech 1.5 s. One `card297 ... shot: attack tag ... count N`
+# row per client shot (cap in the mod). Count above 0 at the shots: the cockpit ABP's attack blend has its tag, close.
+# Count 0 at every shot: follow-up card for candidate 2. No row at all: the client's mech fire did not reach
+# FireProjectile on the client (finding, report).
+# c447b177b: the shot row needs UBWCOOP_C76_LOG=1 in CLIENT_EXTRA_ENV (c297_shot sits behind g_c76_log); the tag rows
+# (`card297: client ... mech BP_BaseMech_C tag +WeaponSystem.EquippedWeapon.Fire`) print without it and are the wait.
+# The shot is taken inside a 4 s burst.
+client mark
+& client key LeftMouseButton 4000 timeout=10
+try client wait log "card297: client t=\d+ mech \S+ tag \+WeaponSystem.EquippedWeapon.Fire" since-mark timeout=5
+sleep 1
+client shot c297-mech-fired
+host shot c297-mech-fired-host
+join client
+try client wait log "card297: client t=\d+ mech \d+ shot: attack tag \S+ count \d+" since-mark timeout=2
+# Card 319 (b173): the client's minimap scan row while seated in the mech with hostiles in range (2500 uu, c447b164a):
+# three code-spawned bugs 800 uu from the client's eye, then the client's next card319 row (every 5 s) with hostile
+# above 0 and its gathered and ActiveMarkers counts; minimap shot. Then the bugs are cleared by code.
+client mark
+client look point 0 0 0
+try client wait log "cmd: \d+ look: point at 0 0 0 from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host mark
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+150} {g3} 180
+host spawn bug {g1+800} {g2-150} {g3} 180
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+client mark
+try client wait log "card319: client t=\d+ .* hostile [1-9]\d*: gathered" since-mark timeout=12
+client shot c319-mech-minimap
+host clear 3000 kill
+host mark
+client key E 2500 timeout=15
+host wait log "card075: host MechLeave from BP_PlayerController_C: mech BP_BaseMech_C" since-mark timeout=10
+# Card 319 (b173): the same on a turret (C4M1 places BP_MountableTurret_C; c447b164a host rows at (23700, -91500)).
+# The client mounts the turret nearest the warp (c127-c3m1 stage 3 steps), bugs 800 uu from its eye, the client's
+# next card319 row, minimap shot, clear, then the client leaves the turret.
+host mark
+host warp client BP_MountableTurret_C 90 behind
+try host wait log "cmd: \d+ warp: server copy \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\), \d+ uu from BP_MountableTurret_C" since-mark timeout=5
+try client wait near {g1} {g2} {g3} 250 timeout=15
+sleep 2
+client look actor BP_MountableTurret_C
+host mark
+client key E
+try host wait log "card123: host TurretMount from BP_PlayerController_C: turret BP_MountableTurret_C at \d+ units" since-mark timeout=10
+try client wait state pawn=other timeout=10
+client mark
+client look point 0 0 0
+try client wait log "cmd: \d+ look: point at 0 0 0 from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host clear 3000 kill
+host mark
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+150} {g3} 180
+host spawn bug {g1+800} {g2-150} {g3} 180
+try host wait log "card125: host spawned" count=3 since-mark timeout=5
+client mark
+try client wait log "card319: client t=\d+ .* hostile [1-9]\d*: gathered" since-mark timeout=12
+client shot c319-turret-minimap
+host clear 3000 kill
+host mark
+client key E
+try host wait log "card123: host TurretLeave from BP_PlayerController_C: turret BP_MountableTurret_C" since-mark timeout=10
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30

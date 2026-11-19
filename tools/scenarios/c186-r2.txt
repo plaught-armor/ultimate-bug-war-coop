@@ -1,0 +1,121 @@
+# Cards 186, 187 and 188, run c186-r2 (one build, one run). The route is c152-r3's (FED_C2M1, the checkpoint field
+# slope at 229312 38956), parts 1, 2a and 2b unchanged: card 186's streamed finals (settled and unsettled not held,
+# frozen held one tick; the frozen final's bone read twice) and card 188's repeat OnHit lines (rifle rounds).
+# Part 3 is card 187's join mid-stream: the three kills come right after the joining PC spawns on the host, so their
+# corpses still move at the first Pong (about 2.6 s after the PC spawn in c152-r3). They are air kills from z 9600
+# (under kPoseFellUu, 1000 uu, of drop to the slope, so the fell check does not put them to sleep), with the host
+# warped just above them so `kill actor` (nearest) takes the new bugs, not survivors of part 2a.
+# Predictions in docs/cards/186-stream-final-rows-exact.md, 187-join-mid-stream.md and
+# 188-grenade-onhit-after-explode.md, "Run c186-r2". Every state step waits for its log line; the 2 s after each
+# spawn in parts 1 and 2 is the copy's replication (a corpse killed before its copy has a NetGUID streams nothing).
+# Run: SCENARIO=tools/scenarios/c186-r2.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=MoritaMk1" tools/run_pair.sh c186-r2 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+client wait near 229512 38956 9100 600 timeout=60
+both look point 229312 39856 8900
+# Part 1: three WarriorBugs killed in the air over the slope, in the client's view.
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 2
+host mark
+client mark
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=2 since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=3 since-mark timeout=8
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=3 since-mark timeout=10
+client wait log "card152: client stream start .* at sample \d+ \(live\): simulating, gravity off" count=3 since-mark timeout=10
+client wait log "card152: client bone check guid 0x[0-9a-f]+ sample \d+ \(live\):" count=3 since-mark timeout=10
+client wait log "card152: client stream final guid" count=3 since-mark timeout=20
+host shot fall-final
+client shot fall-final
+# Part 2a: rifle kills of a group. Four WarriorBugs on the field in front of the host, who fires the MoritaMk1 at
+# them (god mode on the host: they reach it and attack). Kills come one by one as the bugs charge into the stream.
+host spawn bug 229112 40456 9000 270
+host spawn bug 229312 40456 9000 270
+host spawn bug 229512 40456 9000 270
+host spawn bug 229712 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+client mark
+host key LeftMouseButton 6000
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=1 since-mark timeout=10
+host look point 229312 39456 8950
+host key LeftMouseButton 6000
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=4 since-mark timeout=20
+try client wait log "card152: client stream final guid" count=4 since-mark timeout=30
+host shot rifle-final
+client shot rifle-final
+# Part 2b: six WarriorBugs killed in quick succession (the moving peak). The 24 per step cap is out of reach here.
+both look point 229312 39856 8900
+host spawn bug 229012 39656 9000 0
+host spawn bug 229212 39656 9000 0
+host spawn bug 229412 39656 9000 0
+host spawn bug 229612 39656 9000 0
+host spawn bug 229112 40056 9000 0
+host spawn bug 229512 40056 9000 0
+sleep 2
+host mark
+client mark
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=2 since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=3 since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=4 since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=5 since-mark timeout=8
+host kill actor BP_AI_WarriorBug_C
+host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=6 since-mark timeout=8
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=6 since-mark timeout=10
+try client wait log "card152: client stream final guid" count=6 since-mark timeout=30
+host shot group-final
+client shot group-final
+# Part 3 (card 187): the join mid-stream. The kills wait for the joining PC's spawn on the host; the corpses get
+# their NetGUIDs as the new connection replicates them (pose_guid_check, each step), stream to 0 PCs until the first
+# Pong, and the replay at that Pong sends each moving row's current sample to the joining PC only.
+client disconnect
+client mark
+host mark
+host wait log "card098: host spawn BP_PlayerController_C" since-mark timeout=120
+# r2 (card 187): the kills wait for a later join line, the host setting the new connection's timeout to 20 s
+# in state 3 (c186-r1: 955 ms after the PC spawn line, 164 ms after the line the r1 warp followed).
+host wait log "card128: host t=\d+ connection [0-9A-F]+ timeout now 20\.0 s \(state 3" since-mark timeout=60
+host warp actor point 229312 39856 9800
+host spawn bug 229112 39656 9600 0
+host spawn bug 229512 39656 9600 90
+host spawn bug 229112 40056 9600 180
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+try host wait log "card152: host stream guid 0x[0-9a-f]+ sample 0:" count=3 since-mark timeout=10
+try host wait log "card152: host replay stream guid 0x[0-9a-f]+ sample \d+ to the joining PC" count=2 since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" timeout=120
+try client wait log "card152: client stream start .* at sample \d+ \(live\): simulating, gravity off" count=2 since-mark timeout=30
+try client wait log "card152: client stream final guid" count=2 since-mark timeout=30
+try client wait state pawn=client-own timeout=60
+host shot join-final
+client shot join-final
+# Part 4: the travel. The LoadMap enter path logs both sides' stream and wait totals for FED_C2M1.
+host mark
+client mark
+host travel next
+try host wait log "card152: host pose stream map totals" since-mark timeout=60
+try client wait log "card152: client stream gravity map totals" since-mark timeout=60
+client wait log "reconnected \(" timeout=120
+try client wait state pawn=client-own timeout=120
+try host wait state pawn=host-own timeout=120
+host quit
+client quit

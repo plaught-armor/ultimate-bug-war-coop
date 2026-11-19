@@ -1,0 +1,58 @@
+# Card 196, run c196-r1 (run 1 of 3). Remote-body features on the bug-side player pawn: c24_inventory reads the
+# bug's FormsInventory (+0xA30), the fire edge and the host relay accept a bug pawn, c33_hide reads the form root,
+# card 073 binds a grant with no SourceItem property without a WARN, and a client bug-pawn death calls the
+# ASTPlayerCharacterBug::StartDeath override. The body is tools/scenarios/c195-r1.txt (FED_C2M1, then the host's
+# travel to BUG_C1M1) with its 30 s survival hold replaced by: a client attack press, a digest round on each side,
+# then `host down client` and `host down host` (game over: card 044 runs the client's own death only when the host
+# pawn is Dead, so a bleedout alone ends at Out and never reaches StartDeath). No enemy is spawned: the relay proof
+# needs no target, and no BUG_C1M1 coordinates are known statically. Predictions and the scenario audit are in
+# docs/cards/196-bug-pawn-remote-body-features.md, "Run c196-r1".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c196-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C73_LOG=1" tools/run_pair.sh c196-r1 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+# Part 1: the MI map.
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterMI_C\)|release after)" timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# Part 2: the travel to the bug-side map.
+host mark
+client mark
+host travel next
+host wait log "UEngine::LoadMap returned true" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=180
+client wait log "UEngine::LoadMap returned true" count=2 since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card138: client t=\d+ (no hold: GameState \S+ begun play with pawn \S+ \(BP_PlayerCharacterBug_C\)|release after)" since-mark timeout=30
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterBug_C\) set" since-mark timeout=30
+host wait log "card098: host t=\d+ world journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=30
+try host wait log "card049: host t=\d+ journal replay to BP_PlayerController_C \(first Pong of the map\)" since-mark timeout=5
+host wait state pawn=host-own timeout=5
+client wait state pawn=client-own timeout=5
+# Card 196: the client's attack press on its bug form (P2).
+host mark
+client mark
+client key LeftMouseButton 800
+host wait log "card024: host relay press \(Fire 1\) t=\d+: pawn " since-mark timeout=10
+try client wait log "card026: client t=\d+ client sent Fire " since-mark timeout=5
+try client wait log "card196: client t=\d+ bug form press " since-mark timeout=5
+# One digest round on each side after the attack (P6).
+host mark
+client mark
+host wait log "card132: host t=\d+ digest round \d+ \(\S+\) sent: " since-mark timeout=120
+client wait log "card132: client round \d+: actors " since-mark timeout=60
+client shot bug-map
+host shot bug-map
+# P5: all down; the client's own death runs the bug StartDeath.
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+client wait log "card196: client t=\d+ bug StartDeath \(form ASC cancel\)" since-mark timeout=20
+try client wait log "card044: client t=\d+ death screen " since-mark timeout=10
+sleep 3
+host quit
+client quit

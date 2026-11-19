@@ -1,0 +1,77 @@
+# Card 485 b210 targeted proof (senior b210 item 2): does a reposed corpse copy's rendered mesh follow its bodies?
+# The repose (c485_freeze_repose) runs only on a copy whose card191 freeze wait timed out with bone 0 off body 0, and
+# b207 found that on unrendered copies ("rendered in 0.2 s 0": the end physics blend never wrote the bones). So the
+# kills are made behind the client (it faces away), the scenario waits for the repose row, then the client turns to
+# the reposed body (its first render arms the card485 "first rendered" row), waits for that row, and both sides shoot
+# at body 0. The soak (c244) had 1-2 reposes per 8 min, all far off the client's view, and 0 render rows.
+# Route: both travel into FED_C1M1 (UBWCOOP_TRAVEL), god on, 3 WarriorBugs spawned 800 uu behind the client and killed
+# by code (kill actor, InstaKillTarget on the nearest). Then 3 more the same way if the first set gave no repose.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c485-c1m1.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen
+#      UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh c485b210a 600
+# Expected wall: about 4 min.
+void unless host dll 414fa857c0212604
+void unless client dll 414fa857c0212604
+host wait state map=FED_C1M1 timeout=300 void
+client wait state map=FED_C1M1 timeout=180
+try host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+try client ui continue
+try host wait log "card320: host t=\d+ hold off after \d+ ms" timeout=30
+host wait state pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+sleep 5
+try host god all
+# Round 1: the client faces -x; the bugs spawn 800 uu along +x of it (behind its camera).
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+client look 180 0
+host spawn bug {g1+800} {g2} {g3+100} 0
+host spawn bug {g1+900} {g2+150} {g3+100} 90
+host spawn bug {g1+1000} {g2-150} {g3+100} 180
+try host wait log "card125: host spawned BP_AI_WarriorBug_C at " count=3 since-mark timeout=5
+sleep 3
+client mark
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try client wait log "card485: client guid (0x\w+) snap \d+ freeze put body .* root at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=60
+try client look point {g2} {g3} {g4}
+try client wait log "card485: client guid (0x\w+) first rendered .* body 0 at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+try client look point {g2} {g3} {g4}
+try host look point {g2} {g3} {g4}
+try client shot c485-r1-client
+try host shot c485-r1-host
+# Round 2: the same, in case round 1 gave no repose (every copy rendered, or no timed-out freeze).
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+client look 180 0
+host spawn bug {g1+800} {g2+400} {g3+100} 0
+host spawn bug {g1+900} {g2+550} {g3+100} 90
+host spawn bug {g1+1000} {g2+250} {g3+100} 180
+try host wait log "card125: host spawned BP_AI_WarriorBug_C at " count=3 since-mark timeout=5
+sleep 3
+client mark
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try client wait log "card485: client guid (0x\w+) snap \d+ freeze put body .* root at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=60
+try client look point {g2} {g3} {g4}
+try client wait log "card485: client guid (0x\w+) first rendered .* body 0 at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+try client look point {g2} {g3} {g4}
+try host look point {g2} {g3} {g4}
+try client shot c485-r2-client
+try host shot c485-r2-host
+host mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+sleep 2
+client quit
+sleep 2
+host quit

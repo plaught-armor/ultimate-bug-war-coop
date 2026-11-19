@@ -1,0 +1,1036 @@
+# Card 310 proof: FED_C1M1 Assault_O1 through CaptureTheFlag_O1 and the level end, the client acting, the host
+# standing off. The b14 soak's steps (tools/scenarios/b14-soak-c1m1.txt) without the 294 death cases; every presence
+# takes the client first and the host only after the client is inside (Assault: `objective go client`, then `go
+# host`), so a level-script write from a presence or pickup lands on the client's server copy as player 0.
+# Not run yet: waits on the senior's diff review and go. DLL build-b5/dwmapi-b18r5b-e94555c8fd4ecc76.dll copied into game2/ by hand (no DEPLOY).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c310-proof-c1m1.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh c310-proof-c1m1 3600
+# Rules: docs/STATE.md "Gameplay test scenario rules". Objective steps: card 284 expect / go / wait on live data.
+#
+# Predictions (written before the run; checked against both logs). Script sites from card 310 step (a).
+#  267  at least one host "card267: host level script <native> on BP_PlayerCharacterMI_C_<n> (server copy) mirrored
+#       to <host pawn> (host own)" row in TacSupport_01 (RemovePlayersWeapons / GiveMorita reached from the client's
+#       presence or pickup); after it client "card050: ... matches the host" and `host inventory` equal to
+#       `client inventory` at the section end.
+#  tag  TutorialBlock @25052 add, @25395 remove: one host row each, "card310: host t=<ms> level script
+#       AddLooseGameplayTags(PlayerAbilities.TutorialBlock, count now 1) on <pawn> (<side>) applied to 1 other player
+#       pawn(s), client row sent" (remove: RemoveLooseGameplayTags, count now 0), and one client row each,
+#       "card310: client t=<ms> T PlayerAbilities.TutorialBlock 1 applied on the own pawn <pawn>: ... count 0 to 1"
+#       (remove: count 1 to 0). The CTF flag-carry tags (@23223 add, @23079 remove) give the same pair of rows in
+#       CaptureTheFlag_O1.
+#  dflt after ChangeTacSupportToTutFlavour (@25461): one host row "level script DefaultTacticalSupportClass =(<tutorial
+#       class path>) on <pawn> ... applied to 1 other player pawn(s), client row sent" and the client "D <path>"
+#       row applied. The next re-equip after a throw, card032 "EquipTacticalSupportAbility ... config class <tutorial
+#       class>, ... caller exe+0x50E3A66", shows the tutorial class on the client and on its copy, not
+#       Config_TacSupp_Resupply_C.
+#  chrg @26754: host "SetCanTacticalSupportBeCharged(<bool>) ... applied to 1 other player pawn(s), client row sent";
+#       client "C <0|1>" row applied.
+#  fact SetFactionTag @11867, @22280, @24572 and squad SetEnabled @770 (true), @17136 (false): host rows "applied to 1
+#       other player pawn(s), client row not needed"; no client rows.
+#  item RemoveItemByDefinition @25112, @25212 (count 15, flag 1): host rows "client row carried by card 073", each
+#       with a card073 relay row for the mirrored copy (or the host pawn, no relay) right before it.
+#  ammo AddAmmunition is a C2M1 site only: 0 rows on C1M1.
+#  totals map end: host "card310: host map totals: writes <n>, mirrored <n>, client rows sent <s> (not sent 0)",
+#       client "card310: client map totals: ... received <s> applied <s>"; client received equals host sent; zero
+#       "WARN card310" on either side; WARN zero new kinds against logs/b14-soak-c1m1-host.log and -client.log.
+# Inherited from the b14 soak (not this card; causes in the card 310 file "b14 drive-log audit"): its failing steps (range, CTF chain,
+#       the Asteroid presence goto "no path") may fail here too; failsoft keeps the run going.
+# b14 cause fixed here: the range steps (ShootingRange_SO3) send only the client (`go client`); the host stays at
+#       the SO2 presence, about 12000 uu back, so the client's range looks no longer hit the host pawn (b14: 13 gate
+#       skips, 0 of 10). The AddCountSubObjective(ShootingRange_SO3) wait is dropped: the level script sends it at map start.
+# b14 causes folded in (b15): TacSupport_SO3 and SO6 look at the live objective actor from the host's card070 row
+#       (b14: BP_EncounterManager_C_1, ActorReference_C_1) instead of fixed points, and SO3 sends only the shooter;
+#       ShootingRange_SO1 completes when it is added (the client already holds a Morita), so the step waits for that
+#       row and the second Morita pickup is gone; the Asteroid presence warps both players in when CaptureTheFlag_O1
+#       did not complete (b14 "no path").
+# 310 (also):
+#  dflt exactly one host "DefaultTacticalSupportClass" level script row on the map.
+#  hook zero hook install failure rows for the 13 card 310 hooks on either side.
+# 311  "card311: host journalled Activate(1) <owner> <component>, bIsActive 1; journal <n>" for each range target
+#       Activate. The bIsActive gate is unproven until the first such row: bIsActive 0 there means the gate is wrong
+#       (every replay would be skipped). After each client world reload, one "card311: client t=<ms> replayed
+#       Activate(1) <owner>.<component>: activated" row per active range target, before that target's "applied
+#       timeline state" row; 0 card132 mismatch rows for GrenadeRangeTarget and TargetRangeTarger after a load.
+# 312  After the client's own Morita pickup (TacSupport_SO2): one client "card050: client t=<ms> apply #<n> ...
+#       moved 1, matches the host; ... slots before <Morita in slot 1>, after <Morita in the copy's slot>" row.
+#       At the toggle press of the equipped Morita's slot key (b17: One or Two, read from that row; it always gives
+#       a Switch): the host card141 row shows the copy index equal to the client index, and "copy weapon
+#       <w> underslung 1 (want 1)". Each client switch gives one "card057: client ... Equip sent" row and one host
+#       "card057: host ... Equip from <pc>: client slot <i>, class <path>, copy slot <j>, used the copy slot of the
+#       class: EquipWeapon on the server copy" row. Zero "WARN card050", "WARN card141", "WARN card057" on either side.
+#       Item 1 (Items reads through c50_weapon): zero access-violation or crash rows from any Items read on either
+#       side; card050/057 rows unchanged in kind from the paragraph above.
+# b16 (cards 312, 310, the startup check):
+#  null zero "WARN hooks: <n> null pointers after install" rows at startup on either side (no row at all when every
+#       call slot and installed trampoline is set).
+#  312  the client's TacSupport_SO2 Morita pickup gives "card050: client t=<ms> apply #<n> ... moved 1, matches the
+#       host; ... slots before <...>, after <...>" with both slot lists; no access violation (c50_move now calls
+#       GiveWeaponByInstance through the call row g_give_by_instance, not the diag-gated trampoline).
+#  310  zero "WARN card310 ... not sent" rows. A client row due before the client's first Pong logs "deferred: <pc> not
+#       ponged yet (card 139)"; after that Pong one "card310: host t=<ms> join rows to <pc> at its first Pong (card
+#       139): ...; <n> client row(s) sent, 0 not sent" row.
+# Checkpoint load (after ShootingRange_SO3, before CTF; no death: the save and the travel need none, the same
+#       deathless path b11-soak-c2m1 and c142-r4 ran):
+#  311  host: one "card311: host replay Activate(1) <owner> to <pc>: bIsActive 1" row per journalled range target
+#       (TargetRangeTarger and GrenadeRangeTarget activated before the save); after the client's "UEngine::LoadMap
+#       enter" and card045 reconnect, one "card311: client t=<ms> replayed Activate(1) <owner>.<component>:
+#       activated" row per such target, each before its card098 "world L ... applied timeline state" row; the first
+#       card132 client round after the load shows mismatches 0 for those targets.
+#  310  host "card310: host t=<ms> map rows applied to the new copy pawn <pawn> of <pc> from <src>: <n> tag(s),
+#       chargeable <c>, default class <cls>" with <c> and <cls> equal to the pre-load journal (the chrg and dflt
+#       rows above: the tutorial class path, not Config_TacSupp_Resupply_C); client "kept rows applied on the new
+#       own pawn <pawn>: <n> of <n>" (b16: that row does not exist; b17 waits on the client's "card310: client t=<ms>
+#       C <0|1> applied on the own pawn" and "D ...Config_TacSupp_Resupply_C applied on the own pawn" rows). Host and client `inventory` after the load list the same tactical support
+#       class; the card032 row of the next throw's re-equip (caller exe+0x50E3A66) names the tutorial class.
+# b17 (card 313 and the scenario items 1-4; every b16 prediction above still holds):
+#  SO3  for each of TacSuppRangeTarget_C_1, _C_0, _C_3: an aim shot whose look row hits it, then the host's "card098:
+#       host t=<ms> world K <target> ...: sent to 1 of 1 clients" and the client's "world K <target> ... IsDead now 1";
+#       then CompleteSubObjective(TacSupport_01, TacSupport_SO3).
+#  SO4  a host "card104: ... TacCharge to ...: 20000 1 ..." row, then the client's Four + LeftMouseButton call, then
+#       CompleteSubObjective(TacSupport_01, TacSupport_SO4). No 20000 row: the step fails and the report gives the rows.
+#  Range ShootingRange_SO3 count 10/10 with the host out of the lane (no `objective go host`).
+#  313  after the load, the client's "card098: client t=<ms> world L ..._C_1|MovementTimeline ... applied timeline
+#       state: position <p> + <age> ms = <q> of <len>, playing 1" row has age 150 to 400 ms; zero card132 mismatch rows
+#       for keys 910311a0 / 94031659 after the load; the card 237 targets within 30 uu of the host's. Zero "WARN
+#       card313" rows.
+# b18 (cards 316, 314, 315 step 1; every b17 prediction above still holds):
+#  316  every TacSuppRangeTarget look row has "cmd: <n> aim: muzzle at ..., line clear to <target>" (after at most 6
+#       walk moves, "; walked ..." in the drive line); all three targets die (host world K, client IsDead now 1);
+#       CompleteSubObjective(TacSupport_01, TacSupport_SO3); no host "HitClaim ... miss Landscape" row within 1000 uu
+#       of the shooter in SO3. A failed objective wait logs "scenario: objective wait FAILED line N" and the run ends.
+#  314  host: zero "fallback attenuation ... failed" rows and zero "WARN card162". The block runs in CaptureTheFlag_O1
+#       right after the SO1 laser pickup (run 1 proved the host side at map start; run 2 adds the client side). The
+#       client's laser shot gives the host "card314: host remote player sound MSS_WPN_LaserTrainingRifle_Fire from
+#       BP_Weapon_LaserMorita_C: applied none bSpatialize 1, plays with ATT_WPN_MoritaMK1". Expected case: the first
+#       play of that sound in the map, so the card314 row (not only card173): the checkpoint load before CTF runs
+#       pl_map, whose c314_map_end zeroes the tally and its 48-sound table, and after the load no laser exists until
+#       this pickup gives it. The wait also accepts "card173 ... MSS_WPN_LaserTrainingRifle_Fire ... plays with
+#       ATT_WPN_MoritaMK1" for the already-seen case. Swapped: the client's row for the host's shot is "card314:
+#       client remote player sound MSS_WPN_LaserTrainingRifle_Fire from ..." or the card162 row with "plays with
+#       ATT_WPN_MoritaMK1". Zero "WARN card314" and zero "WARN card162" on both sides. Every map end, both sides: "card314: <side> remote
+#       player component sounds <n>, re-attenuated <r>, muted <m>, unspatialized 0"; zero "WARN card314". Host muted
+#       at least 1 (MSS_FOL_Low_Ammo_Click or the breathing bark, card 176). Client tally unspatialized 0, and muted
+#       at least 1 when the host's pawn or weapon made any 2D play (card314 client row "plays with muted").
+#  315  step 1 only (no fix): the card237 rows for TargetRangeTarger_C_1 / _C_2 end in "timeline MovementTimeline
+#       position <p> of 6.00, playing 1" on both sides (rows exist only for mismatching keys, so after the load).
+#       After the checkpoint load the client's position is 0.9 to 1.3 s behind the host's in every round: supports
+#       the phase cause. Equal positions with the z still apart: the phase is not the cause and card 315 stops there.
+voidsoft
+failsoft
+# b18 card 316: a failed objective wait ends the run there (later steps would run on a wrong objective state).
+abort-on objective
+void unless host dll 100476d0085b4f43
+void unless client dll 100476d0085b4f43
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+# b18 run 2: under UBWCOOP_AUTODROPSHIP the client has no press-to-start screen to continue; fails soft.
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot c310-client-hud
+host shot c310-host-hud
+# b18 card 319 step 1: before the first clear, the map start's bugs are live. Wait for a client minimap sample with at
+# least one hostile in its scan range (batch 1 review item 1: friendly troopers satisfy "live npc in range"), then both
+# screenshots (crop: magick <png> -crop 110x100+0+260 +repage -filter
+# point -resize 300% out.png). No such sample in 30 s: the try step fails soft and the rows still show the counts.
+# --- Assault_O1: SO0's presence (adds SO1, which the same volume completes), SO2, SO3, then the panel switch (client E).
+host objective now
+host objective expect Assault_SO0
+host objective go client
+host objective go host
+# b19 run 2: the sample before the first `objective go` had no hostile in range (the players stood at the spawn).
+# Batch 3: sample at the objective with its bugs live, before the clear.
+# Batch 3 run 1: all 48 client samples here "hostile 0: gathered 0" (no hostile inside the 2500 uu scan at Assault_SO0).
+# Run 2: three code-spawned bugs 1500 uu from the client: client "gathered 5 ... hostile 3: gathered 3", host
+# "hostile 3: gathered 3, in ActiveMarkers 3", red marks on both minimaps: no reproduction of card 319. The sample is
+# removed for run 3: its killed bugs were the corpses of the run 2 Pose mismatch (card 334, guid 0x1e2).
+host clear 1500 kill
+host wait log "card049: host sent AddSubObjective\(Assault_O1, Assault_SO1\)" timeout=60
+host objective wait Assault_SO1 60
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO1\)" timeout=30
+host objective expect Assault_SO2
+host clear 1500 kill
+host objective go client
+host objective go host
+host objective wait Assault_SO2 60
+# b16: the level script completes Assault_SO3 by itself 1.1-1.4 s after SO2 (b15 host t=283542542 SO2 complete,
+# 283543642 SO3 complete; b14 279114653 / 279116053) with no player step, so an expect on it races to VOID
+# ("complete; doable: Assault_SO4", b15 line 100). Wait on the host's completion row; no clear or go for SO3.
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO3\)" timeout=60
+host objective wait Assault_SO3 60
+host objective now
+host objective expect Assault_SO4
+host clear 1500 kill
+host objective go all
+host wait log "c284: use stand BP_PanelSwitch_WithoutScreen_C: .* winner \w+" timeout=5
+client look actor BP_PanelSwitch_WithoutScreen_C_0 0 bounds focus=BP_PanelSwitch_WithoutScreen_C_0
+client shot c310-assault-so4
+client key E
+host objective wait Assault_SO4 30
+host wait log "card049: host t=\d+ CompleteSubObjective\(Assault_O1, Assault_SO0\)" timeout=10
+host wait log "card049: host sent CompleteObjective\(Assault_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(Assault_O1\)" timeout=30
+host inventory
+client inventory
+# --- TacSupport_01: start presence, Morita pickup, two tac support calls, the resupply rack, the bombing run (client).
+host clear 1500 kill
+client goto actor BP_PlayerPresence_C_1 80
+client wait goto timeout=60
+host goto actor BP_PlayerPresence_C_1 120
+host wait goto timeout=60
+host objective now
+host objective expect TacSupport_SO2
+host clear 1500 kill
+client goto actor BP_WeaponPickup_MoritaMk1_C_1 100
+client wait goto timeout=30
+client look actor BP_WeaponPickup_MoritaMk1_C_1 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_1
+client shot c310-tac-so2
+client mark
+client key E
+client wait log "card050: client t=\d+ .*apply #\d+ .*matches the host" since-mark timeout=30
+host objective wait TacSupport_SO2 30
+host objective expect TacSupport_SO3
+host clear 1500 kill
+# Only the shooter goes (b14: the host pawn stood in the line of fire); the look target is the live objective actor.
+try host objective go client
+# b17 (senior, item 1): the objective's own action. The client, at the live stand point, fires the Morita at each of the
+# three warrior targets until its death row; no tac support call here.
+# Item 3 (b17, senior a): the Morita key comes from the client's card 050 row (slot 0 key One, slot 1 key Two; b16:
+# "switch to weapon 1" on Two). Pressed only when the Morita is not the equipped slot: a press on the equipped slot
+# is the underslung toggle (b14 279258619), and the targets must be shot with the plain Morita.
+client wait log "card050: client t=\d+ apply #\d+ .*slots before .*, after \S*\|[0-9]=BP_WeaponDefinition_MoritaMk1_C" timeout=10
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?0=BP_WeaponDefinition_MoritaMk1_C" client key One
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?1=BP_WeaponDefinition_MoritaMk1_C" client key Two
+# Run 10 (line 205 VOID: aim hit the host pawn 132 uu ahead, so the gate voided every fire key and SO3 stayed open):
+# the first look only turns the client to the range (no gate); the gated look comes after the host has moved behind.
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 0 bounds
+# b18 run 2 (line 209 VOID: aim hit BP_PlayerCharacterMI_C at 11914 18132, the host pawn left at BP_PlayerPresence_C_1
+# between the client's stand and the targets): with the client now facing the range, the host moves 300 uu behind
+# the client's pawn along its forward axis (live position, no coordinates), out of every target's line of fire.
+host warp actor BP_PlayerCharacterMI_C 300 behind
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 walk=6
+client shot c310-tac-so3-t1
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 .*IsDead now 1" timeout=10
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 walk=6
+client shot c310-tac-so3-t0
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 .*IsDead now 1" timeout=10
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 walk=6
+client shot c310-tac-so3-t3
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 .*IsDead now 1" timeout=10
+host objective wait TacSupport_SO3 30
+# SO4: the copy's resupply charge is ready (host TacCharge row slot 0 ready flag 1; b18 run 2 host line 4194 shows
+# ready at 17000, not 20000), then the client calls it (Four: IA_TacticalSupport_Slot1, the resupply slot). No ready row: the step fails and the run reports the rows.
+host wait log "card104: host t=\d+ TacCharge to \S+ \(copy \S+\): \d+ 1 " timeout=60
+# Card 324 step 1 item 2: a client shot when the held visual's 300 ms card324 row is in (before LMB), and one after LMB.
+client mark
+client key Four
+try client wait log "card324: client t=\d+ \S+ own pawn \(\S+\) at 300 ms, " since-mark timeout=10
+client shot c324-so4-held-300ms
+client key LeftMouseButton
+client shot c324-so4-after-lmb
+host objective wait TacSupport_SO4 30
+host objective expect TacSupport_SO41
+host clear 1500 kill
+client goto actor BP_ResupplyRack_Level0_C 100
+client wait goto timeout=30
+host objective wait TacSupport_SO41 30
+host objective expect TacSupport_SO5
+host clear 1500 kill
+client goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 60
+client wait goto timeout=30
+client look actor BP_TacSuppPickup_BombingRun_Tutorial_C 0 bounds focus=BP_TacSuppPickup_BombingRun_Tutorial_C
+client shot c310-tac-so5
+client key E
+host objective wait TacSupport_SO5 30
+host objective expect TacSupport_SO6
+host clear 1500 kill
+host wait log "card070: host t=\d+ TacSupport_SO6 actors 1: TacSupport_SO6 (\S+)" timeout=10
+client look actor {g1} 0
+client shot c310-tac-so6
+client key Five
+client key LeftMouseButton
+host objective wait TacSupport_SO6 30
+client wait log "copy of host [0-9]+: \S*BP_SupportFlare_Tutorial\.BP_SupportFlare_Tutorial_C" timeout=20
+client wait log "copy of host [0-9]+: \S*BombingRun\S*Projectile" timeout=20
+host objective wait TacSupport_SO7 60
+host wait log "card049: host t=\d+ CompleteSubObjective\(TacSupport_01, TacSupport_SO0\)" timeout=10
+host wait log "card049: host sent CompleteObjective\(TacSupport_01\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(TacSupport_01\)" timeout=30
+host inventory
+client inventory
+# --- ShootingRange_O1: start presence, pickup, presence, ten range targets by the client's real fire and grenade.
+host clear 1500 kill
+client goto actor BP_PlayerPresence_C_4 80
+client wait goto timeout=60
+host goto actor BP_PlayerPresence_C_4 120
+host wait goto timeout=60
+host wait log "card049: host sent AddSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=30
+# b14: SO1 (pick up a Morita) completes in the same ms it is added: the client already holds the Morita from
+# TacSupport_SO2. No second pickup.
+host wait log "card049: host t=\d+ CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=30
+host objective expect ShootingRange_SO2
+host clear 1500 kill
+# b17 item 2: the host stays out of the lane; only the client takes the stand point.
+host objective go client
+host objective wait ShootingRange_SO2 60
+host objective now
+host objective expect ShootingRange_SO3
+host clear 1500 kill
+# SO3: no `objective go`. Its marker (5300, 25470) is not the firing position; the client keeps the SO2 presence spot and the look steps read the targets live (b18 run 2: 10762 uu from the marker).
+# Item 3 (b17, senior b): equip the Morita only when it is not the equipped slot (then wait for the next card050 or
+# card057 row so the slot row is current), then one press of its slot key, the underslung toggle: always a Switch
+# and a card141 row.
+client wait log "card050: client t=\d+ apply #\d+ .*slots before .*, after \S*\|[0-9]=BP_WeaponDefinition_MoritaMk1_C" timeout=10
+client mark
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?0=BP_WeaponDefinition_MoritaMk1_C" client key One
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?1=BP_WeaponDefinition_MoritaMk1_C" client key Two
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?[0-9]=BP_WeaponDefinition_MoritaMk1_C" client wait log "card05[07]: client t=\d+ " since-mark timeout=10
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after \S*\|0=BP_WeaponDefinition_MoritaMk1_C" client key One
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after \S*\|1=BP_WeaponDefinition_MoritaMk1_C" client key Two
+host wait log "card141: host t=\d+ copy weapon \S+ underslung 1 \(want 1\)" timeout=10
+# Range (senior batch 1 item 3; run 5 rewrite). The targets pop up and down on a 3 s / 3 s cycle (host 'A' rows
+# every 3 s), and the client card140 `placed` row is capped at 40 lines per session (kC104RestLines), so it cannot
+# gate a shot: run 5 hit the cap at C_4. Per target, up to 16 polls until the host count row: a look 60 uu above the
+# root (the look row carries the live z, 174 up, -276 down), LMB only when that z is 150 or more, else 0.4 s. `must`
+# on the count row: the first target not killed ends the run.
+# Run 7: the look aimed at the bounds centre, which lies 116 uu in front of the board (the board stands at the root
+# y; aim hits at y 19405 for root y 19408). From the firing line C_5 is seen at yaw 36, so that line crossed the
+# board plane 160 uu to the side, outside its 99 uu half width: 3 bursts, 0 hits, a ground decal far downrange.
+# The solo proof (c65-range.txt) aims at the root + 60.
+client mark
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_1 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 sleep 0.4
+client shot c310-range-t1
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_2 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 sleep 0.4
+client shot c310-range-t2
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" timeout=10
+# Range waves (run 2 trace): each wave is the LTOnEnter trigger of the next firing-line presence volume downrange,
+# BP_PlayerPresence_C_18 to C_23 at x 5311, y 14811, 16331, 17871, 19431, 20981, 22511 (all enabled with SO2). The
+# level script only counts destroyed targets. Solo c66a: every Activate row follows a walk downrange. Runs 1 and 2
+# kept both players at the first line (C_17), so C_11 never activated. The client walks to each line; the host stays at
+# the first line.
+client goto actor BP_PlayerPresence_C_18 80
+client wait goto timeout=60
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_11 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 sleep 0.4
+client shot c310-range-t11
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" timeout=10
+# Runs 3 to 5: `goto actor BP_PlayerPresence_C_19` has no path (the volume centre, x 5311, is the target lane), and
+# neither has the point 730 uu aside on the C_18 line. The walk from the C_18 centre to the next line's live
+# position moved 730 uu to the side lane (solo c66a's lane) has a path and fires the wave (run 5). A warp into a
+# volume fires no wave (run 4). The look row prints the class name.
+client mark
+client look actor BP_PlayerPresence_C_19
+client wait log "cmd: \d+ look: BP_PlayerPresence_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+client goto {g1-730} {g2} 105 300
+try client wait goto timeout=60
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_3 " timeout=4
+must host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_3 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 sleep 0.4
+client shot c310-range-t3
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_4 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 sleep 0.4
+client shot c310-range-t4
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" timeout=10
+# Run 6: the goal x - 730 on the line itself is target C_4's slot (4580, 17850): no path. Goals from here are the
+# solo c66a points, 529 and 569 uu past the line (4580 18400, 4580 20000), each proven from the previous one.
+client mark
+client look actor BP_PlayerPresence_C_20
+client wait log "cmd: \d+ look: BP_PlayerPresence_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+client goto {g1-730} {g2+529} 105 300
+try client wait goto timeout=60
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_10 " timeout=4
+must host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_10 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 sleep 0.4
+client shot c310-range-t10
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" timeout=10
+client mark
+client look actor BP_PlayerPresence_C_21
+client wait log "cmd: \d+ look: BP_PlayerPresence_C at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=5
+client goto {g1-730} {g2+569} 105 300
+try client wait goto timeout=60
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_5 " timeout=4
+must host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_5 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 sleep 0.4
+client shot c310-range-t5
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_6 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 sleep 0.4
+client shot c310-range-t6
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" timeout=10
+host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_9 " timeout=15
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 client look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 60
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 when client last "cmd: \d+ look: BP_KillableBuilding_Base_TargetRangeTarger_C at " " at -?\d+ -?\d+ (1[5-9]\d|2\d\d) from " client key LeftMouseButton 1500
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 sleep 0.4
+client shot c310-range-t9
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" timeout=10
+# Run 5 rewrite: the solo throw of c65-range.txt (logs/c66a: reached 4580 24500 in 6.9 s, G at 764 uu from the
+# nest top). The nest bobs like the targets and takes grenade damage only: throw while it rises (one look puts
+# root + 60 at -100..-299, a second 0.3 s later at -99..99), aimed at the nest top (5341 24015 207).
+# Run 6: no walks to the C_22 and C_23 lines; solo went from 4573 19797 straight to the throw point and the nest
+# activated on the way (c66a host t=41192119).
+client goto 4580 24500 105 300
+client wait goto timeout=60
+must host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 " timeout=15
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+unless client log "cmd: [0-9]+ key G " count=1 client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " sleep 0.3
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -(1[0-9][0-9]|2[0-9][0-9]) from " client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 60
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " " at -?[0-9]+ -?[0-9]+ -?[0-9]{1,2} from " client look point 5341 24015 207
+unless client log "cmd: [0-9]+ key G " count=1 when client last "cmd: [0-9]+ look: " "look: point at" client key G 200
+unless client log "cmd: [0-9]+ key G " count=1 sleep 0.2
+client shot c310-range-grenade
+must host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 10/10\)" timeout=15
+host objective wait ShootingRange_SO3 30
+client wait log "card049: client t=\d+ replayed IncrementObjectiveCount\(ShootingRange_SO3\)" count=10 timeout=30
+host wait log "card049: host sent CompleteObjective\(ShootingRange_O1\)" timeout=60
+client wait log "card049: client t=\d+ replayed CompleteObjective\(ShootingRange_O1\)" timeout=30
+host inventory
+client inventory
+# --- Card 311 / 310 load proof: save with the range targets activated, then a checkpoint load with both players alive
+# (no death: the deathless load path is the one b11-soak-c2m1 and c142-r4 ran; neither the save nor the travel needs a
+# death). Waits are on log rows only.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+host mark
+client mark
+host travel checkpoint
+host wait log "card143: host t=\d+ Reload to \S+ \(copy \S+\): sent now, ahead of \d+ queued frames" since-mark timeout=60
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+# Card 320 rows on a load with the client connected (run 1: the first hold went off 2631 ms in, 7 s before the client
+# joined). Soft: the rows say whether this load shows the screen and how many clients the hold waited for.
+try host wait log "card320: host t=\d+ hold on \(\S+\), waiting for host 1 clients \d+" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms " since-mark timeout=60
+client wait log "UEngine::LoadMap enter" since-mark timeout=60
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=60
+host wait log "card311: host replay Activate\(1\) \S+ to \S+: bIsActive \d" since-mark timeout=30
+client wait log "card311: client t=\d+ replayed Activate\(1\) \S+: activated" since-mark timeout=30
+client wait log "card098: client t=\d+ world L \S+RangeTarge\S+ .*applied timeline state" since-mark timeout=30
+host wait log "card310: host t=\d+ map rows applied to the new copy pawn " since-mark timeout=30
+# b17 item 4: the join rows the client logs (b16: C and D rows; no "kept rows" row exists).
+client wait log "card310: client t=\d+ C \d applied on the own pawn " since-mark timeout=30
+client wait log "card310: client t=\d+ D \S+Config_TacSupp_Resupply_C applied on the own pawn " since-mark timeout=30
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches \d+" since-mark timeout=60
+# --- Card 335: a second digest round after the load. Proof is read from the logs: no card237 mismatch row for
+# TargetRangeTarger_C_3 in either round (run 11: client "MovementTimeline position 1.401 of 6.00, playing 1", z -21
+# to -92; host "position 3.533 of 6.00, playing 0", z -6).
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches \d+" since-mark count=2 timeout=90

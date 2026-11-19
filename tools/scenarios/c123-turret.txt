@@ -1,0 +1,40 @@
+# Card 123 item 4 (FED_C3M1, direct travel): the open class from the all-maps sweep, a client turret. The host warps
+# the client's server copy behind a BP_MountableTurret_C; the client presses E on it (its local OnInteraction is
+# skipped and TurretMount goes to the host, which mounts the copy: the client's controller possesses the turret).
+# Then the client presses E again (its LeaveTurret is skipped locally and TurretLeave goes to the host). Before card
+# 123 this leave crashed the client in AController::Possess (card 029 dump 3402DC26). Shots on both sides.
+# Run: SCENARIO=tools/scenarios/c123-turret.txt DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen" tools/run_pair.sh c123t 480
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 5
+# The turret's CanInteract wants the pawn's yaw within a cone of the turret root's forward, and the client's turret
+# root yaw differs from the host's (c123z: client -90, host 0), so the client picks the seat-side point from its own
+# turret and the host puts the server copy there; the look waits until the client's pawn is there.
+host warp actor BP_MountableTurret_C 400
+host warp client BP_MountableTurret_C 100
+sleep 3
+host warp client BP_MountableTurret_C 90 behind
+client wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" timeout=5
+host warp client point {g1} {g2} {g3}
+client wait near {g1} {g2} {g3} 60 timeout=6
+sleep 1
+client wait near {g1} {g2} {g3} 60 timeout=6
+client look actor BP_MountableTurret_C
+client key E
+client shot turret-before
+host wait log "card123: host TurretMount from" timeout=10
+client wait log "AcknowledgePossession.*BP_MountableTurret_C" timeout=10
+sleep 3
+client shot turret-mounted
+host shot turret-mounted
+client key E
+host wait log "card123: host TurretLeave from" timeout=10
+sleep 3
+client shot turret-left
+host shot turret-left
+sleep 2
+client quit
+sleep 2
+host quit

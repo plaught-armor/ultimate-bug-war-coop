@@ -1,0 +1,53 @@
+# Batch b51 (senior order 2026-11-15): card 364 rewrite (the hold counts the clients a seamless travel carries) and
+# card 366 (a downed host whose last teammate leaves dies). Predictions: docs/cards/364-...md, 366-...md.
+# Build b51: f46ae0eb6b1386d6. GOD=0 (the card 043 test downs the pawns by DealDamage).
+# Run A (card 364): FED_C1M1 start, travel next to FED_C2M1 at once; the host continues as soon as its prompt is
+# ready (b50 run 2: the client's join came 121 ms after that), so the hold should print the card364 row with 1 carried,
+# then wait for the client's join and confirm.
+# Run B (card 366): the card 043 test on the host only (no C45, no client lever: nobody presses E for the host).
+# On FED_C2M1 it downs the copy, drains it, the host revives it, then downs the host (stage 6 -> 7, WaitHostUp, 20 s).
+# The client quits inside that window: the host is Downed with no teammate, card 366 kills it.
+# Expected wall: about 4 min.
+# Run: LANE=2 SCENARIO=tools/scenarios/b51-c364-c366.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C43_TEST=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1" tools/run_pair.sh b51 420
+void unless host dll f46ae0eb6b1386d6
+void unless client dll f46ae0eb6b1386d6
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# --- A. Card 364: seamless travel to FED_C2M1 at once (before the C1M1 solo test's first hit); early host continue.
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+host wait log "card320: host t=\d+ hold on " since-mark timeout=120
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=90
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+sleep 2
+host shot b51-c2m1-host
+client shot b51-c2m1-client
+# --- B. Card 366: the card 043 test on FED_C2M1 (pair: both on foot), the copy's half, then the host downed.
+host wait log "card043: host test: both on foot; first hit in \d+ ms" since-mark timeout=60
+host wait log "card043: host t=\d+ test stage 6 -> 7" since-mark timeout=150
+sleep 3
+host shot b51-host-downed
+host mark
+client quit
+host wait log "all down: last teammate left \(card 366\)" since-mark timeout=30
+host wait log "card043: host t=\d+ real-death hit 1 " since-mark timeout=15
+host wait log "card043: host real death: 1 hits, Health 0\.0" since-mark timeout=15
+sleep 6
+host shot b51-death-screen
+sleep 4
+host shot b51-death-later
+host quit

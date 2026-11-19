@@ -1,0 +1,28 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 110 proof (FED_C1M1, FAST=1): each machine draws a local name marker over the other player only. Both
+# pawns warp next to an AI trooper, each faces the other player (look actor skips the own pawn) and shoots; the
+# client walks away while the host watches; then the host downs the client for the DOWN label. Run:
+# SCENARIO=tools/scenarios/c110-marker.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+# tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host warp actor BP_AI_Trooper_NonCombat_C 250
+host warp client BP_AI_Trooper_NonCombat_C 600
+sleep 2
+host look actor BP_PlayerCharacterMI_C 60
+client look actor BP_PlayerCharacterMI_C 60
+sleep 1
+host shot c110-host-near
+client shot c110-client-near
+client goto -3454 9686 148 300 timeout=8
+host look actor BP_PlayerCharacterMI_C 60
+host shot c110-host-walk
+host down client
+sleep 2
+host look actor BP_PlayerCharacterMI_C 60
+host shot c110-host-down
+client shot c110-client-down
+host quit
+client quit

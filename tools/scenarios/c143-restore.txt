@@ -1,0 +1,71 @@
+# Card 143 proof: a host checkpoint restore in place with the client in the session, saved while the client was
+# downed, in one FAST=1 pair run on FED_C1M1 (GOD=0: the down). Both take a Morita; the client is downed; the host
+# saves (Save_Quicksave), kills two range targets after the save, then loads it in place (LoadLatestSave). The host
+# sends the client its copy's restored state (Reload); the client rejoins and sends it back (Restore); the host applies
+# it to the new copy. Then a digest round at 0 mismatches (the known card 145 ammo-pickup class apart) and no new down
+# of the client for 30 s. Every step that depends on game state waits for its log line (mark, then wait since-mark).
+# Run: LANE=2 SCENARIO=tools/scenarios/c143-restore.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh <tag> 900
+# 2026-11-15 run c143b55: pins added; the map gate voids; the client continues as well (card 320 hold, card 344 limit).
+void unless host dll 29ad572d08da2d85
+void unless client dll 29ad572d08da2d85
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# FED_C1M1 starts unarmed: the host takes the Morita from the rack. The level script's AddWeapon is mirrored to the
+# client's server copy (card 267), so the client is armed by the same take (run c143b55c: the client's own E then gave
+# nothing, "weapons before 0|0=...MoritaMk1"). Earlier fixes in this block: c143b55 (the host at the rack blocked the
+# client's walk), c143b55b (collision rows now come through the card 132 ledger); both steps are gone with the walk.
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+host wait log "card267: host level script AddWeapon\(Default__BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\): 1" since-mark timeout=10
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" since-mark timeout=15
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" since-mark timeout=15
+# Card 370: (5600, 14400, -200) is under the world (c143b55d P5: both fell to KillZ); this point is the range floor
+# the host stood on in c143b55d, (6554, 11459, 97), +100 so the warp lands and settles (not run since the change).
+host warp actor point 6554 11459 197
+# Both by the target range; the client is downed, then the host saves (the host warped there above).
+host warp client point 6654 11459 197
+client wait near 6654 11459 197 300 timeout=10
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+# Two targets killed after the save: the load revives them on the host, the rejoin on the client.
+host kill actor BP_KillableBuilding_Base_TargetRangeTarget_C
+sleep 1
+host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_2
+sleep 2
+host mark
+client mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" since-mark timeout=10
+host wait log "card143: host t=\d+ Reload to .* sent" since-mark timeout=5
+client wait log "card143: client t=\d+ Reload received" since-mark timeout=10
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=90
+client wait log "card143: client t=\d+ Restore sent" since-mark timeout=30
+host wait log "card143: host t=\d+ Restore applied .*after its AssignStartingInventories" since-mark timeout=20
+client wait state pawn=client-own timeout=30
+# The digest round after the restore, then 30 s; the logs are checked afterwards for no new down of the client.
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client mark
+sleep 30
+host shot c143-after-host
+client shot c143-after-client
+host inventory
+client quit
+sleep 2
+host quit

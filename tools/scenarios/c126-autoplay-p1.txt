@@ -1,0 +1,20 @@
+# Card 126 phase 1: host only, FED_C1M1, FAST=1. Autoplay walks the presence volumes (SO1..SO3) and presses
+# E at the panel (Assault_SO4) on its own. No warp, no goto, no `objective complete` here: the scenario only turns
+# autoplay on and waits for the level script's own completion lines. The marker line settles card 126 open point 1.
+# Run: SOLO=1 SCENARIO=tools/scenarios/c126-autoplay-p1.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c126h 600
+# The level script completes SO1, SO2, SO3, SO4, then SO0 with the objective (c121 order), so SO0 has no wait of its own.
+host wait state pawn=host-own timeout=240
+host ui continue
+host autoplay on
+host wait log "autoplay: host marker " timeout=20
+host wait log "CompleteSubObjective\(Assault_O1, Assault_SO1\)" timeout=120
+host wait log "CompleteSubObjective\(Assault_O1, Assault_SO2\)" timeout=120
+host wait log "CompleteSubObjective\(Assault_O1, Assault_SO3\)" timeout=120
+host wait log "CompleteSubObjective\(Assault_O1, Assault_SO4\)" timeout=120
+host wait log "CompleteObjective\(Assault_O1\)" timeout=30
+host shot c126-assault-done
+sleep 5
+host autoplay off
+host objectives
+host quit

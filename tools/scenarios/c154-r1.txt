@@ -1,0 +1,57 @@
+# Card 154 r1 (FED_C1M1, FAST=1): the host's pause-menu quit to the listen hangar with the client following (card 045
+# follow, no J press), the host's mission start from the hangar (`travel restart`, TransitionToLevel), then the race:
+# the host quits again and starts the mission as soon as its hangar loads, before the client has reconnected there.
+# Every log wait is since-mark: the boot already passed through 3D_Frontend.
+# Run: SCENARIO=tools/scenarios/c154-r1.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh c154-r1 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+# Trip 1: the host quits to the hangar; the client follows and connects there.
+host mark
+client mark
+host key Escape 150
+sleep 2
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+sleep 2
+host ui click ConfirmQuitToMainMenu
+host wait log "card052: .*world 3D_Frontend" since-mark timeout=60
+client wait log "card052: .*world 3D_Frontend" since-mark timeout=60
+client wait log "reconnected \(" since-mark timeout=90
+sleep 5
+host shot c154-hangar
+client shot c154-hangar
+# The host starts the mission from the hangar; the client follows in.
+host mark
+client mark
+host travel restart
+client wait log "card052: .*world FED_C1M1" since-mark timeout=120
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "card120: client .*minimap origin .* set: Pong" since-mark timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host ui continue
+sleep 5
+host shot c154-mission1
+client shot c154-mission1
+# Trip 2, the race: the host starts the mission as soon as its own hangar world loads.
+host mark
+client mark
+host key Escape 150
+sleep 2
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+sleep 2
+host ui click ConfirmQuitToMainMenu
+host wait log "card052: .*world 3D_Frontend" since-mark timeout=60
+host travel restart
+host wait log "card052: .*world FED_C1M1" since-mark timeout=120
+client wait log "card052: .*world FED_C1M1" since-mark timeout=180
+client wait log "card120: client .*minimap origin .* set: Pong" since-mark timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host ui continue
+sleep 5
+host shot c154-mission2
+client shot c154-mission2
+host quit
+client quit

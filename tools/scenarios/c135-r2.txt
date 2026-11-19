@@ -1,0 +1,46 @@
+# Card 135 run c135-r2: the late join on the no-brief map. FED_C2M1 (HOST_EXTRA_ENV UBWCOOP_TRAVEL), FAST=1, the
+# keep-screen flag on both sides, AUTODROPSHIP off. The host continues from its screen before the client travels
+# (CLIENT_DELAY_MS=90000), so the client gets IntroStart from the join replay. Proves: the host's chapter and level IDs
+# read at its screen and set on the client's game instance before its GameStarted (the client's screen shows the
+# host's title and image), the card 156 +5 s check deferred while the client's screen is up and clean after it closes,
+# and the cursor state on both sides by screenshot. The audit (each wait against a real log line or a format string)
+# is in docs/cards/135-press-to-start-screen-both-sides.md, "Run c135-r2: scenario audit".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c135-r2.txt DEPLOY=1 FAST=1
+#      CLIENT_DELAY_MS=90000
+#      HOST_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C135_KEEP_SCREEN=1" tools/run_pair.sh c135-r2 900
+# No failsoft: a missed required step ends the run there.
+# 1. Host: the screen is up (its IDs read), still up 5 s after the pause.
+host wait log "card135: host t=\d+ screen up: \S+ chapter -?\d+ level -?\d+ \(GetChapterID, GetLevelID\)" timeout=300
+host mark
+host wait log "card067: 5 s after the WB_Stack_C pause: \d+ pause requester" since-mark timeout=60
+host shot c135-r2-host-screen
+# 2. Host continues before the client is in: the op goes to nobody.
+host mark
+host ui continue
+host wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+host wait log "card135: host continued t=\d+ on FED_C2M1 \(bFromSave 0\): IntroStart sent to 0 of 0 client" since-mark timeout=60
+host shot c135-r2-host-in-game
+# 3. The client joins: the join replay sends the op; the client sets the IDs and calls GameStarted.
+host wait log "card135: host t=\d+ join replay: IntroStart \(FED_C2M1 0\) sent to" timeout=300
+client wait log "card135: client t=\d+ IntroStart \(FED_C2M1, bFromSave 0, chapter -?\d+ level -?\d+\) in" timeout=60
+client mark
+client wait log "\] card135: client GameStarted t=\d+ on FED_C2M1 \(bFromSave 0, HUD \S+, \+\d+ ms after the op; \S+ chapter -?\d+->-?\d+ level -?\d+->-?\d+\); world paused" since-mark timeout=60
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=60
+client wait log "card067: 5 s after the WB_Stack_C pause: \d+ pause requester" since-mark timeout=60
+try client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s check deferred: the card 135 screen is up" since-mark timeout=60
+client shot c135-r2-client-screen
+host shot c135-r2-host-during
+# The deferral is a try: if the HUD and pawn came more than 5 s after the card 156 restore, the check ran before the
+# screen (then clean, matched by step 4's last wait over the whole log).
+# 4. The client continues: its stack empties; the deferred card 156 check then runs clean (no WARN prefix).
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+client wait log "\] card156: client t=\d+ back to Up \(map load\) \+5 s: own pawn" timeout=60
+client shot c135-r2-client-end
+host shot c135-r2-host-end
+client quit
+sleep 2
+host quit

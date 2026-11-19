@@ -1,0 +1,33 @@
+# Card 170: the client's Armour follows the host's server copy when a bug hits it. One FAST=1 pair run on FED_C1M1,
+# GOD=0. The host stands far off; one WarriorBug spawns facing the client on open ground (the c165 field east of the
+# range) and hits it. Each host "hit slot 1 server-copy" line must be followed by the client's card170 line with the
+# same new Armour. Predictions in docs/cards/170-client-armor.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c170-armor.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# The client's first Armour value is only recorded (no notify).
+client wait log "card170: client client-own t=\d+ Armour -1\.0 -> " timeout=10
+host warp actor point 9500 13500 400
+host warp client point 13600 14200 400
+client wait near 13600 14200 400 300 timeout=10
+host mark
+client mark
+host spawn bug 13600 15200 400 270
+# Hit 1: Armour only (c165d: 25 armour, 0 health).
+host wait log "playlog: host t=\d+ hit slot 1 server-copy: .*Armour 100\.0 -> " since-mark timeout=40
+client wait log "card170: client client-own t=\d+ Armour 100\.0 -> \d+\.\d, ArmourAttributeChanged called" since-mark timeout=5
+sleep 1
+client shot c170-after-hit1
+# Hit 2.
+host wait log "playlog: host t=\d+ hit slot 1 server-copy: .*Armour (?!100\.0)\d+\.\d -> " since-mark timeout=20
+client wait log "card170: client client-own t=\d+ Armour (?!100\.0)\d+\.\d -> \d+\.\d, ArmourAttributeChanged called" since-mark timeout=5
+# Health still follows once the armour is spent (c165d hit 3: armour 20.83, health 4.17).
+try host wait log "playlog: host t=\d+ hit slot 1 server-copy: .*Health 100\.0 -> (?!100\.0)\d" since-mark timeout=20
+try client wait log "card021: client client-own Health 100\.0 -> \d+\.\d, HealthAttributeChanged called" since-mark timeout=5
+host kill actor BP_AI_WarriorBug_C
+sleep 1
+client shot c170-after-kill

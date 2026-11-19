@@ -1,0 +1,63 @@
+# Card 222 run c222-r3: `winkey` closes the pause menu and its options page with a client in, on the c171-r1 route
+# (the c171-r1 client-in block, where `key Escape` never opened the menu). Host block, then client block: winkey
+# Escape (menu), ui click OPTIONS, winkey Escape (options), winkey Escape (menu); then a host walk that arrives.
+# At least one press must log "Slate active 0, not-active input 0 -> 1" (two windows: at most one is active).
+# The wait audit (proving log line per wait) is in docs/cards/222-driver-escape-does-not-close-menus.md,
+# "Run c222-r3: wait audit". No failsoft: a missed close ends the run (the card's stop rule).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c222-r3.txt DEPLOY=1 FAST=1 GOD=0
+#      CLIENT_DELAY_MS=120000 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C132_FX=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1" tools/run_pair.sh c222-r3 900
+host wait state pawn=host-own timeout=240
+host ui continue
+# The client joins (c171-r1 lines 33-36).
+client wait state pawn=client-own timeout=300
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=10
+# 1. Host: the pause menu opens (SetGamePaused is skipped with a client in; the WB_Stack_C dump is the open line).
+host mark
+host winkey Escape 150
+host wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host shot c222-host-pause
+# 2. Host: OPTIONS (the card121 line proves the click found the menu; "cmd: done" alone does not).
+host mark
+host ui click BndEvt__WB_Pause_Menu_OPTIONS_button
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_OPTIONS_button" since-mark timeout=10
+host shot c222-host-options
+# 3. Host: winkey Escape closes options (predicted line), a second closes the menu (if it is still open).
+host mark
+host winkey Escape 150
+host wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+try host wait log "card067: ProcessEvent WB_Stack_C\.Destruct " since-mark timeout=4
+host shot c222-host-options-closed
+try host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=4
+when host last "card067: dump \d+ in \S+ \(WB_Stack_C Request" "RequestGamePause" host winkey Escape 150
+host wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=10
+host shot c222-host-closed
+# 4. Host input is back: the c171-r1 walk to the Morita arrives.
+& host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host wait goto timeout=40
+host shot c222-host-arrived
+# 5. Client: the same three presses.
+client mark
+client winkey Escape 150
+client wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+client shot c222-client-pause
+client mark
+client ui click BndEvt__WB_Pause_Menu_OPTIONS_button
+client wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_OPTIONS_button" since-mark timeout=10
+client shot c222-client-options
+client mark
+client winkey Escape 150
+client wait log "cmd: \d+ winkey Escape 150 -> done" since-mark timeout=5
+try client wait log "card067: ProcessEvent WB_Stack_C\.Destruct " since-mark timeout=4
+client shot c222-client-options-closed
+try client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=4
+when client last "card067: dump \d+ in \S+ \(WB_Stack_C Request" "RequestGamePause" client winkey Escape 150
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=10
+client shot c222-client-closed
+client quit
+sleep 2
+host quit

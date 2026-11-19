@@ -1,0 +1,31 @@
+# Card 112 (FED_C2M1, FAST=1, CLIENT_DELAY_MS=95000): the host warps alone into the first WarriorBug group, which
+# triggers the encounter whose later waves are set up but not started; then the client joins. The host log carries
+# card112 rescale lines (budget 16 -> 26 and so on) at the join and a later card112 activate line with the scaled list.
+# Run: SCENARIO=tools/scenarios/c112-proof.txt FAST=1 CLIENT_DELAY_MS=95000 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c112c 300
+host wait state pawn=host-own timeout=240
+host ui continue
+sleep 2
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 2
+host ui continue
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 5
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 1500
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+sleep 15
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+sleep 10
+host shot c112-end
+client shot c112-end
+host quit
+client quit

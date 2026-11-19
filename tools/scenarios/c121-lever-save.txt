@@ -1,0 +1,43 @@
+# Card 121 proof, the playtest's order: the client walks the assault steps before the lever
+# (BP_PlayerPresence_C_2, _6, _9: Assault_SO0..SO3), then walks to BP_PanelSwitch_WithoutScreen_C_0 and pulls it. The level script then completes Assault_SO4/SO0/O1
+# and runs its checkpoint save on both machines: the client must log "card121: client ... save engine save skipped"
+# (with its squad lines) and no CRASH line; the host must still log "card121: host ... save engine save runs".
+# Run: SCENARIO=tools/scenarios/c121-lever-save.txt FAST=1 DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host warp client BP_PlayerPresence_C_2 300
+sleep 2
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO2\)" timeout=10
+host warp client BP_PlayerPresence_C_6 300
+sleep 2
+client goto actor BP_PlayerPresence_C_6 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO3\)" timeout=10
+host warp client BP_PlayerPresence_C_9 300
+sleep 2
+client goto actor BP_PlayerPresence_C_9 80 timeout=30
+try client wait log "AddSubObjective\(Assault_O1, Assault_SO4\)" timeout=10
+host warp client point 17332 12821 213
+sleep 2
+client look actor BP_PanelSwitch_WithoutScreen_C_0 100
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 60
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 140
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client look actor BP_PanelSwitch_WithoutScreen_C_0 30
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+client wait log "CompleteObjective\(Assault_O1\)" timeout=30
+host wait log "CompleteObjective\(Assault_O1\)" timeout=30
+sleep 5
+host objectives
+client objectives
+client shot c121-client-after
+host quit
+client quit

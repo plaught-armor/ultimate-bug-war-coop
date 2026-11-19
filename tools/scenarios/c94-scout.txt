@@ -1,0 +1,24 @@
+# Card 094 step 1 (log only): flat-ground jumps on both sides, then a look at the obstacle course near the jump prompt.
+# Run: SCENARIO=tools/scenarios/c94-scout.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client key SpaceBar 100
+sleep 2
+client key SpaceBar 100
+sleep 2
+host key SpaceBar 100
+sleep 2
+host goto actor BP_TutorialPromptTrigger_Jump_C 100
+host look 0 0
+host shot yaw0
+host look 90 0
+host shot yaw90
+host look 180 0
+host shot yaw180
+host look 270 0
+host shot yaw270
+client quit
+host quit

@@ -1,0 +1,33 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 079 proof run 2a (co-op, FED_C4M1): with UBWCOOP_C79_DOWN=host the host's soldier goes Downed (then Out
+# after a 0.5 s bleedout) the first time it is within 600 uu of a mech. It then presses E at the mech: card 079
+# refuses EnterMech on the host and keeps the card 043 entry. Since card 081 the press is refused earlier, at
+# UADInteractorComponent::Interact, so no EnterMech runs.
+# Run: SCENARIO=tools/scenarios/c79-down-host.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_C79_LOG=1 UBWCOOP_C79_DOWN=host"
+#   CLIENT_ENV="UBWCOOP_C79_LOG=1" run65.sh <tag> 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+host warp actor BP_BaseMech_C 300
+host wait log "card079: host t=[0-9]+ test down" timeout=10
+host wait log "card043: .*-> Out" timeout=15
+sleep 2
+host look actor BP_BaseMech_C 150
+sleep 1
+host shot out
+client shot out
+host key E
+host wait log "card081: host t=[0-9]+ Interact refused" timeout=10
+sleep 3
+host shot refused
+client shot refused
+host key E
+sleep 3
+host shot again
+sleep 2
+client quit
+sleep 2
+host quit

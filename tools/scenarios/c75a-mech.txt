@@ -1,0 +1,46 @@
+# Card 075 proof (c75a): UBWCOOP_SPAWN_MECH=mech on the host only. The card 032 host driver spawns a mech 500 units ahead
+# 20 s after both players are on foot, enters it, drives 10 s and leaves (c75c: the host enters while the client
+# watches). Then the client walks to that mech, enters with E (MechEnter frame), walks 5 s with W and leaves with E
+# (MechLeave frame). Shots on both sides at each step; the enter and leave state lines are card075 in both logs.
+# Run: SCENARIO=tools/scenarios/c75a-mech.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_SPAWN_MECH=mech" run65.sh c75a (HOST_ENV also needs UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen)
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card032: host driver: after OnInteraction" timeout=120
+sleep 2
+client look actor BP_BaseMech_C 150
+client shot host-enter
+host shot host-enter
+# The host leaves with its own E (IA_ExitVehicle); the driver skips RequestLeaveMech on an unpiloted mech.
+host key E 2500
+sleep 2
+host wait log "card032: host driver: after RequestLeaveMech" timeout=40
+sleep 2
+client shot host-leave
+host shot host-leave
+sleep 2
+client goto actor BP_BaseMech_C 250 timeout=200
+client look actor BP_BaseMech_C 150
+host look actor BP_BaseMech_C 150
+sleep 1
+client key E
+host wait log "card075: host MechEnter from" timeout=10
+client wait log "possess: AcknowledgePossession.*BP_BaseMech_C" timeout=10
+sleep 3
+client shot enter
+host shot enter
+# 2 s, not 5: in c75a13 a 5 s walk from here took the mech off a ledge, and the E hold fails while it falls.
+# c75b holds the 5 s walk.
+client key W 2000 timeout=15
+client shot walk
+host shot walk
+sleep 1
+client key E 2500
+host wait log "card075: host MechLeave from" timeout=10
+sleep 3
+client shot leave
+host shot leave
+sleep 2
+client quit
+sleep 2
+host quit

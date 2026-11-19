@@ -1,0 +1,57 @@
+# fire test: weapon fire is what this scenario measures, so its clears may use fire (drive.py lint, 2026-11-19).
+# Card 283 run (build 5, faaa085d7714170b, FED_C3M1): a destroyed bench whose own name is 82 characters reaches the
+# client (kill, hidden and collision rows). The b4e run killed it by chance (an AI fight at 224 s); this scenario
+# takes both players to it and the host destroys it by weapon fire. Ground z 750 there (c230-c3m1-b4e gore decals at
+# (-15881, -48409, 750)). Predictions: docs/cards/283-long-plain-name-world-ops-miss-on-client.md, "Run c283-b5".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c283-bench.txt DEPLOY=1
+#      HOST_EXTRA_ENV="UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1" tools/run_pair.sh c283-b5 900
+# c283-b5: FAST=1 dropped; it sets UBWCOOP_SKIP_FLIGHT=1, which needs UBWCOOP_AUTODROPSHIP=1 (WARN config) and does
+# nothing on FED_C3M1, which has no dropship flight in this route.
+failsoft
+void unless host dll 4efbc7838d907625
+void unless client dll 4efbc7838d907625
+host wait state map=FED_C3M1 pawn=host-own timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180 void
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+# c283-b5: the client brief stayed open and covered both client shots; close it too (as c243-c3m2).
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client shot c283-client-hud
+host shot c283-host-hud
+# Stands 400 and 500 uu east of the bench, measured ground z 750.
+host warp actor point -15636 -48490 800
+host warp client point -15536 -48390 800
+host wait stand -15636 -48490 any 300 timeout=15
+client wait stand -15536 -48390 any 300 timeout=15
+both ammo fill
+both clear 1500 45
+host warp actor point -15636 -48490 800
+host warp client point -15536 -48390 800
+host wait stand -15636 -48490 any 300 timeout=15
+client wait stand -15536 -48390 any 300 timeout=15
+client look point -16036 -48490 790
+client shot c283-client-bench-before
+host look point -16036 -48490 790
+host shot c283-host-bench-aim
+# The host destroys the bench (Health 25): fire until its kill row.
+host mark
+client mark
+host key LeftMouseButton 800 timeout=10
+host wait log "card098: host t=\d+ \S+ BP_Bench_Metal_Destructible_03_GEN_VARIABLE_BP_Bench_Metal_Destructible_01_C_CAT_53 Health [0-9.]+ -> -?[0-9.]+: kill relayed" since-mark timeout=10
+try host wait log "card095: host .*collision .*BP_Bench_Metal_Destructible_03_GEN_VARIABLE_BP_Bench_Metal_Destructible_01_C_CAT_53.*sent to 1 of 1 client" since-mark timeout=5
+client look point -16036 -48490 790
+client shot c283-client-bench-after
+host shot c283-host-bench-after
+# One digest round on each side after the kill.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+sleep 2
+client quit
+sleep 2
+host quit

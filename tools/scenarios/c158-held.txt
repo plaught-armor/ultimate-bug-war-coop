@@ -1,0 +1,51 @@
+# Card 158 run: the client's own held grenade (client spawn of GrenadeVisualClassRef plus the Blueprint's Success
+# handler) and its throw aim against the host's launch. One FAST=1 pair run on FED_C1M1 (GOD=0). Predictions in
+# docs/cards/158-client-grenade.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c158-held.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client mark
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+client wait log "card073: client t=\d+ GrenadeItem .*Frag.* our count \d+ to [1-9]" since-mark timeout=15
+client wait log "card073: client t=\d+ GrenadeItem .*Incendiary.* our count \d+ to [1-9]" since-mark timeout=15
+client wait log "card158: client .*: OnAnimationStarted " timeout=10
+sleep 2
+# Frag: the held grenade shows from OnAnimationStarted to OnDoAction (about 1 s).
+client look point -3674 30000 600
+sleep 1
+client mark
+host mark
+client key G
+client wait log "card158: client t=\d+ .* held grenade .* spawned and set as GrenadeVisuals" since-mark timeout=5
+sleep 0.3
+client shot frag-held
+client wait log "card158: client t=\d+ .* OnDoAction: aim " since-mark timeout=5
+sleep 0.4
+client shot frag-after
+host wait log "card158: host t=\d+ server copy throw " since-mark timeout=10
+sleep 4
+# Incendiary: the second G throws it (the frag count is 0).
+client look point -2674 30000 900
+sleep 1
+client mark
+host mark
+client key G
+client wait log "card158: client t=\d+ .* held grenade .* spawned and set as GrenadeVisuals" since-mark timeout=5
+sleep 0.1
+client shot inc-held-a
+sleep 0.1
+client shot inc-held-b
+sleep 0.1
+client shot inc-held-c
+client wait log "card158: client t=\d+ .* OnDoAction: aim " since-mark timeout=5
+sleep 0.4
+client shot inc-after
+host wait log "card158: host t=\d+ server copy throw " since-mark timeout=10
+sleep 4
+client quit
+sleep 2
+host quit

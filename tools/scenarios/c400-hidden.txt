@@ -1,0 +1,63 @@
+# Card 400: a client's trooper stays hidden on the host, takes no damage and is no enemy target until that client
+# presses Enter (card 320 IntroDone). FED_C3M1 by direct travel, FAST=1 with UBWCOOP_AUTODROPSHIP (the c399 FAST
+# chain start): A. map start, the client boards under the hold unconfirmed and confirms mid-ride, the FAST landing
+# goes by WarpTo with the host's yaw (card 399 b88, unrun). B. the client leaves after the landing and rejoins on
+# foot beside the host (card 307), stays on its screen with two bugs next to it, then confirms.
+# Predictions: docs/cards/400-unconfirmed-client-hidden.md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c400-hidden.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c400b90a 900
+# Expected wall: about 6 min.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C3M1 timeout=300 void
+client wait state map=FED_C3M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+# --- A. Map start: hidden from the send (prediction 1), a rider confirming stays hidden until the release (2).
+host wait log "card400: host t=\d+ hide BP_PlayerCharacterMI_C\w* \(slot 1\): client not confirmed yet" timeout=60
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+sleep 2
+host shot c400-h-start-before
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card400: host t=\d+ show BP_PlayerCharacterMI_C\w* \(slot 1\): client confirmed" timeout=10
+host wait log "card320: host t=\d+ hold off" timeout=30
+host wait log "card399: host t=\d+ release" timeout=180
+client wait log "card399: client t=\d+ landing facing: control rotation yaw -?[\d.]+ \(host yaw in WarpTo\)" timeout=15
+sleep 3
+host shot c400-h-landed
+client shot c400-c-landed
+try host wait state pawn=host-own timeout=60
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+# --- B. Rejoin on foot: hidden on the host while the client loads and sits on its screen (3, 4, 5), shown at Enter (6).
+host mark
+client mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+host wait log "card400: host t=\d+ hide BP_PlayerCharacterMI_C\w* \(slot 1\): client not confirmed yet \(on foot\)" since-mark timeout=120
+host wait log "card307: host t=\d+ player spawn: PlayerStart .* spawns beside" since-mark timeout=60
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=90
+# The look row is written before the look step returns: mark first, wait since the mark.
+host mark
+host look actor BP_PlayerCharacterMI_C
+host wait log "cmd: \d+ look: BP_PlayerCharacterMI_C\w* at (-?\d+) (-?\d+) (-?\d+) from " since-mark timeout=10
+sleep 1
+host shot c400-h-rejoin-before
+host spawn bug {g1+250} {g2} {g3+50} 180
+host spawn bug {g1} {g2+250} {g3+50} 270
+sleep 10
+host shot c400-h-rejoin-bugs
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+ \(not waited for" since-mark timeout=30
+host wait log "card400: host t=\d+ show BP_PlayerCharacterMI_C\w* \(slot 1\): client confirmed" since-mark timeout=10
+host look actor BP_PlayerCharacterMI_C
+sleep 2
+host shot c400-h-rejoin-after
+client shot c400-c-rejoin-after
+host clear 3000 kill
+client quit
+sleep 2
+host quit

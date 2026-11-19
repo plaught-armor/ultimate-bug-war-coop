@@ -1,0 +1,29 @@
+# Card 117 (FED_C2M1, FAST=1, Medium AmmoReceivedMultiplier 3 and HealingPeriodMultiplier 0.25 in the user ini): one run
+# for three paths. 1) The client empties some rifle ammo and the host warps it onto a placed ammo pickup (host log:
+# card114 reads AmmoReceivedMultiplier = 3.000); the self heal given lines carry 0.25. 2) The host warps into the first
+# WarriorBug group, which sets up held waves and gets the host hit; the client drops and reconnects while they are
+# held (card112 rescale down, then up). 3) The client quits for good after the 45 s grace (card113 shrink).
+# Run: DEPLOY=1 SCENARIO=tools/scenarios/c117-proof.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c117b 420
+host wait state pawn=host-own timeout=240
+host ui continue
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+client key LeftMouseButton 10000 timeout=20
+host warp client BP_AmmoPickup_MoritaLarge_C 10
+sleep 3
+host warp client BP_AmmoPickup_MoritaSmall_C 10
+sleep 3
+host warp actor BP_AI_WarriorBug_C 400
+sleep 12
+# the host world must be older than the 45 s card 113 grace, so the drop counts at once
+sleep 10
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=60
+sleep 5
+client quit
+sleep 75
+host shot c117-end
+host quit

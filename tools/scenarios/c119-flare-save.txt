@@ -1,0 +1,51 @@
+# Card 119 proof, the playtest's order: the commands complete the steps before TacSupport_SO2; the host, warped to the
+# tutorial range (the playtest threw it at (11693, 14502)), throws the resupply flare (Four, fire), so the level script itself completes SO3/SO4/SO41 and shows the bombing-run pickup;
+# (card 106 `charge` fills the slot first, so the throw is not waiting on recharge) the host takes it and throws the tutorial flare. The client gets the flare copies and the bomb projectile copies,
+# and its checkpoint saves run with them alive: each copy must show a "card119: client ... save skips" line, and
+# the client must survive.
+# Run: SCENARIO=tools/scenarios/c119-flare-save.txt FAST=1 DEPLOY=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+sleep 1
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "SetObjectiveVisibility\(TacSupport_SO41\) bools 11" timeout=60
+host warp actor BP_ResupplyRack_Level0_C 150
+try host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=15
+try host objective complete TacSupport_SO41
+host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=20
+sleep 2
+host warp actor BP_TacSuppPickup_BombingRun_Tutorial_C 10
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 600
+sleep 1
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+host wait log "DisablePickup on BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=5
+sleep 2
+host charge 0 20000 1
+try host charge 1 20000 1
+host key Four
+sleep 2
+host key LeftMouseButton
+client wait log "copy of host [0-9]+: /Game/Blueprints/Combat/BP_SupportFlare_Tutorial" timeout=20
+try client wait log "copy of host [0-9]+: \S*BombingRunProjectile_Tutorial" timeout=30
+client shot c119-client-strike
+try client wait log "save skips the copy of host [0-9]+: BP_SupportFlare_Tutorial_C" timeout=60
+sleep 10
+host objectives
+client objectives
+client shot c119-client-after
+host quit
+client quit

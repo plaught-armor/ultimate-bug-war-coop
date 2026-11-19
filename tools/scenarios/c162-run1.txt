@@ -1,0 +1,122 @@
+# Card 162 run 1, with three items batched: card 169's flare and the incendiary's first person montage at destroy
+# (both sides), card 160's toggle ADS (the client on toggle, the host on hold), then card 162's sounds both ways with
+# the players about 7300 uu apart. One FAST=1 pair run on FED_C1M1 (GOD=0). Predictions in
+# docs/cards/162-remote-audio-attenuation.md, docs/cards/169-ability-spawn-visuals.md and
+# docs/cards/160-client-ads-zoom.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c162-run1.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_C160_TOGGLE_ADS=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Card 169, host control: the host takes the second incendiary (13368 13374) and throws it. The destroy lines give
+# the first person montage position.
+host mark
+host warp actor point 13250 13350 250
+host goto actor BP_GrenadeAmmoPickup_Incendiary_C_1 60 timeout=20
+host wait log "card095: host t=\d+ collision BP_GrenadeAmmoPickup_Incendiary_C_1 .* 1 -> 0" since-mark timeout=10
+sleep 2
+host look point 14250 30000 900
+host mark
+host key G
+host wait log "card169: host t=\d+ held \S+ of the own pawn destroyed during first person montage " since-mark timeout=8
+sleep 3
+# Card 169, host control: the host's own resupply flare (c119 spot), charged first.
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host mark
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "card169: host t=\d+ held \S+ of the own pawn destroyed during first person montage " since-mark timeout=10
+sleep 2
+# The client's flare: the tutorial pickup (12519 13417) charges its server copy, then Four and fire.
+try host objective complete TacSupport_SO3
+try host objective complete TacSupport_SO4
+try host objective complete TacSupport_SO41
+try host objective complete TacSupport_SO5
+sleep 2
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 10
+sleep 2
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+client look point 11700 14500 140
+sleep 1
+client mark
+host mark
+client key Four
+sleep 2
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot \d+ from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=8
+host wait log "card169: host t=\d+ held \S+ of the server copy destroyed during first person montage " since-mark timeout=10
+try client wait log "card169: client t=\d+ \S+: spawned " since-mark timeout=3
+sleep 2
+# Card 169: the client's own incendiary (the first pair, 6466 11451, beside the Morita).
+host warp client BP_WeaponPickup_MoritaMk1_C 300
+sleep 2
+client goto actor BP_GrenadeAmmoPickup_Incendiary_C_0 60 timeout=20
+client wait log "card073: client t=\d+ GrenadeItem .*Incendiary.* our count \d+ to [1-9]" timeout=15
+client wait log "card158: client .*: OnAnimationStarted " timeout=10
+sleep 2
+client look point -2674 30000 900
+client mark
+host mark
+client key G
+client wait log "card158: client t=\d+ .* set as GrenadeVisuals by Success" since-mark timeout=5
+client wait log "card169: client t=\d+ held \S+ of the own pawn destroyed during first person montage " since-mark timeout=8
+host wait log "card169: host t=\d+ held \S+ of the server copy destroyed during first person montage " since-mark timeout=8
+sleep 3
+# Both take the Morita at 6445 11469 (its pickup respawns in 10 s).
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Card 160: the client is on toggle (UBWCOOP_C160_TOGGLE_ADS), the host on hold. Tap 700 ms: the zoom stays after the
+# release. A second tap ends it.
+client look point 6445 30000 600
+sleep 1
+client mark
+host mark
+client key RightMouseButton 700
+client wait log "card160: client t=\d+ ADS edge carries toggle KBM 1, toggle controller \d, gamepad 0" since-mark timeout=5
+host wait log "card160: host t=\d+ server copy \S+ \(\S+\) reads IsToggleADSKBMEnabled: the client's 1 \(host's own 0\)" since-mark timeout=5
+client wait log "playlog: client t=\d+ ads 1 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+client wait log "playlog: client t=\d+ ads 0 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+sleep 1
+client mark
+client key RightMouseButton 700
+client wait log "playlog: client t=\d+ ads 1 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+client wait log "playlog: client t=\d+ ads 0 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+sleep 1
+# Card 162: the host takes the Morita too (the pickup is back), then the players go apart.
+host goto actor BP_WeaponPickup_MoritaMk1_C 120 timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+sleep 2
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host warp actor point 13500 13500 400
+sleep 3
+# The host's fire and footsteps, heard by the client.
+client mark
+host look point 13500 30000 2000
+host key LeftMouseButton 1200
+client wait log "playlog: client t=\d+ audio row .*Fire" since-mark timeout=10
+host goto 13500 14200 400 100 timeout=20
+sleep 2
+# The client's fire, heard by the host (the server copy).
+host mark
+client look point 6445 30000 2000
+client key LeftMouseButton 1200
+try host wait log "playlog: host t=\d+ audio " since-mark timeout=10
+sleep 2
+client quit
+sleep 2
+host quit

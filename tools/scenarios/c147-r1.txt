@@ -1,0 +1,69 @@
+# Card 147 run c147-r1: a from-save host start (in-place restore with no client), a late first join, then a rejoin.
+# FED_C2M1, the hb72 map: hb72's late join kept "mismatch BP_WarriorBug_Corpses_Destructible_01_C ..._37 collision
+# host 0 client 1" in every digest round (the c95 collision journal full at 256 rows). Card 147 keys the collision
+# rows by name, component and location and rebuilds them at LoadFromSlot. Predictions are in
+# docs/cards/147-from-save-start-proof.md, "Predictions".
+# The client joins late by CLIENT_DELAY_MS (330 s from its frontend world, about 130 s after the host's reconcile line
+# on this route); the analysis checks that the client's first Pong comes after the reconcile line (else the run is void).
+# UBWCOOP_DIAG=1 on the host installs the Save_CheckPoint audit detour (the card 147 caller line).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c147-r1.txt DEPLOY=1 FAST=1
+#      CLIENT_DELAY_MS=330000 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen
+#      UBWCOOP_DIAG=1" tools/run_pair.sh c147-r3 900
+# Run 3: state-dependent steps wait on their "cmd: N ... -> done" or "kill relayed" line instead of a sleep.
+failsoft
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card121: host t=\d+ save engine save runs" timeout=60
+# Pre-save changes: 2 barrels dead.
+host mark
+host warp actor point 196820 3240 8133
+host wait log "cmd: \d+ warp actor point 196820 3240 8133 -> done" since-mark timeout=20
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+host wait log "card098: host t=\d+ BP_KillableProp_ExplosiveBarrel_C \S+ Health .*kill relayed" timeout=10
+host mark
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+host wait log "card098: host t=\d+ BP_KillableProp_ExplosiveBarrel_C \S+ Health .*kill relayed" since-mark timeout=10
+# 1. The save.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+# The zone save (card146) fires on its own before this step; this wait finds it anywhere in the log.
+host wait log "card146: host t=\d+ checkpoint save by" timeout=20
+# 2. Post-save changes the restore must undo: 1 more barrel, 2 bugs.
+host mark
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+host wait log "card098: host t=\d+ BP_KillableProp_ExplosiveBarrel_C \S+ Health .*kill relayed" since-mark timeout=10
+host mark
+host spawn bug 196620 3640 8200 0
+host spawn bug 197020 3640 8200 90
+host wait log "cmd: \d+ spawn bug 197020 3640 8200 90 -> done" since-mark timeout=20
+host mark
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host wait log "cmd: \d+ kill actor BP_AI_WarriorBug_C -> done" since-mark timeout=10
+# 3. In-place restore with no client.
+host mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" since-mark timeout=30
+# 4. The late first join (CLIENT_DELAY_MS) and its replay.
+client wait state pawn=client-own timeout=600
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host wait log "card095: host t=\d+ door and collision journal replay" timeout=30
+# 5. Two digest rounds after the join.
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=60
+# 6. The rejoin, its replay and the next digest round.
+host mark
+client mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card095: host t=\d+ door and collision journal replay" since-mark timeout=60
+client mark
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client quit
+sleep 2
+host quit

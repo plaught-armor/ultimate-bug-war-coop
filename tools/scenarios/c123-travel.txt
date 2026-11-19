@@ -1,0 +1,26 @@
+# Card 123 items 2-3 (FED_C1M1, FAST=1): the card 120 gate per map. Both players in, the client walks (goto lines
+# "moved N"), then the host travels to the next mission; card 045 reconnects the client, and its log must carry a
+# new card120 line on the new map (c120_arm_map cleared the gate, so the first Ping there is checked again), then
+# the client walks there too.
+# Run: SCENARIO=tools/scenarios/c123-travel.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh c123a 420
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+try client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+try client key W 2000
+sleep 3
+host travel next
+client wait log "reconnected \(" timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" count=2 timeout=30
+try client goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=40
+try client key W 2000
+sleep 3
+host shot c123-arrived
+client shot c123-arrived
+host quit
+client quit

@@ -1,0 +1,84 @@
+# Card 225 (b186 order): the player tag over the press-to-start screen and the mission brief video, on the play path
+# (SKIP_MOVIES=0, no FAST). playb72c (dll 653620cb80ca5f6a): the client's title screen reports "prompt ready" about 3 s
+# before WB_Cutscenes_C (the brief video) goes on the same stack, so a shot right at the prompt row shows the bare
+# press-to-start screen and a shot 6 s later shows the video. The tag overlay is built only once the stack is empty
+# (player_marker.cpp: no build while cine_stack_open()), so no card110 row is expected before the confirm; the tag
+# comes back with "card110: client slot 1 shown" after the real flight lands. Done when (card 225): client shots of
+# the press-to-start screen and a cutscene show no tag; the tag is back in game (the pause menu case is held from
+# c224-c1m1-b4d). The card 220 walk rides at the end.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c225-c1m1.txt SKIP_MOVIES=0 GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c225b186a 600
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 6bdc1fb92f415071
+void unless client dll 6bdc1fb92f415071
+# 1. The host's title screen; the client joins during it.
+host wait log "card135: host t=\d+ screen prompt ready: " timeout=420
+host shot c225-host-press-start
+host wait log "card320: host t=\d+ hold waits for client slot 1 \(join\)" timeout=300
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1" timeout=180
+failsoft
+client wait log "card135: client t=\d+ screen prompt ready: " timeout=180
+client shot c225-client-press-start
+sleep 6
+client shot c225-client-brief-video
+host shot c225-host-held
+# 2. The host continues (up to 5 presses: the brief video takes the first), then the client.
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+unless host log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" count=1 try host ui continue
+try host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=4
+host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" timeout=10
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+unless client log "card320: client t=\d+ screen confirmed on FED_C1M1" count=1 try client ui continue
+try client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=4
+client wait log "card320: client t=\d+ screen confirmed on FED_C1M1" timeout=10
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+# 3. The tag is back in game after the flight lands.
+host wait state pawn=host-own timeout=300
+client wait state pawn=client-own timeout=180
+client wait log "card110: client overlay WB_TutorialPrompt_C built" timeout=60
+try client wait log "card110: client slot 1 shown over " timeout=30
+sleep 3
+client shot c225-client-tag-back
+host shot c225-host-in-game
+# Card 220 (b186 order, moved here from c448b186a, where the 1200 uu start warp already landed inside the trigger:
+# BP_TutorialPromptTrigger_C_0 and _7 share one large box, root 11906 16447 322, which also holds 12500 14100 400).
+# Both start at the Morita pickup (6554 11459 97, outside: in c448b186a the client's warp from there logged a fresh
+# "entered"), the host walks in
+# first, then the client. Rows: host "own pawn, passed" for _0 and _7, then the client's; shots inside on each side.
+host warp actor point 6554 11360 150
+host warp client point 6554 11560 150
+sleep 2
+host mark
+host goto actor BP_TutorialPromptTrigger_C_0 80 timeout=60
+try host wait log "card220: host/standalone prompt trigger BP_TutorialPromptTrigger_C_0 entered by \S+: own pawn, passed" since-mark timeout=10
+try host wait log "card220: host/standalone prompt trigger BP_TutorialPromptTrigger_C_7 entered by \S+: own pawn, passed" since-mark timeout=5
+sleep 1
+host shot c220-host-in
+client mark
+client goto actor BP_TutorialPromptTrigger_C_0 80 timeout=60
+try client wait log "card220: client prompt trigger BP_TutorialPromptTrigger_C_0 entered by \S+: own pawn, passed" since-mark timeout=10
+try client wait log "card220: client prompt trigger BP_TutorialPromptTrigger_C_7 entered by \S+: own pawn, passed" since-mark timeout=5
+sleep 1
+client shot c220-client-in
+host shot c220-host-both-in
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host quit
+sleep 3
+client quit

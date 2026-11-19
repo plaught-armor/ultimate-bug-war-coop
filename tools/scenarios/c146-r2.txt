@@ -1,0 +1,36 @@
+# Card 146 r2 proof: the rejoin spawn with the host dead and no free PlayerStart (the playtest 2026-11-08 finding 25),
+# in one FAST=1 pair run on FED_C1M1 (GOD=0). Host env UBWCOOP_C146_NO_START=1 stands in for the encroached start.
+# Predictions in docs/cards/146-dead-npcs-on-join.md (r2). Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c146-r2.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1 UBWCOOP_C146_NO_START=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C136_LOG=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by " timeout=60
+# All down: the client, then the host. The host stays dead on its death screen.
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host mark
+host down host
+host wait log "card043: host t=\d+ .*host-own.* -> Dead \(all down" since-mark timeout=20
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=20
+sleep 3
+# The rejoin with nobody Up.
+client mark
+host mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+host wait log "card146: host test: player spawn at .* with nobody Up taken as the origin fallback" since-mark timeout=60
+host wait log "card146: host player spawn at the origin with no player Up: spawns at " since-mark timeout=5
+client wait state pawn=client-own timeout=60
+sleep 2
+client wait near -1769 1820 296 300 timeout=3
+sleep 3
+client wait near -1769 1820 296 300 timeout=3
+client quit
+sleep 2
+host quit

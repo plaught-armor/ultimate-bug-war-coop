@@ -1,0 +1,49 @@
+# Card 162 run 2 (fallback attenuation): the other player's sounds, both ways, with the players about 7300 uu apart. The client logs every
+# relayed sound row (pl_sound_row) with its distance from the listener and from the host's pawn, and the attenuation
+# it plays with. The host logs the server copy's sounds (pl_sound) and card 160's 2D skips. One FAST=1 pair run on
+# FED_C1M1 (GOD=0). Predictions in docs/cards/162-remote-audio-attenuation.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c162-audio.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Both take the Morita at 6445 11469 (its pickup respawns in 10 s).
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host goto actor BP_WeaponPickup_MoritaMk1_C 120 timeout=30
+host wait log "card098: host t=\d+ world E BP_WeaponPickup_MoritaMk1_C\S* .* 1: sent" timeout=20
+host look actor BP_WeaponPickup_MoritaMk1_C
+host key E
+sleep 2
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Apart: the host to 13500 13500, the client stays at the pickup.
+host warp actor point 13500 13500 400
+sleep 3
+# The host's fire and footsteps, heard by the client.
+client mark
+host look point 13500 30000 2000
+host key LeftMouseButton 1200
+client wait log "playlog: client t=\d+ audio row .*Fire" since-mark timeout=10
+try client wait log "card162: client t=\d+ remote sound \S*Fire\S* .* plays with ATT_WPN_MoritaMK1" since-mark timeout=5
+host goto 13500 14200 400 100 timeout=20
+try client wait log "card162: client t=\d+ remote sound HumanMovement\S* .* plays with ATT_FLY_Trooper_Footsteps" since-mark timeout=5
+sleep 2
+# The client's fire, heard by the host (the server copy).
+host mark
+client look point 6445 30000 2000
+client key LeftMouseButton 1200
+try host wait log "playlog: host t=\d+ audio " since-mark timeout=10
+# The client's footsteps, heard by the host.
+try client goto 6445 12100 190 100 timeout=20
+try host wait log "card162: host t=\d+ remote sound " since-mark timeout=5
+sleep 2
+client quit
+sleep 2
+host quit

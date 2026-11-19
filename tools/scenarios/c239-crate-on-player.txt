@@ -1,0 +1,49 @@
+# Card 239 spawn-window guard proof, one run on FED_C2M1 (FAST=1, GOD=1). Budget: 1 run (run 1 void at the start, see below; runs 1 and 2 void at the start; run 3 is the last). The client's server copy
+# stands on BP_KillableCrate_01_C_25 (drops at the crate's origin in c131k2: EPulseSmall + MoritaLarge at
+# 186626 24291 6975); the host kills the crate through InstaKillTarget, so the host's 'P' copies spawn on the
+# client's own pawn. A run where no copy overlaps the pawn inside its spawn proves nothing and is not chased.
+# Predictions (b68 efdda02128e72fdc):
+#  1. client: `card104: client ... copy of host N: ... -> BP_AmmoPickup_...` for every 'P' row, 0 `-> no spawn`.
+#  2. client: a `card254: client skipped Pickup_Implementation` row (own pawn 1) for a copy that overlapped inside
+#     its spawn; 0 WARN card104/card145 rows naming those host ids.
+#  3. host: takes the drop for the client's server copy (`card071: host` row, `Ammo sent`) and sends 'D'.
+#  4. client: any ammo gain is paired (`card384` row and/or `card071: client ... (card 384: L already credited
+#     locally)`); the client's count equals the host copy's at the next AmmoMirror (no host raise row).
+# Run: SCENARIO=tools/scenarios/c239-crate-on-player.txt LANE=2 FAST=1 GOD=1 \
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh c239b68r3 600
+void unless host dll efdda02128e72fdc
+void unless client dll efdda02128e72fdc
+# Run 1 (c239b68) was void: on a direct FED_C2M1 start the autodropship step gives the host's continue 3 s after the
+# client's PC joins, which starts the card 344 60 s confirm clock; the old first step waited for pawn=host-own before
+# any client continue, so the client never confirmed (`WARN card344 ... host returns to the main menu`, host log
+# 407814848). The client's continue now comes first, on its own map-load row.
+host wait log "card132: host inventory \(map load\) class BP_KillableCrate_01_C " timeout=300
+# Run 2 (c239b68r2) was void the same way: the client's continue ran 2.5 s before its IntroStart (`no WB_Stack_C
+# requested a pause`, client log 408174372; IntroStart 408176826, prompt ready 408178951). The client's continue now
+# waits for its own prompt-ready row; the host's continue is the autodropship step.
+client wait log "card135: client t=\d+ screen prompt ready" timeout=180
+client ui continue
+client wait log "card320: client t=\d+ screen confirmed on FED_C2M1" timeout=15
+host wait state map=FED_C2M1 pawn=host-own timeout=120 void
+client wait state pawn=client-own timeout=60
+host warp actor BP_KillableCrate_01_C_25 1200 behind
+host clear 3000 kill
+host warp client BP_KillableCrate_01_C_25 10
+sleep 3
+client look actor BP_KillableCrate_01_C_25 0 bounds
+client shot c239-before
+both inventory
+host mark
+client mark
+host kill actor BP_KillableCrate_01_C_25
+client wait log "card098: client t=\d+ world K BP_KillableCrate_01_C_25 .*IsDead now 1" since-mark timeout=10
+client wait log "card104: client t=\d+ copy of host \d+: .* -> BP_AmmoPickup_" since-mark timeout=10
+try client wait log "card254: client skipped Pickup_Implementation on .*own pawn 1" since-mark timeout=8
+try host wait log "card071: host t=\d+ " since-mark timeout=8
+try client wait log "card071: client t=\d+ Ammo AmmunitionType\.\w+ \+\d+ \(card 384: \d+ already credited locally\)" since-mark timeout=8
+try client wait log "card072: client t=\d+ AmmoMirror sent: " since-mark timeout=8
+both inventory
+client shot c239-after
+client quit
+sleep 2
+host quit

@@ -1,0 +1,23 @@
+# Card 102: the client's interaction and shots must count as "the player" on the host. The client walks to the
+# objective marker (overlap scope), takes the Morita pickup (interaction scope; ShootingRange_SO1 completes on the
+# host), then shoots a shooting range button (damage scope).
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 150 timeout=90
+host wait log "AddSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=20
+client goto actor BP_WeaponPickup_MoritaMk1_C 100 timeout=60
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+host wait log "card097: host .*ShootingRange_SO1" timeout=15
+client shot c102-client-pickup
+client goto actor BP_Activatable_ShootableButton_C 600 timeout=60
+client look actor BP_Activatable_ShootableButton_C
+client key LeftMouseButton
+sleep 1
+client key LeftMouseButton
+sleep 3
+client shot c102-client-button
+host quit
+client quit

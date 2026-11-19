@@ -1,0 +1,16 @@
+# Card 047 proof: a bug kill seen on a client that runs with every audit hook gated off. The card 023 debug bug
+# spawns on the host only with its audit on (UBWCOOP_ENEMYAUDIT gates the spawn as well as four card 023 hooks), so
+# the host runs that flag; the client runs none and must still see the bug die (card 039 edge).
+# Run: SCENARIO=tools/scenarios/c47-bug.txt DEPLOY=1 \
+#      HOST_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_ENEMYAUDIT=1 UBWCOOP_SPAWN_BUG=1" run65.sh <tag>
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card039: host SpawnGoreResponse BP_AI_WarriorBug_C" timeout=300
+client wait log "card039: client edge .*WarriorBug" timeout=20
+host shot bug-dead
+client shot bug-dead
+sleep 3
+client quit
+sleep 2
+host quit

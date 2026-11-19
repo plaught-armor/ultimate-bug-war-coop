@@ -1,0 +1,114 @@
+# Card 125 proof (FED_C3M1), rewritten 2026-11-15 for run b54 turret (card 330, the 250 ms cached turret list): the
+# client mounts turret B from behind, the host mounts turret C 1400 uu along the same row; both turn their turrets with
+# mouse axis events, a WarriorBug spawns in front of B and both fire on it. UBWCOOP_C125_LOG on both sides logs the
+# card 125 rows and aims (60 lines a map), each used turret's state at 1 Hz (240 lines) and the enemies near a used
+# turret. Level end by EndLevel, Next: the FED_C3M1 map end prints the card330 step rows and the card132 ledger.
+# Predictions: docs/cards/330-per-frame-cost-audit.md "Run b54 turret". Build b54: cd14c3d92a441cf0. GOD=1.
+# Turrets (logs/c125q-host.log "first seen turret"): B (-69777, -45940, 1398) and C (-71175, -45940, 1398), root yaw
+# -90 (forward -Y); the stands 90 uu behind are (x, -45850, 1498) (c125q "warp ... 90 behind" rows).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c125-proof.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C125_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C125_LOG=1" tools/run_pair.sh c125b54 600
+# Expected wall: about 6 min.
+void unless host dll cd14c3d92a441cf0
+void unless client dll cd14c3d92a441cf0
+# FED_C3M1 starts in the dropship (pawn=other) until both continue (run c125b54: a pawn wait before the continue
+# held the client's continue past the card 344 60 s limit). So: map, the hold, both continue, then the pawns.
+host wait state map=FED_C3M1 timeout=300 void
+client wait state map=FED_C3M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client shot c125-hud
+# --- 1. Stands: the host behind C first, so the client's server copy at B takes B (card 123: nearest other turret).
+host warp actor point -71175 -45850 1498
+host wait stand -71175 -45850 1498 120 timeout=15
+host warp client point -69777 -45850 1498
+client wait stand -69777 -45850 1498 120 timeout=15
+host clear 3000 kill
+# --- 2. The client's mount (card 123): look at B, E; the host's TurretMount row and the client's possession.
+# Plain look (run c125b54b: the focus= aim scan takes the turret bounds, extent 1116 x 1100, and its sweep missed, pitch
+# 29.3, no hit); the mount rows below are the gate, as in run c125q.
+host mark
+client mark
+client look actor BP_MountableTurret_C
+client shot c125-client-look
+client key E
+host wait log "card123: host TurretMount from" since-mark timeout=10
+client wait log "AcknowledgePossession.*BP_MountableTurret_C" since-mark timeout=10
+host wait log "card125: host t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark timeout=10
+# --- 3. The host's mount of C: look, E; its own 1 Hz state row shows C in use.
+host mark
+client mark
+host look actor BP_MountableTurret_C
+host shot c125-host-look
+host key E
+host wait log "card125: host t=\d+ turret \S+ at \(-71175, -45940\) in use 1" since-mark timeout=10
+try client wait log "card125: client t=\d+ turret \S+ at \(-71175, -45940\)(?: in use 1|: row applied: .* in use 1)" since-mark timeout=10
+client shot c125-mounted
+host shot c125-mounted
+# --- 4. Turns: each side turns its own turret; the other side's copy must follow (prediction 3: the 1 Hz state rows
+# after each turn, +0x770 rel on both sides, against the sender's last aim sent / row sent).
+host mark
+client mark
+& client axis MouseX 0.5 1500
+host axis MouseX -0.5 1500
+join client
+host wait log "card125: host t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark timeout=5
+client wait log "card125: client t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark timeout=5
+host wait log "card125: host t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark count=3 timeout=5
+client shot c125-turned
+host shot c125-turned
+host mark
+client mark
+& client axis MouseX -0.5 1500
+host axis MouseX 0.5 1500
+join client
+host wait log "card125: host t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark count=3 timeout=6
+client wait log "card125: client t=\d+ turret \S+ at \(-69777, -45940\) in use 1" since-mark count=2 timeout=6
+client shot c125-back
+host shot c125-back
+# --- 5. The test bug in front of B, facing it; the rest cleared by code first. Both turn onto it and fire.
+host clear 3000 kill
+host mark
+host spawn bug -69777 -47200 1500 90
+try host wait log "card125: host t=\d+ enemy BP_AI_WarriorBug\S* near turret at \(-69777, -45940\)" since-mark timeout=10
+try client look actor BP_AI_WarriorBug_C 60 smooth timeout=8
+client shot c125-client-on-bug
+try host look actor BP_AI_WarriorBug_C 60 smooth timeout=8
+host shot c125-host-on-bug
+& client key LeftMouseButton 5000 timeout=12
+host key LeftMouseButton 4000 timeout=12
+join client
+unless host log "card125: host t=\d+ enemy BP_AI_WarriorBug\S* near turret at \(-69777, -45940\): dist \d+ health (0\.0|-)" count=1 try client look actor BP_AI_WarriorBug_C 60 smooth timeout=8
+unless host log "card125: host t=\d+ enemy BP_AI_WarriorBug\S* near turret at \(-69777, -45940\): dist \d+ health (0\.0|-)" count=1 client key LeftMouseButton 5000 timeout=12
+try host wait log "card125: host t=\d+ enemy BP_AI_WarriorBug\S* near turret at \(-69777, -45940\): dist \d+ health (0\.0|-)" since-mark timeout=10
+client shot c125-bug-dead
+host shot c125-bug-dead
+# --- 6. Dismount, then level end by the game's own EndLevel (card 260), Next: the FED_C3M1 map end rows.
+client key E
+host key E
+host clear 8000 kill
+host mark
+client mark
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+host wait log "card330: host map FED_C3M1 step c125_step: " since-mark timeout=120
+try client wait log "card330: client map FED_C3M1 step " since-mark timeout=60
+sleep 2
+client quit
+sleep 2
+host quit

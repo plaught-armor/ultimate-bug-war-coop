@@ -1,0 +1,32 @@
+# Card 106 run 2 (FED_C2M1, FAST=1): the c103-proof fight. Bugs killed (fire, then InstaKill) for drops; the client
+# stays in the fight until it goes Downed, then 10 s more to see whether bugs keep hitting it.
+# Run: SCENARIO=tools/scenarios/c106-fight.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1
+#      UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_C103_LOG=1 UBWCOOP_ENEMYAUDIT=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_ENEMYAUDIT=1" tools/run_pair.sh c106b 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 2
+host warp client BP_AI_WarriorBug_C 1500
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+host warp actor BP_AI_WarriorBug_C 1500
+sleep 1
+host look actor BP_AI_WarriorBug_C 50
+host key LeftMouseButton 1500 timeout=15
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+client look actor BP_AI_WarriorBug_C 50
+client key LeftMouseButton 1500 timeout=15
+client shot c106-fight
+client wait log "own pawn Up -> Downed" count=1 timeout=90
+client shot c106-downed
+sleep 10
+host shot c106-end
+client shot c106-end
+host quit
+client quit

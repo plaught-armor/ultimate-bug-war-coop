@@ -1,0 +1,128 @@
+# Batch b48 (senior order 2026-11-14): card 329 step B, the Fx rows per receiving PC at map end (diagnostic only).
+# Predictions: docs/cards/329-heaviest-network-traffic.md "Step B: per-PC rows". Build b48: 6225789a575f9809. GOD=1.
+# Order: (1) FED_C1M1 start, travel next to FED_C2M1 (the b47 hold shape, both confirm); (2) a real fight at the c152
+# slope: rounds of three WarriorBugs, both fire and throw, then the leftovers killed by code; (3) level end by EndLevel,
+# Next: the C2M1 map end prints the card329 rows. Expected wall: about 8 min.
+# Run: LANE=2 SCENARIO=tools/scenarios/b48-c329b-fx.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1" tools/run_pair.sh b48 600
+void unless host dll 6225789a575f9809
+void unless client dll 6225789a575f9809
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# --- 1. Seamless travel to FED_C2M1 (card 346); the hold waits for the client, both confirm.
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=60
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+sleep 3
+host inventory
+client inventory
+# --- 2. The fight: both players side by side on the c152 slope, three bugs per round, real fire and grenades.
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+client wait near 229512 38956 9100 600 timeout=60
+both look point 229312 39856 8900
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+sleep 1
+client key G
+host key G
+sleep 4
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+host shot b48-fight-1
+client shot b48-fight-1
+host clear 3000 kill
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229312 40456 9000 270
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+sleep 1
+client key G
+host key G
+sleep 4
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+client ammo fill
+host ammo fill
+host clear 3000 kill
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+sleep 1
+client key G
+host key G
+sleep 4
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+host shot b48-fight-3
+client shot b48-fight-3
+host clear 3000 kill
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229312 40456 9000 270
+sleep 2
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+sleep 1
+client key G
+host key G
+sleep 4
+client look actor BP_AI_WarriorBug_C 50
+host look actor BP_AI_WarriorBug_C 50
+& client key LeftMouseButton 3000
+host key LeftMouseButton 3000
+sleep 3
+host clear 8000 kill
+sleep 3
+# --- 3. Level end by the game's own EndLevel, relayed to the client (card 260); Next: the C2M1 map end rows.
+host mark
+client mark
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+host wait log "card329: host fx map \(map end\): \d+ receiving pcs with rows" since-mark timeout=120
+sleep 2
+client quit
+sleep 2
+host quit

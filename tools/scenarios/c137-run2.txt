@@ -1,0 +1,336 @@
+# Card 137 run 2: the soak, host from a save (DLL 321e8298ed49abf8 and later). Predictions are in the card's run 2
+# section. Lane 2 only (prefix2 is the test copy of the save dir; back it up first; never the user's slots).
+# Host from a save (senior, accepted): the host travels to FED_C2M1?listen alone and plays to the first sub-objective,
+# kills 2 barrels and takes the placed Autocannon pickup at (197606, -2002, 7499), then walks into the
+# BP_CheckPointSaveZone_C at (229312, 38956) by a warp: the game's own checkpoint save (PerformSave). It then
+# warps back and kills 1 more barrel and a few NPCs, and `travel checkpoint` (LoadLatestSave, in place: LoadFromSlot, as the
+# frontend Continue route ends in) restores that save with no client in the session. The client joins late
+# (CLIENT_DELAY_MS=540000, longer than the host's worst case to the reconcile line; the analysis checks the client's
+# first Pong comes after it), so its world comes only from the host's join of the restored state.
+# Then: two nukes with a per-shot pairing window (P3), a kill soak for the gib budget (P4, 6b), barrels and frozen
+# corpses (P1, P6), a scripted reconnect, and two digest rounds after the replay (P1, P6, P7). Quit dumps both gib
+# tables. netbudget logs the join replay window peak (card 142).
+# Run: LANE=2 SCENARIO=tools/scenarios/c137-run2.txt DEPLOY=1 FAST=1 CLIENT_DELAY_MS=540000
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh <tag> 1600
+# Run 4 (user): fail-soft. A failed wait logs "scenario: wait FAILED line N (...), continuing"; only a game exit or
+# crash, or the void step after the client's first Pong, ends the run. Predictions that rest on a failed wait are
+# reported "not tested (line N)".
+failsoft
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card121: host t=\d+ save engine save runs" timeout=60
+sleep 3
+# hb70: autoplay is not used. FED_C2M1's first objective LOS_O01_SO01 (ActorReference_C) is not a phase 1 kind
+# (go to and interact only), so the host stood 150 s and the client's fixed 300 s join came before the save.
+# Pre-save changes: 2 barrels dead, the Autocannon pickup taken.
+host warp actor point 196820 3240 8133
+sleep 2
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+sleep 2
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+sleep 2
+host warp actor point 197606 -2402 7600
+sleep 2
+host goto 197606 -2152 7499 60
+# hb70: a weapon pickup needs Interact (the ammo pickups on the way are walk-over). Face it first (the c100h pattern).
+# hb71: `look actor BP_WeaponPickup_Autocannon_C` is a class search (c64_find_actor: a class name wins over an object
+# name) and faced the real Autocannon at (147762, -38961), 62074 uu away; E traced "target null". The pickup named
+# BP_WeaponPickup_Autocannon_C is class BP_WeaponPickup_PumpShotgun_C at (197606, -2002, 7499), so look at its point,
+# from about 150 uu (c100h's proven take was at 156 uu).
+host look point 197606 -2002 7520
+sleep 1
+host key E
+host wait log "card056: host t=\d+ PickupGone BP_WeaponPickup_Autocannon_C" timeout=30
+sleep 2
+host objectives
+# hb49/hb51/hb52: LOS_O04 completion makes no save. The game's checkpoint save comes from the player entering the
+# BP_CheckPointSaveZone_C at (229312, 38956): hb49 and hb68 (FED_C2M1, 0 objectives done) saved 1.4 s and 2.1 s after
+# this same warp; hb52 took 15 s from a nearby point, so the wait is 60 s.
+host warp actor point 229312 38956 9100
+host wait log "card121: host t=\d+ save engine save runs" new timeout=60
+# Run 4 (senior): the step 3 proof rests on this save. No second save line yet (line 19's is the first): leave the
+# zone, enter it once more and wait another 60 s, then go on either way.
+unless host log "card121: host t=\d+ save engine save runs" count=2 host warp actor point 196820 3240 8133
+unless host log "card121: host t=\d+ save engine save runs" count=2 sleep 2
+unless host log "card121: host t=\d+ save engine save runs" count=2 host warp actor point 229312 38956 9100
+unless host log "card121: host t=\d+ save engine save runs" count=2 host wait log "card121: host t=\d+ save engine save runs" new timeout=60
+sleep 5
+# Post-save changes the restore must undo: 1 more barrel, 3 NPCs.
+host warp actor point 196820 3240 8133
+sleep 2
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+sleep 2
+host spawn bug 196620 3640 8200 0
+host spawn bug 197020 3640 8200 90
+host spawn bug 196820 4040 8200 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" timeout=30
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" timeout=30
+sleep 10
+host objectives
+# Card 137 (hb70, the user's report): corpses that died before the join. 4 WarriorBugs killed on the restored map
+# with no client in the session, so their pose rows have no NetGUID until the join (owed). At the join each must
+# show where it lies on the host, with no death play.
+host warp actor point 196820 3240 8133
+sleep 2
+host spawn bug 196420 3840 8200 0
+host spawn bug 196820 3840 8200 90
+host spawn bug 197220 3840 8200 180
+host spawn bug 196820 4240 8200 270
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+sleep 1
+try host kill actor BP_AI_WarriorBug_C
+sleep 1
+try host kill actor BP_AI_WarriorBug_C
+sleep 1
+try host kill actor BP_AI_WarriorBug_C
+sleep 3
+# The late join: the client's travel fires at 540 s from its start; the join replay carries the restored state.
+client wait state pawn=client-own timeout=900
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+# Void rule (senior): the client's first Pong (the minimap origin line: "Pong to the host from now on") must come
+# after the host's reconcile line, by the shared GetTickCount64 stamps; otherwise the run ends here as VOID.
+void unless host log "card137: host t=\d+ journal reconcile after LoadFromSlot" before client log "card120: client t=\d+ minimap origin"
+# The corpses from the client, about 3 s after its first Pong.
+host warp client point 196820 2840 8300
+client look point 196820 3940 8150
+sleep 2
+client shot c137-join-corpses
+sleep 15
+host objectives
+client objectives
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+sleep 2
+client wait near 229612 38956 9100 600 timeout=120
+# P3: two nuke shots, each on a WarriorBug 1500 uu out, 20 s apart so each shot has its own pairing window.
+host spawn bug 229312 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-1
+sleep 16
+host spawn bug 229312 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-2
+sleep 16
+# P4 soak: 20 rounds of 3 Warriors killed 1000 uu in front of the client, so gib parts fly while it watches.
+both look point 229312 39956 8900
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+host spawn bug 229112 39956 9000 0
+host spawn bug 229512 39956 9000 90
+host spawn bug 229312 40256 9000 180
+sleep 3
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+sleep 5
+both shot gibs-rest
+# P1: 3 barrels killed at the barrel field, the client watching from 700 uu.
+host warp actor point 196820 3940 8133
+host warp client point 196820 3240 7533
+sleep 2
+both look point 196820 3940 7383
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+try client wait log "card098: client t=\d+ world K BP_KillableProp_ExplosiveBarrel_C_\d+ .*IsDead now 1" timeout=10
+sleep 2
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+sleep 2
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+sleep 3
+both shot barrels-before
+# P6: the corpses settle and freeze before the reconnect, so the join replay carries frozen and unfreeze-flagged rows.
+sleep 20
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+# The server copy of the rejoined pawn can lag the client's own pawn (run 1 line 80): give it time, never fail on it.
+sleep 10
+host warp actor point 196820 3240 7533
+try host warp client point 197020 3240 7533
+sleep 2
+both look point 196820 3940 7383
+both shot rejoin-barrels
+host warp actor point 229312 38956 9100
+try host warp client point 229512 38956 9100
+sleep 2
+both look point 229312 40456 8900
+both shot rejoin-corpses
+# Two digest rounds (60 s period) after the replay: P1 KillableProp, P6 Pose, P7 pickup marks.
+client mark
+client wait log "card132: client t=\d+ digest round \d+ snapshot" since-mark timeout=90
+sleep 10
+client mark
+client wait log "card132: client t=\d+ digest round \d+ snapshot" since-mark timeout=90
+sleep 15
+host objectives
+client objectives
+host quit
+client quit

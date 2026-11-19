@@ -1,0 +1,40 @@
+# Card 173: remote footsteps (card 136 cue row, card 173 own-attenuation line), remote jumps (card 162 fallback) and the
+# server copy's low-ammo click (card 160 SpawnSound2D gate), with the players about 7000 uu apart. Predictions in
+# docs/cards/173-remote-footsteps-2d-rest.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c173-footsteps.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# The client takes the Morita at 6445 11469 (its fire ability plays the low-ammo click).
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Apart: the host to 13500 13500.
+host warp actor point 13500 13500 400
+host wait state pawn=host-own timeout=10
+# The host's footsteps and jump, heard by the client.
+client mark
+try host goto 13500 14200 400 100 timeout=20
+try client wait log "card173: client t=\d+ remote sound \S+ .* own attenuation " since-mark timeout=5
+client mark
+host key SpaceBar 100
+try client wait log "card162: client t=\d+ remote sound HumanMovementJump\S* " since-mark timeout=5
+# The client's fire (low-ammo click on the server copy), heard by the host.
+host mark
+client look point 6445 30000 2000
+client key LeftMouseButton 1200
+try host wait log "card160: host t=\d+ skipped server copy 2D sound MSS_FOL_Low_Ammo_Click" since-mark timeout=10
+# The client's footsteps and jump, heard by the host.
+host mark
+try client goto 6445 12100 190 100 timeout=20
+try host wait log "card173: host t=\d+ remote sound \S+ .* own attenuation " since-mark timeout=5
+host mark
+client key SpaceBar 100
+try host wait log "card162: host t=\d+ remote sound HumanMovementJump\S* " since-mark timeout=5
+client quit
+sleep 2
+host quit

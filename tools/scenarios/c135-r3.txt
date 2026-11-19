@@ -1,0 +1,46 @@
+# Card 135 run c135-r3: the play check on FED_C1M1. SKIP_MOVIES=0 (no card 135 test skip: the startup movies, the
+# brief video and the press-to-start screen all run as in the play build), GOD=0, no FAST, no AUTODROPSHIP, no
+# keep-screen flag. Each side leaves its screen with one winkey Enter (card 222: the key down skips the brief video if
+# it still plays, the key up removes the loading screen). The client joins during the host's screen (default delay),
+# so its IntroStart comes from the host's continue. Proves: the client's "chapter A->B level C->D" before and after
+# the set on FED_C1M1, both screens' title and image by screen shot at the press prompt (the card 135 "screen prompt
+# ready" line, not a fixed delay), and both sides back in game. The audit is in
+# docs/cards/135-press-to-start-screen-both-sides.md, "Run c135-r3: scenario audit".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c135-r3.txt DEPLOY=1
+#      SKIP_MOVIES=0 GOD=0 tools/run_pair.sh c135-r3 1500
+# No failsoft: a missed required step ends the run there.
+# 1. Host: its FED_C1M1 screen is up (IDs read), then its press prompt (the loading icon hidden).
+host wait log "card135: host t=\d+ screen up: \S+ chapter -?\d+ level -?\d+ \(GetChapterID, GetLevelID\)" timeout=420
+host wait log "card135: host t=\d+ screen prompt ready: " timeout=180
+# 2. The client is in: the host lifts its pause at the first Pong, the client's clock line.
+host wait log "card096: host t=\d+ pause lifted: client connected while paused \(first Pong\)" timeout=300
+client wait log "playlog: client t=\d+ clock 1:" timeout=120
+# 3. The brief video ends on its own (a try: if it does not, the shot shows the video over the prompt).
+try host wait log "card067: ProcessEvent WB_Cutscenes_C\.Finished_" timeout=180
+host shot c135-r3-host-prompt
+client shot c135-r3-client-before
+# 4. Host Enter: its stack empties, the op goes to the client, the client sets the IDs and calls GameStarted.
+host mark
+client mark
+host winkey Enter 165
+host wait log "cmd: \d+ winkey Enter 165 -> done" since-mark timeout=10
+host wait log "pause: host/standalone RequestGameUnpause\(requester \S+ WB_Stack_C, .*requesters now 0" since-mark timeout=10
+host wait log "card135: host continued t=\d+ on FED_C1M1 \(bFromSave 0\): IntroStart sent to 1 of 1 client" since-mark timeout=10
+client wait log "card135: client t=\d+ IntroStart \(FED_C1M1, bFromSave 0, chapter -?\d+ level -?\d+\) in" since-mark timeout=20
+client wait log "\] card135: client GameStarted t=\d+ on FED_C1M1 \(bFromSave 0, HUD \S+, \+\d+ ms after the op; \S+ chapter -?\d+->-?\d+ level -?\d+->-?\d+\); world paused" since-mark timeout=60
+client wait log "card135: client t=\d+ screen prompt ready: " since-mark timeout=180
+try client wait log "card067: ProcessEvent WB_Cutscenes_C\.Finished_" since-mark timeout=180
+client shot c135-r3-client-prompt
+host shot c135-r3-host-during
+# 5. Client Enter: its stack empties and unpauses.
+client mark
+client winkey Enter 165
+client wait log "cmd: \d+ winkey Enter 165 -> done" since-mark timeout=10
+client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=10
+# 6. The host's flight lands on its own (c222-r2: about 28 s after the brief).
+host wait state pawn=host-own timeout=180
+host shot c135-r3-host-end
+client shot c135-r3-client-end
+client quit
+sleep 2
+host quit

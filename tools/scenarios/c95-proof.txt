@@ -1,0 +1,14 @@
+# Card 095 proof: the host's collision writes on placed actors reach the client by name. The host lands (the
+# dropship landing blocker turns on host-side only, 0 -> 2), both walk to the capture-the-flag door pair and the
+# client walks north through door _0. Run: SCENARIO=tools/scenarios/c95-proof.txt DEPLOY=1 FAST=1
+# HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto -3454 9686 148 300 timeout=90
+client goto -3454 9600 148 300 timeout=90
+client goto -3674 10400 150 150 timeout=20
+client shot c95p-client-after
+host quit
+client quit

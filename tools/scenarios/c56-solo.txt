@@ -1,0 +1,14 @@
+# Card 056 solo (SOLO=1): the host takes the Morita Mk1 pickup; no PickupGone frame is sent and the pickup behaves
+# as before (the weapon is given, the pickup is disabled).
+# Run: SCENARIO=tools/scenarios/c56-solo.txt SOLO=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1" run65.sh <tag> 300
+host wait state pawn=host-own timeout=240
+host ui continue
+sleep 3
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 120
+host look actor BP_WeaponPickup_MoritaMk1_C_0
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C.*host-own" timeout=15
+host wait log "card050: host AADPickupBase::DisablePickup on BP_WeaponPickup_MoritaMk1_C" timeout=5
+sleep 2
+host shot after-morita
+host quit

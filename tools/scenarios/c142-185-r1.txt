@@ -1,0 +1,93 @@
+# Cards 142 and 185, run c142-185-r1 (run 1 of 3 for each, one build). The c56-rejoin route (card 183 form) with a
+# Part 1 before it: three rounds of 3 WarriorBugs spawned and killed about 800 uu in front of the client's start
+# (-560, -1715, 104 in c183-r3's client log, its first goto's "from" point; the navmesh path there runs +y), so gore
+# decals on the corpses ('@guid' targets) are live at the rejoin. The rejoin spawns the client at the player start,
+# where the corpse copies come in after the first-Pong replay.
+# Card 142: the replay's D rows on an unmapped '@guid' are held, then applied late when the corpse copy maps; 0
+# dropped; host live equals client live after the rejoin. Card 185: the Morita_C_1 pickup (TacSupport_SO2) raises the
+# three TacSupp range targets; the replayed 'L' rows carry the host timeline's state and the client sets it; 0
+# location mismatches in the digest round after the rejoin.
+# Predictions in docs/cards/142-decal-join-replay-pacing.md and 185-rejoin-timeline-end-state.md, "Run c142-185-r1
+# predictions". Every state step waits for its log line; no sleeps. The kills wait on the spawn's cmd done line.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c142-185-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh c142-185-r1 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+# Part 1 (card 142): three rounds of 3 WarriorBug kills in front of the client's start.
+client mark
+host spawn bug -610 -1015 200 0
+host spawn bug -210 -1015 200 90
+host spawn bug -410 -715 200 180
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+client wait log "card132: client decal \d+ spawned" since-mark timeout=15
+host spawn bug -610 -1015 200 0
+host spawn bug -210 -1015 200 90
+host spawn bug -410 -715 200 180
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug -610 -1015 200 0
+host spawn bug -210 -1015 200 90
+host spawn bug -410 -715 200 180
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+client mark
+client goto actor BP_GrenadeAmmoPickup_Frag_C 400
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot before-frag
+client goto actor BP_GrenadeAmmoPickup_Frag_C 80
+host wait log "card098: host t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0: sent to 1 of 1" timeout=15
+client wait log "card145: client t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0 \(.*(applied|already)" timeout=5
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 500
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot after-frag
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client shot before-morita
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 120
+host look actor BP_WeaponPickup_MoritaMk1_C_0
+host key E
+host wait log "card098: host t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0: sent to 1 of 1" timeout=15
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0 \(.*(applied|already)" timeout=5
+client shot after-morita
+host shot after-morita
+host mark
+host warp client BP_WeaponPickup_MoritaMk1_C_1 120
+client look actor BP_WeaponPickup_MoritaMk1_C_1
+client key E
+host wait log "card162: host t=\d+ remote sound MS_FLY_Weapon_Drop_Generic from BP_Weapon" since-mark timeout=10
+# Card 142: a decal round before the rejoin, host live equal to client live (the round comes every 30 s).
+client wait log "card132: client decal round \d+: host live [1-9]\d*, client live " since-mark timeout=40
+# Card 185: the TacSupp targets' timeline rows went out before the Logout.
+host wait log "card098: host t=\d+ world L BP_KillableBuilding_Base_TacSuppRangeTarget_C" timeout=10
+host mark
+client mark
+client disconnect
+host wait log "card140: host Logout: pace queue" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "card098: host t=\d+ world journal replay to .*: [1-9]\d* of" since-mark timeout=60
+host wait log "card132: host decal replay to a joining PC: [1-9]\d* live decals" since-mark timeout=10
+host wait log "card098: host t=\d+ replay timeline BP_KillableBuilding_Base_TacSuppRangeTarget_C\S*: position" since-mark timeout=5
+client wait log "card098: client t=\d+ world L BP_KillableBuilding_Base_TacSuppRangeTarget_C.*: applied timeline state" since-mark timeout=10
+try client wait log "card132: client t=\d+ decal \d+ held: no target" since-mark timeout=10
+try client wait log "card132: client t=\d+ decal \d+ applied late" since-mark timeout=40
+client key LeftMouseButton 300
+host wait log "(card162: host t=\d+ remote sound|playlog: host t=\d+ audio) \S+ from BP_" since-mark timeout=10
+client wait log "card145: client t=\d+ world E BP_WeaponPickup_MoritaMk1_C_0 .* 0 \(.*(applied|already)" count=2 timeout=10
+client wait log "card145: client t=\d+ world E BP_GrenadeAmmoPickup_Frag_C\S* .* 0 \(.*(applied|already)" count=2 timeout=10
+# The digest round and the decal round after the rejoin (card 185: 0 location mismatches; card 142: host live
+# equal to client live, held rows applied late).
+client wait log "card132: client round \d+: actors " since-mark timeout=90
+client wait log "card132: client decal round \d+: host live " since-mark timeout=40
+client shot rejoin-start
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 500
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client shot rejoin-morita
+client look actor BP_GrenadeAmmoPickup_Frag_C
+client shot rejoin-frag
+client quit
+host quit

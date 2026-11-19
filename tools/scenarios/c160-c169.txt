@@ -1,0 +1,89 @@
+# Cards 160 and 169, one run: the client's ADS zoom through the host's server copy (card 160), and the held visuals
+# an AbilityTask SpawnActor makes (card 169: frag, incendiary, knife; flare last), with the host's own throws, melee
+# and ADS as the controls. One FAST=1 pair run on FED_C1M1 (GOD=0). Predictions in docs/cards/160-client-ads-zoom.md
+# and docs/cards/169-ability-spawn-visuals.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c160-c169.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Card 169 control: the host takes the second grenade pair (13392 13337, 13368 13374) and throws its own frag, then
+# its own incendiary. The destroy line gives socket, visibility and camera distance.
+host mark
+host warp actor point 13250 13350 250
+host goto actor BP_GrenadeAmmoPickup_Frag_C_1 60 timeout=20
+host goto actor BP_GrenadeAmmoPickup_Incendiary_C_1 60 timeout=20
+host wait log "card095: host t=\d+ collision BP_GrenadeAmmoPickup_Frag_C_1 .* 1 -> 0" since-mark timeout=10
+host wait log "card095: host t=\d+ collision BP_GrenadeAmmoPickup_Incendiary_C_1 .* 1 -> 0" since-mark timeout=10
+sleep 2
+host look point 13250 30000 900
+host mark
+host key G
+host wait log "card169: host t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 4
+host look point 14250 30000 900
+host mark
+host key G
+host wait log "card169: host t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 3
+# The client takes the Morita at 6445 11469; the first grenade pair lies on the way (6453 11426, 6466 11451), so
+# its pickup lines come before the ADS mark and the grenade waits below read the whole log (r1 fixed).
+client mark
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client look actor BP_WeaponPickup_MoritaMk1_C
+client key E
+sleep 2
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+# Card 160: ADS held 1.5 s. The relay press, the client's FOV at once and at +500 ms, then the release.
+client look point 6445 30000 600
+sleep 1
+client mark
+host mark
+client key RightMouseButton 1500
+host wait log "card024: host relay press \(ADS 1\)" since-mark timeout=5
+client wait log "playlog: client t=\d+ ads 1 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+host wait log "card024: host relay release \(ADS 0\)" since-mark timeout=5
+client wait log "playlog: client t=\d+ ads 0 fov [0-9.]+ \(\+500 ms\)" since-mark timeout=5
+sleep 1
+# Card 169: the client's own frag and incendiary.
+client goto actor BP_GrenadeAmmoPickup_Frag_C_0 60 timeout=20
+client goto actor BP_GrenadeAmmoPickup_Incendiary_C_0 60 timeout=20
+client wait log "card073: client t=\d+ GrenadeItem .*Frag.* our count \d+ to [1-9]" timeout=15
+client wait log "card073: client t=\d+ GrenadeItem .*Incendiary.* our count \d+ to [1-9]" timeout=15
+client wait log "card158: client .*: OnAnimationStarted " timeout=10
+sleep 2
+client look point -3674 30000 600
+client mark
+host mark
+client key G
+client wait log "card158: client t=\d+ .* set as GrenadeVisuals by Success" since-mark timeout=5
+client wait log "card169: client t=\d+ held .* destroyed after " since-mark timeout=8
+host wait log "card158: host t=\d+ server copy throw " since-mark timeout=10
+sleep 4
+client look point -2674 30000 900
+client mark
+host mark
+client key G
+client wait log "card158: client t=\d+ .* set as GrenadeVisuals by Success" since-mark timeout=5
+sleep 0.2
+client shot inc-held
+client wait log "card169: client t=\d+ held .* destroyed after " since-mark timeout=8
+host wait log "card158: host t=\d+ server copy throw " since-mark timeout=10
+sleep 3
+# Card 169: melee (V). Host's own first, the control; then the client's.
+failsoft
+host mark
+host key V
+host wait log "card169: host t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 2
+client mark
+client key V
+client wait log "card169: client t=\d+ \S+: spawned .* for its own ability" since-mark timeout=5
+client wait log "card169: client t=\d+ held .* destroyed after " since-mark timeout=8
+sleep 2
+client quit
+sleep 2
+host quit

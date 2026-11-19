@@ -1,0 +1,31 @@
+# Run with GOD=0 (card 132 step 3a: god mode blocks the damage and death this run needs).
+# Card 079 proof run 2b (co-op, FED_C4M1): with UBWCOOP_C79_DOWN=client on the host, the client's soldier goes
+# Downed the first time it is within 600 uu of a mech. The client then presses E at the mech: the host refuses the
+# MechEnter relay (card 075's downed-copy check, or card 079's EnterMech check behind it) and keeps the entry.
+# Since card 081 the client's own Interact is refused and the host refuses the relayed Use.
+# Run: SCENARIO=tools/scenarios/c79-down-client.txt DEPLOY=1 HOST_ENV="UBWCOOP_AUTODROPSHIP=1
+#   UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_C79_LOG=1 UBWCOOP_C79_DOWN=client"
+#   CLIENT_ENV="UBWCOOP_C79_LOG=1" run65.sh <tag> 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+host warp client BP_BaseMech_C 300
+host wait log "card079: host t=[0-9]+ test down" timeout=10
+client wait log "card075: client t=[0-9]+ mechs 0 -> [1-9]" timeout=120
+sleep 3
+client look actor BP_BaseMech_C 150
+sleep 1
+client shot downed
+host shot downed
+client key E
+client wait log "card081: client t=[0-9]+ Interact refused" timeout=10
+host wait log "card081: host t=[0-9]+ relay for .* refused" timeout=10
+sleep 3
+client shot refused
+host shot refused
+sleep 2
+client quit
+sleep 2
+host quit

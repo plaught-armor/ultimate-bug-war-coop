@@ -1,0 +1,77 @@
+# Card 237 proof (b183, senior answer 2026-11-17, option A): the FED_C4M2 Brain Bug arena shield
+# (StaticMeshActor_52, FED_C4M2_Scripting, (17254, -42505, 4998)) is written on the host by the level script's
+# "Toggle Brain Bug Boundary" from block 15401, the BP_PlayerPresence_C_176 VolumeTriggerDelegate (the fight start,
+# which also completes BrainBug_SO1 and spawns the Brain Bug). `objective complete BrainBug_SO1` alone does not run
+# that block, so the host stands in the presence volume itself (warp by its object name). When no shield row comes
+# in 20 s (the volume not armed yet), the earlier objectives are completed by command, BrainBug_SO1 is expected and
+# gone to, and the host stands in the volume again.
+# Predictions: host card095 "collision StaticMeshActor_52 ... sent to 1 of 1 clients" rows (SetActorEnableCollision
+# and the @BlockAll@ profile row of StaticMeshMeshComponent0); client card095 "collision StaticMeshActor_52 ...
+# applied" (the relay; or, when the write came before the join, the card 421 current-value answer); 0 card237
+# mismatch rows for StaticMeshActor_52 in the digest rounds after the write; host and client shots of the shield spot
+# from the same place.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c237-c4m2-b183.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M2?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c237b183a 600
+# Expected wall: about 5 min.
+voidsoft
+void unless host dll d6a486b94456960e
+void unless client dll d6a486b94456960e
+# b183: under AUTODROPSHIP the host's controller pawn is the dropship (state pawn=other) until the autodropship
+# continue (c419b183a/b voided here on pawn=host-own); the host gate is the map only, the continue is the
+# autodropship's own (the press is a try), and the host pawn is waited on after the hold.
+host wait state map=FED_C4M2 timeout=240 void
+client wait state map=FED_C4M2 pawn=client-own timeout=180
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+try client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host objective now
+host objectives
+# 1. The host stands in the fight-start presence volume.
+host mark
+client mark
+host warp actor BP_PlayerPresence_C_176 10
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+host warp client point {g1+150} {g2} {g3}
+try host wait log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to 1 of 1 clients" since-mark timeout=20
+# 2. Fallback: the volume was not armed. Earlier objectives by command, then BrainBug_SO1 by its stand point.
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective complete Tunnel_O1
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective complete Plaza_O1
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective complete Sewers_O1
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective complete Bridge_O1
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 host objective now
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective expect BrainBug_SO1
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host objective go all
+unless host log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to" count=1 try host warp actor BP_PlayerPresence_C_176 10
+try host wait log "card095: host t=\d+ collision StaticMeshActor_52 .*sent to 1 of 1 clients" timeout=30
+try host wait log "card049: host t=\d+ CompleteSubObjective\(BrainBug_O1, BrainBug_SO1\)" timeout=10
+try client wait log "card095: client t=\d+ collision StaticMeshActor_52 .*applied" timeout=10
+# 3. Digest rounds after the write (the level-qualified key): StaticMeshActor_52 must not mismatch.
+host clear 4000 kill
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# 4. Shots of the shield spot, both players at the presence volume, 150 uu apart.
+host mark
+host warp actor BP_PlayerPresence_C_176 10
+host wait log "cmd: \d+ warp: own pawn \S+ \(\S+, \S+, \S+\) -> \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\)" since-mark timeout=5
+host warp client point {g1+150} {g2} {g3}
+client wait near {g1+150} {g2} {g3} 250 timeout=10
+host look point 17254 -42505 4998
+client look point 17254 -42505 4998
+sleep 2
+host shot c237-h-shield
+client shot c237-c-shield
+host quit
+client quit

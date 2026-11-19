@@ -1,0 +1,138 @@
+# Card 136 step 7: the effects manager end to end on FED_C2M1 (DLL 6c1347d4aba1dc64 and later).
+# Proves: Morita fire both ways (Casing and Fire_MS reach only the other PC), a barrel explosion, the nuke on the
+# ground and on a WarriorBug, an ArcherBug and a JumperBug (mine jumper), the dropship flares and the sky, a scripted
+# reconnect that brings flares and fires back with no explosion replayed, then a short autoplay soak for the peak
+# events per second and frame time. Every visual point is a same-time shot pair ("both shot").
+# Counts (owner rows, extra rows, replay rows, frame windows) are read from both logs with tools/fx_pair.py --c136.
+# Run: LANE=2 SCENARIO=tools/scenarios/c136-step7.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 1
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+# Run 4: the client starts held in the transport dropship (MovementMode 5, no ServerMoves; hb64 first correction 12 s
+# after the host's SkipFlight). The warp moved only the server copy, and the client snaps to it with its first
+# ServerMove correction once it is out (z lands about 390 lower; the seat is 5670 uu away). The wait below holds for that.
+client wait near 229512 38956 9100 600 timeout=120
+# 4. The nuke, first so the host still holds the launcher from its first grant (no weapon key selects it: the
+# grant puts it at index 2, and hb65 key Two asked for slot 1 and got none). First on open ground 1500 uu out, then
+# on each bug kind. The empty launcher drops after each shot and the regrant equips it again, because the dropped
+# launcher was the held weapon (weapons.cpp). The client stands 300 uu beside the host, both look at the target.
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-ground
+sleep 3
+both shot nuke-ground-after
+host spawn bug 229312 40456 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-warrior
+sleep 3
+host spawn bug 229312 40456 9000 270 ArcherBug
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-archer
+sleep 3
+host spawn bug 229312 40456 9000 270 JumperBug
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+try host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+sleep 1.5
+try both shot nuke-jumper
+sleep 3
+both shot nuke-jumper-after
+# 1. Morita fire both ways. Each side switches to the Morita (weapon 0) and fires 2 s at the far sky, the other
+# side watching it from 200 uu to the side.
+both key One
+sleep 1
+both look point 229412 60000 14000
+host mark
+host key LeftMouseButton 2000
+both shot morita-host-fire
+sleep 1
+client mark
+client key LeftMouseButton 2000
+both shot morita-client-fire
+sleep 1
+# 2. Flares and sky from the dropship point. The dropship flares fire at (224426, 43483, 9563) and
+# (232505, 41311, 9405) about every 5 s (hb61), once the encounter wave dropship has arrived. hb64: the first flare
+# came 38 s after a 15 s wait began, so run 4 waits for the arrival (its first flare) up to 120 s.
+# hb65: a WarriorBug of the wave stood in front of both flare shots. The three wave Warriors nearest the host die
+# first, and the view aims 800 uu above the flare point, where the flares rise.
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+both look point 224426 43483 10363
+try host wait log "fx audit: PlaySoundAtLocation MS_EMIT_Dropship_Flare_Fire" new timeout=120
+sleep 0.5
+both shot flares
+both look point 229412 45000 30000
+both shot sky
+# 3. A barrel explosion. Barrel at 196820 3940 7333; the host kills it from right above, the client watches from
+# 700 uu, outside the blast. One shot pair at the client's IsDead apply.
+host warp actor point 196820 3940 8133
+host warp client point 196820 3240 7533
+sleep 2
+host look point 196820 3940 7383
+client look point 196820 3940 7383
+host kill actor BP_KillableProp_ExplosiveBarrel_C
+try client wait log "card098: client t=\d+ world K BP_KillableProp_ExplosiveBarrel_C_\d+ .*IsDead now 1" timeout=10
+try both shot barrel-explode
+sleep 3
+both shot barrel-after
+# 5. Reconnect. The client leaves and rejoins; the journal replays the placed and looping rows (flares, fires),
+# never a one-shot explosion. Shots of the flares and of the barrel field after the rejoin.
+client disconnect
+client wait log "card045: client t=\d+ reconnected" timeout=120
+client wait state pawn=client-own timeout=120
+sleep 3
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# hb66: the bugs died at the players' feet (229225 39007, 229407 39345), so the client's view was filled by their
+# gore. Run 6: after the kills the client moves 800 uu toward the flares, which puts that gore behind it.
+host warp client point 228915 39488 9100
+try client wait near 228915 39488 9100 600 timeout=30
+both look point 224426 43483 10363
+try host wait log "fx audit: PlaySoundAtLocation MS_EMIT_Dropship_Flare_Fire" new timeout=60
+sleep 0.5
+both shot rejoin-flares
+host warp actor point 196820 3240 7533
+host warp client point 197020 3240 7533
+sleep 2
+both look point 196820 3940 7383
+both shot rejoin-barrels
+# 6. Soak: 90 s of autoplay on both for the peak events per second and the frame windows.
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+host autoplay on
+client autoplay on
+sleep 90
+client autoplay off
+host autoplay off
+host quit
+client quit

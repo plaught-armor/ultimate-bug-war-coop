@@ -1,0 +1,48 @@
+# Card 075 proof (c75b): a natural pod drop on FED_C4M1 (card 032: the pods dropped about 108 s after both players were
+# on foot). The client blocks its own pod mech spawns ("card075: client blocked spawn"); both logs count
+# ASTPlayerMechBase actors at 1 Hz ("card075: ... mechs"). The pods sit past a navmesh gap, so the host warps the
+# client's server copy (and its own pawn, to watch) next to a pod mech; the client's count then picks up the host's
+# replicated mech. The client enters with E, walks 5 s with W and leaves with the E hold. Shots on both sides.
+# Run: SCENARIO=tools/scenarios/c75b-pods.txt DEPLOY=1 run65.sh c75b 600
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+client shot pods
+host shot pods
+host warp client BP_BaseMech_C 300
+host warp actor BP_BaseMech_C 450
+client wait log "card075: client t=[0-9]+ mechs 0 -> [1-9]" timeout=120
+sleep 3
+client look actor BP_BaseMech_C 150
+host look actor BP_BaseMech_C 150
+sleep 1
+client shot pad
+client key E
+host wait log "card075: host MechEnter from" timeout=10
+client wait log "possess: AcknowledgePossession.*BP_BaseMech_C" timeout=10
+sleep 3
+client shot enter
+host look actor BP_BaseMech_C 150
+host shot enter
+client key W 5000 timeout=15
+client shot walk
+host warp actor BP_BaseMech_C 800
+sleep 1
+host look actor BP_BaseMech_C 100
+host shot walk
+sleep 3
+host look actor BP_BaseMech_C 100
+host shot drive
+sleep 1
+client key E 2500 timeout=15
+host wait log "card075: host MechLeave from" timeout=10
+sleep 3
+client shot leave
+host look actor BP_BaseMech_C 0
+host shot leave
+sleep 2
+client quit
+sleep 2
+host quit

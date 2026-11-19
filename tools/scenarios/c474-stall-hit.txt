@@ -1,0 +1,57 @@
+# Card 474 proof run 2 on b175 (senior order 2026-11-17): a 1200 ms client stall while the host shoots code-spawned
+# bugs beside the client. Route: the c469c C2M1 travel and hold block (UBWCOOP_TRAVEL), then two bugs 800 uu ahead of
+# the host, the client warped 200 uu beside the host, the host holds fire 4 s and the client stalls (SIGSTOP) 1.2 s
+# inside it. The host's pace queue holds the client's frames once the client is silent kPaceSilentMs; b175 stamps them
+# with their enqueue time.
+# Predictions:
+#   host: `card132: sent ... (card474: queued N ms)` rows after the stall, N up to about 1100.
+#   client: `card474: client hit ... frame age N ms (late)` rows after the stall, N near the stall (about 900-1300),
+#           impact point moved onto the copy; 0 `WARN card140: client hit`.
+#   client shots c474-c-impact1/2 right after the stall show the impact on a bug.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c474-stall-hit.txt FAST=1 GOD=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c474b175a 600
+# Expected wall: about 2 min.
+void unless host dll 63689adfcb1ec80e
+void unless client dll 63689adfcb1ec80e
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+try host wait state pawn=host-own timeout=60
+try client wait state pawn=client-own timeout=60
+sleep 3
+# Two bugs 800 uu ahead of the host (c236 fight block), the client beside the host.
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+150} {g3} 180
+host warp client point {g1} {g2+200} {g3}
+sleep 3
+client look point {g1+800} {g2} {g3}
+host look point {g1+800} {g2} {g3}
+host shot c474-h-before
+client shot c474-c-before
+# The host fires 4 s; 1 s in, the client stalls 1.2 s. The shot right after the stall shows the held hits applied.
+host mark
+client mark
+& host key LeftMouseButton 4000
+sleep 1
+client stall 1.2
+client shot c474-c-impact1
+join host
+client shot c474-c-impact2
+host shot c474-h-after
+sleep 2
+host clear 3000 kill
+sleep 1
+client quit
+sleep 2
+host quit

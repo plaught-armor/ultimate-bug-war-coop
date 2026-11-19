@@ -1,0 +1,58 @@
+# Card 201, run c201-r1 (run 1 of 3). FED_C2M1 with the client in from the start, 300 uu from the host. The c148-r2
+# nuke burst: two nuke shots on groups of 4 WarriorBugs 1500 uu out, both players facing the gib field. A nuke fills
+# the gib S queue (c148-r2: 312 S rows not sent at a full queue, longest S wait 13116 ms); card 201 replaces a waiting
+# S row at a relaunch, cancels one whose part is gone, charges package-path S rows at their dictionary ref size and
+# sends a late S row with its part's current pose. `objectives` dumps both gib tables (the card 137/140/148/201
+# totals) before the quit dumps them once more.
+# Predictions in docs/cards/201-gib-burst-over-budget.md, "Run c201-r1 predictions". Every state step waits for its log
+# line. The sleeps are physics waits only: the parts take up to kGibMaxMs (10 s) to rest, and no log line marks the
+# last rest row of a burst (15 s after each shot, as c148-r2), and 2 s after each spawn command (it logs "-> done" at
+# once; the card098 spawn line is capped, so it is no wait).
+# Run: SCENARIO=tools/scenarios/c201-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1
+#      UBWCOOP_GRANT_WEAPON=NukeLauncher"
+#      tools/run_pair.sh c201-r1 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+host warp actor point 229312 38956 9100
+host warp client point 229612 38956 9100
+client wait near 229612 38956 9100 600 timeout=120
+# Nuke 1: 4 WarriorBugs 1500 uu out.
+host spawn bug 229112 40456 9000 270
+host spawn bug 229512 40456 9000 270
+host spawn bug 229312 40656 9000 270
+host spawn bug 229312 40256 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+client mark
+host key LeftMouseButton 3000
+host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+host wait log "card137: host gib window" since-mark timeout=20
+try client wait log "card148: client gib .*|card137: client gib" since-mark timeout=5
+sleep 15
+client shot gibs-nuke1
+host shot gibs-nuke1
+# Nuke 2: the same group again.
+host spawn bug 229112 40456 9000 270
+host spawn bug 229512 40456 9000 270
+host spawn bug 229312 40656 9000 270
+host spawn bug 229312 40256 9000 270
+sleep 2
+both look point 229312 40456 8900
+host mark
+host key LeftMouseButton 3000
+host wait log "card020: host host-own FireProjectile\(BP_WeaponFireAbility_NukeLauncher_C" since-mark timeout=10
+host wait log "card137: host gib window" since-mark timeout=20
+sleep 15
+both look point 229312 40256 8900
+client shot gibs-nuke2
+host shot gibs-nuke2
+host objectives
+client objectives
+host wait log "card201: host gib class paths \(objectives command\)" timeout=10
+client wait log "card201: client gib pools \(objectives command\)" timeout=10
+host quit
+client quit

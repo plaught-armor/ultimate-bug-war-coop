@@ -1,0 +1,50 @@
+# Card 172: the client's support flare, alone. The client's server copy earns its tactical support charge from
+# objective rewards, not from the tutorial pickup: the host hides BP_TacSuppPickup_BombingRun_Tutorial_C at map load
+# (card098 "host hide ... caller exe+0x380231B") in every run, c104e included. So the client does the two steps that
+# rewarded it in c104e until its server copy holds "20000 1" (full and ready), then presses Four and fires. Predictions in docs/cards/172-client-flare-press.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c172-flare.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+# Charge: objective rewards, by the c104e route (the client's server copy earned 10000 at Assault_SO1 and
+# 20000 ready at ShootingRange_SO1). Assault_SO1: the server copy warped into BP_PlayerPresence_C_2.
+host mark
+client mark
+host warp client BP_PlayerPresence_C_2 300
+try host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=4
+# Card 100: a teleport may not start the overlap; walk into the volume (c105-proof did the same).
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=10
+# ShootingRange_SO1: the client takes the range Morita (E, relayed by card 054).
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+client wait near 6427 11587 200 300 timeout=10
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(ShootingRange_SO1\)" since-mark timeout=10
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 20000 1 " since-mark timeout=5
+client wait log "card104: client t=\d+ TacCharge 20000 1 " since-mark timeout=5
+# Both players at the c119 throw spot, facing the open field.
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+# The press: Four readies the flare (card 100 relays it to the server copy), a screenshot while it is held, then fire.
+client look point 11700 14500 140
+host mark
+client mark
+client key Four
+host wait log "card100: host t=\d+ TacSupport slot 0 from .*HandleTacticalSupportInput run, charge 20000 -> " since-mark timeout=5
+sleep 1
+client shot c172-flare-held
+client key LeftMouseButton
+host wait log "card104: host t=\d+ server copy DoAction, key Flare_Throw" since-mark timeout=8
+host wait log "card104: host t=\d+ flare BP_SupportFlare_C ActivateFlare" since-mark timeout=15
+host wait log "card104: host t=\d+ TacCharge to BP_PlayerController_C \(copy BP_PlayerCharacterMI_C\): 0 0 " since-mark timeout=5
+client wait log "card104: client t=\d+ copy of host \d+: /Game/Blueprints/Combat/BP_SupportFlare\.BP_SupportFlare_C " since-mark timeout=5
+client wait log "card104: client t=\d+ TacCharge 0 0 " since-mark timeout=5
+try host wait log "card169: host t=\d+ held \S+ of the server copy destroyed " since-mark timeout=5
+try client wait log "card169: client t=\d+ \S+: spawned " since-mark timeout=1
+sleep 2
+client shot c172-after-strike

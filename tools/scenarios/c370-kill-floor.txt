@@ -1,0 +1,47 @@
+# Card 370 proof (b56): the kill floor warp target must be a grounded Up teammate. One FAST=1 pair run on FED_C1M1
+# (GOD=0). Predictions: docs/cards/370-kill-floor-warp-to-falling-teammate.md "Run b56".
+# 1. Both pawns warped under the world 0.1 s apart (5600 14400 -200, the old c143 point, falls to KillZ -22000 in
+#    about 6.5 s): each gets one "kill floor with no grounded teammate Up" return to the rescue anchor, no warp to a
+#    slot, nobody Downed. FED_C1M1's first checkpoint save sets the anchor at the start, (-1769, 1820, 296) in
+#    c143b55d; the spot is FindTeleportSpot at that point +100, a second pawn goes 150 uu beside it.
+# 2. Only the client under the world while the host stands at the anchor: one "kill floor warp" to slot 0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c370-kill-floor.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+# Expected wall: about 2 min.
+void unless host dll 08265a76bc24632c
+void unless client dll 08265a76bc24632c
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host wait log "card146: host t=\d+ checkpoint save by .*rescue anchor .* at \(-1769, 1820, 296\)" timeout=60
+# --- 1. Both under the world within one second.
+host mark
+client mark
+host warp actor point 5600 14400 -200
+host warp client point 5700 14400 -200
+host wait log "card146: host t=\d+ kill floor with no grounded teammate Up: BP_PlayerCharacterMI_C \(host-own\)" since-mark timeout=20
+host wait log "card146: host t=\d+ kill floor with no grounded teammate Up: BP_PlayerCharacterMI_C \(server-copy\) .*WarpTo frame sent" since-mark timeout=20
+client wait log "card146: client t=\d+ WarpTo" since-mark timeout=5
+host wait stand -1769 1820 296 400 timeout=10
+client wait stand -1769 1820 296 400 timeout=10
+host shot c370-both-host
+client shot c370-both-client
+# --- 2. Only the client under the world; the host stands at the anchor.
+sleep 3
+host mark
+client mark
+host warp client point 5700 14400 -200
+host wait log "card046: host t=\d+ kill floor warp \d+: BP_PlayerCharacterMI_C \(server-copy\) .* to BP_PlayerCharacterMI_C \(slot 0\) .*Warp frame sent" since-mark timeout=20
+client wait log "card046: client t=\d+ Warp \d+ to guid" since-mark timeout=5
+client wait near -1769 1820 396 500 timeout=3
+client wait stand -1769 1820 296 500 timeout=10
+client shot c370-one-client
+host shot c370-one-host
+sleep 2
+client quit
+sleep 2
+host quit

@@ -1,0 +1,68 @@
+# Card 375 probe (run c377): the host loads its latest save from the hangar with a client in the session (persistent lobby,
+# card 346). Never run before: every load in past logs was in place or from the death screen.
+# Predictions: docs/cards/375-hangar-load-with-client.md.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c377-hangar-load.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c377b60 480
+#      (junior, rules check before c377b60: wrapper footprint taskset -c 4-7,12-15 nice -n 10; AUTODROPSHIP=1 added, FAST=1
+#      needs it for the brief pause; the two menu sleeps replaced by the pause-open and click rows (card 067, card 121);
+#      client clock row and a client HUD shot before the first step; the client's continue waits for its GameStarted row.)
+# No failsoft.
+void unless host dll 517520517c356cdd
+void unless client dll 517520517c356cdd
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot c377-start-client
+# 1. A save to load back, taken far from the start so the loaded position is provable (the c376 stand).
+host warp actor point 6554 11459 197
+host wait stand 6554 11459 97 400 timeout=10
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+# 2. The host quits to the hangar from its pause menu (card 369: seamless, the client stays).
+host mark
+client mark
+host key Escape 150
+host wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+host ui click BndEvt__WB_Pause_Menu_QUIT_button
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, BndEvt__WB_Pause_Menu_QUIT_button" since-mark timeout=5
+host ui click ConfirmQuitToMainMenu
+host wait log "card121: ui click: ProcessEvent\(WB_Pause_Menu_C \S+, ConfirmQuitToMainMenu" since-mark timeout=5
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=120
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ " since-mark timeout=60
+# 3. The host loads the latest save from the hangar.
+host mark
+client mark
+host travel checkpoint
+host wait log "card132: host travel checkpoint: LoadLatestSave returned 1" since-mark timeout=20
+# c377b62: the load itself runs in the hangar before the travel, and on FED_C1M1 the host sits in the dropship
+# (EnterDropship, bFromSave 1) behind the press-to-start screen until every client confirms. Waiting for the host's
+# own pawn here stalled the run into the card 344 return (60 s), so the order is: both loaded, both continue, then pawns.
+host wait log "card346: host t=\d+ seamless map change done: world FED_C1M1" since-mark timeout=120
+# Card 375 fix: the deferred save load runs right after the seamless travel (LoadComplete), not at a LoadMap end.
+host wait log "card375: host t=\d+ deferred save load applied after the seamless travel to FED_C1M1 \(flag 1 -> 0\)" since-mark timeout=10
+host wait log "card137: host t=\d+ journal reconcile after LoadFromSlot" since-mark timeout=20
+host wait log "card135: host t=\d+ screen prompt ready" since-mark timeout=60
+host shot c377-host-after-load
+# 4. The hold and the start: both continue, the client holds a pawn and gets host rows.
+client wait log "card135: client GameStarted t=\d+ on FED_C1M1" since-mark timeout=60
+client shot c377-client-after-load
+try host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" since-mark timeout=30
+host wait state map=FED_C1M1 pawn=host-own timeout=120
+host wait stand 6554 11459 97 600 timeout=20
+client wait state pawn=client-own timeout=30
+client mark
+client wait log "card132: recv \d+ sent t=\d+ applied t=\d+ Clock" since-mark timeout=90
+sleep 2
+host shot c377-host-mission
+client shot c377-client-mission
+client quit
+sleep 2
+host quit

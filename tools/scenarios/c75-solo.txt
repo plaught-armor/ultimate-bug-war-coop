@@ -1,0 +1,26 @@
+# Card 075: solo host (SOLO=1) on FED_C4M1. The pods drop as before (the host's 1 Hz count goes from 0 mechs to
+# one per pad); the host warps next to a pod mech (a navmesh gap blocks a goto), enters with E (EnterMech before/after lines), walks 5 s with W and leaves
+# with the E hold (IA_ExitVehicle, LeaveMech lines). No MechEnter or MechLeave frame is sent: there is no client.
+# Run: SCENARIO=tools/scenarios/c75-solo.txt SOLO=1 run65.sh <tag> 600
+host wait state pawn=host-own timeout=240
+host ui continue
+host wait log "card075: host t=[0-9]+ mechs 0 -> [1-9]" timeout=300
+sleep 15
+host shot pods
+host warp actor BP_BaseMech_C 300
+sleep 3
+host look actor BP_BaseMech_C 150
+sleep 1
+host key E
+host wait log "card075: host EnterMech after" timeout=10
+sleep 3
+host shot enter
+host key W 5000 timeout=15
+host shot walk
+sleep 1
+host key E 2500 timeout=15
+host wait log "card075: host LeaveMech after" timeout=10
+sleep 3
+host shot leave
+sleep 2
+host quit

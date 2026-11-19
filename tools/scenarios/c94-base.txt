@@ -1,0 +1,41 @@
+# Card 094 baseline: the host's own pawn walks the client's scout course (c94-scout2) and jumps after each walk,
+# to see how many jumps the native mantle needs at the walls the client met.
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+host goto -520 14700 460 10 timeout=60
+host look 90 0
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host key W 1000
+host key SpaceBar 100
+sleep 2
+host shot b10
+client quit
+host quit

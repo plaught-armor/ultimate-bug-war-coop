@@ -1,0 +1,31 @@
+# Card 132 gore proof (senior points 1 and 3): FED_C2M1, FAST=1, autoplay fights on both sides.
+# 1. A hit chunk on a bug: when the client logs a card042 hit response that spawned chunks on a bug, both sides face
+#    its spawn point and take a screenshot at once (client view next to host view).
+# 2. A far death: then the client stops (autoplay off) while the host fights ahead, so the client's copies of
+#    the bugs the host kills were never rendered there. When the client logs a card039 death whose gore location the
+#    body sync moved by 1000 uu or more (bodies stale at the spawn point), the client warps 300 uu short of the gore
+#    point and both sides face it and shoot.
+# 3. Then the host fights on for a fixed 120 s (senior point 4: ragdoll launch, compared with the solo run
+#    c132-solo-ragdoll.txt). No step waits for a fixed number of ragdolls or deaths: the run cannot control how many
+#    bugs autoplay kills, so the counts (ragdoll starts, HandleDying, pairs) are read from both logs afterwards
+#    (ragpair.py) and reported, not waited on. The far-death wait is a try with a short timeout for the same reason.
+# Run: LANE=2 SCENARIO=tools/scenarios/c132-gore-proof.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_C41_ANIM_TRACE=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C41_ANIM_TRACE=1" tools/run_pair.sh hb26 420
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+host autoplay on
+client autoplay on
+try client wait log "card042: client gore response for BP_AI_\w*Bug\w*: \d+ parts, [1-9]\d* chunks spawned at \((-?\d+), (-?\d+), (-?\d+)\)" timeout=150
+try both look point {g1} {g2} {g3}
+try both shot hit-chunk
+client autoplay off
+try client wait log "card039: client death gore for \S+ at \((-?\d+), (-?\d+), (-?\d+)\);.*bodies synced[^,]*, gore location moved \d{4,} uu" timeout=90
+try host warp client point {g1+300} {g2} {g3+100}
+try both look point {g1} {g2} {g3}
+try both shot far-death
+sleep 120
+host autoplay off
+host quit
+client quit

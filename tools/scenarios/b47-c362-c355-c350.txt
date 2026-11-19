@@ -1,0 +1,164 @@
+# Batch b47 (senior order 2026-11-14): card 362 (client InstaKill skip with no Down frame in 3 s, log only), card 355
+# (client leaves during the hold before the host's continue) and card 350 (the client's session-end clear, then a
+# fresh join). Predictions: docs/cards/362-...md, 355-...md, 350-...md. Build b47: faef8a0da0c13495. GOD=0.
+# Order: (1) FED_C1M1 start, travel next: the seamless travel to FED_C2M1 with the hold (c344 shape, both confirm);
+# (2) the b46 out-of-bounds expiry, client then host: 2 card361 skips, each cleared by the Down frame, 0 WARN card362;
+# (3) level end by EndLevel, Next: the hangar, the client stores the frontend options; (4) card 350: the client drops
+# (console disconnect), its session-end row clears the store, card 045 rejoins; 0 HasOption rows after the drop;
+# (5) [unless count=3: the host log has 2 FED Browse rows before step 5, C1M1 and C2M1] the host starts the next mission from the hangar; the client quits during the hold before the host's continue
+# (card 355, host continued 0): the host goes to the main menu. The client quit ends the client part, so it is last.
+# Run: LANE=2 SCENARIO=tools/scenarios/b47-c362-c355-c350.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1 UBWCOOP_AUTODROPSHIP=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C73_LOG=1" tools/run_pair.sh b47 660
+void unless host dll faef8a0da0c13495
+void unless client dll faef8a0da0c13495
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+host ui continue
+try client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+host mark
+client mark
+# --- 1. Seamless travel to FED_C2M1 (card 346); the hold waits for the client, both confirm (c344 shape).
+host travel next
+client wait log "card052: t=\d+ world \S+ \(package \S*FED_C2M1" since-mark timeout=120
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" since-mark timeout=60
+host ui continue
+host wait log "card320: host t=\d+ confirm from host" since-mark timeout=60
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" since-mark timeout=30
+host wait state map=FED_C2M1 pawn=host-own timeout=60
+client wait state pawn=client-own timeout=60
+sleep 3
+host clear 8000 kill
+# --- 2. Card 360/361/362, client turn: the server copy held in the out-of-bounds volume (b46 block).
+host mark
+client mark
+host warp client point 211563 87613 -2740
+host wait log "card322: host t=\d+ out of bounds entered " since-mark timeout=15
+try host wait log "card360: host t=\d+ out of bounds countdown " since-mark timeout=5
+try client wait log "card360: client t=\d+ out of bounds countdown " since-mark timeout=15
+host clear 8000 kill
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host warp client point 211563 87613 -2740
+sleep 1
+host wait log "card360: host t=\d+ out of bounds expiry on \S+ \(server-copy\): KillOwningActor runs" since-mark timeout=15
+try host wait log "card294: host t=\d+ Down \S+ for pawn id \d+ \(slot \d+\) sent now" since-mark timeout=10
+client wait log "card361: client t=\d+ InstaKill of \S+ \(client-own\) by KillOwningActor \(out of bounds expiry\): skipped" since-mark timeout=20
+try client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> " since-mark timeout=15
+# Card 362: the 3 s window passes; the WARN count is read from the log after the run (prediction 0).
+sleep 4
+client shot c362-client-expiry
+# --- Card 360/361/362, host turn: the host's own pawn held in the volume; the client's proxy expiry is skipped.
+host mark
+client mark
+host warp actor point 211563 87413 -2740
+host wait log "card322: host t=\d+ out of bounds entered " since-mark timeout=15
+try host wait log "card360: host t=\d+ out of bounds countdown " since-mark timeout=5
+try client wait log "card360: client t=\d+ out of bounds countdown " since-mark timeout=15
+host clear 8000 kill
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host warp actor point 211563 87413 -2740
+sleep 1
+host wait log "card360: host t=\d+ out of bounds expiry on \S+ \(host-own\): KillOwningActor runs" since-mark timeout=15
+host wait log "card294: host t=\d+ Down Dead for pawn id \d+ \(slot 0\) sent now" since-mark timeout=10
+# b47 run 1: the client's own countdown on the host pawn starts ~50 ms after the host's; the Dead frame can land first (no
+# client expiry, no skip). Either way the client runs no kill, so this wait is a try.
+try client wait log "card361: client t=\d+ InstaKill of \S+ \(other\) by KillOwningActor \(out of bounds expiry\): skipped" since-mark timeout=20
+try client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> " since-mark timeout=15
+sleep 4
+host shot c362-host-expiry
+client shot c362-host-cview
+# --- 3. Level end by the game's own EndLevel over the mission-fail menu, relayed to the client (card 260); Next.
+host mark
+client mark
+host travel end
+host wait log "card260: host EndLevel, sent to 1" since-mark timeout=10
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=90
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" since-mark timeout=30
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" since-mark timeout=120
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/3D_Frontend/3D_Frontend" since-mark timeout=10
+client wait log "card350: client t=\d+ ClientTravel \S+3D_Frontend\S* \(seamless 1\): frontend options .From" since-mark timeout=60
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=120
+try client wait log "card350: client t=\d+ HasOption\(.., From\S+\) from the host's travel options: 1" since-mark timeout=30
+sleep 4
+client shot c350-hangar-before
+# --- 4. Card 350: the client's session ends (console disconnect: a local Browse); the store is cleared; card 045 rejoins.
+client mark
+client disconnect
+client wait log "card045: client t=\d+ session dropped \(Browse to local map " since-mark timeout=20
+client wait log "card350: client t=\d+ session ended: frontend options .From\S+. cleared" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected \(1\)" since-mark timeout=120
+client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" since-mark timeout=60
+sleep 6
+client shot c350-rejoin-hangar
+host shot c350-rejoin-host
+# --- 5. Card 355: the host starts the next mission; the client quits during the hold, before the host's continue.
+host mark
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." since-mark timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." count=3 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." since-mark timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C\dM\d." since-mark timeout=10
+host wait log "card346: host t=\d+ seamless travel to ./Game/Maps/FED/FED_C\dM\d" since-mark timeout=10
+# The hold waits for the client; the client leaves at once (no host ui continue: autodropship acts 3 s after the
+# PlayerController count row, so the quit goes right after the hold row).
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(join\), clients 1" since-mark timeout=120
+client quit
+host wait log "card320: host t=\d+ client \S+ left during the hold \(waited for\), clients 0" since-mark timeout=30
+host wait log "WARN card355: host t=\d+ a waited-for client left during the hold \(host continued 0\): host returns to the main menu" since-mark timeout=10
+host wait log "card350: host t=\d+ return to the menu: OpenLevel\(./Game/Maps/3D_Frontend/3D_Frontend., absolute, .FromLevelQuit\?ChapterID=\d+\?LevelID=\d+.\)" since-mark timeout=10
+host wait log "card154: host t=\d+ Browse to ./Game/Maps/3D_Frontend/3D_Frontend. with 1 players \(FromLevelQuit 1\)" since-mark timeout=30
+host wait log "card320: host t=\d+ hold off after \d+ ms \(map end\)" since-mark timeout=30
+host wait log "card052: t=\d+ world \S+ \(package \S*3D_Frontend\S*, net mode \d\)" since-mark timeout=90
+sleep 4
+host shot c355-host-menu-c0
+host quit

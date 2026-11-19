@@ -1,0 +1,498 @@
+# Build 4b proof run 1 (senior order 2026-11-13): FED_C1M1 play path, card 224 scenario, no FAST (the dropship ride
+# once), cinematics skipped by the test path (SKIP_MOVIES=1 default). Base: c240-c1m1-c1.txt (full-objective soak).
+# Inserts: card 224 shots at the client screen prompt; card 225 client pause menu (marker hidden while a screen is
+# up); card 220 prompt trigger BP_TutorialPromptTrigger_C_9 walked by each player in turn; card 278 client
+# disconnect and card 045 reconnect after the laser give (new server copy, script loadout rows replayed).
+# Deciding rows: card159 dropship check (card 190), card110 hidden (screen up), card220 own pawn passed / other
+# player skipped, card278 applied, card260, card270 presence started, card227 re-check.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c224-c1m1-b4.txt DEPLOY=1
+#      HOST_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh c224-c1m1-b4 3600
+failsoft
+void unless host dll 5e2ce00acad8efa3
+void unless client dll 5e2ce00acad8efa3
+# Play path start: the flight lands on its own (no SpaceBar skip).
+host wait state map=FED_C1M1 pawn=other timeout=240
+# Senior 2026-11-13 (b4d): the client joins after the host continued and never has the screen; 240 s wait removed.
+try client shot c224-client-prompt
+try host shot c224-host-prompt
+host wait state pawn=host-own timeout=300
+client wait state pawn=client-own timeout=180
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=60
+sleep 3
+# Assault: presences _0 (on the walk from the landing) and _2 (SO1), _6 (SO2), _9 (SO3), then the panel (SO4).
+# Both players into BP_PlayerPresence_C_0.
+host warp actor BP_PlayerPresence_C_0 300
+host warp client BP_PlayerPresence_C_0 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_0 80 timeout=60
+& client goto actor BP_PlayerPresence_C_0 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_0 40
+host warp client BP_PlayerPresence_C_0 60
+sleep 1
+# Both players into BP_PlayerPresence_C_2.
+host warp actor BP_PlayerPresence_C_2 300
+host warp client BP_PlayerPresence_C_2 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_2 80 timeout=60
+& client goto actor BP_PlayerPresence_C_2 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_2 40
+host warp client BP_PlayerPresence_C_2 60
+sleep 1
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO1\)" timeout=30
+# Both players into BP_PlayerPresence_C_6.
+host warp actor BP_PlayerPresence_C_6 300
+# c248-c1m1: a client warp by distance left the client mid-fall (query from z 826, r5 z 887) and the path query
+# found 0 points. The client goes to a fixed point beside the host's landing spot (17001 28275 1464) and waits to land.
+host warp client point 17001 28175 1464
+client wait near 17001 28175 1464 150 timeout=10
+& host goto actor BP_PlayerPresence_C_6 80 timeout=60
+& client goto actor BP_PlayerPresence_C_6 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_6 40
+host warp client BP_PlayerPresence_C_6 60
+sleep 1
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO2\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO2\)" timeout=30
+# Both players into BP_PlayerPresence_C_9.
+host warp actor BP_PlayerPresence_C_9 300
+# c248-c1m1: the same for _9 (client query from z 595, 0 points). c240-c1m1-r6: from 17311 20094 1159 still 0 points,
+# while the host's query from 17311 19994 1329 gave 8 points; the client starts 100 uu east of the host's start, same z.
+host warp client point 17411 19994 1329
+client wait near 17411 19994 1329 250 timeout=10
+& host goto actor BP_PlayerPresence_C_9 80 timeout=60
+& client goto actor BP_PlayerPresence_C_9 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_9 40
+host warp client BP_PlayerPresence_C_9 60
+sleep 1
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO3\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO3\)" timeout=30
+# Panel switch: the client presses it, as in real play (H:2423, relayed Use) and c121b. Run 1: the host
+# pressed E from 156 uu and its interactor had no target (card020 target null), twice.
+# Run 2: the client pressed from 156 uu aimed at the actor origin (pitch -51, z 116): target null twice.
+# c121r and c121i hit it on the first press from point 17332 12821 213 aimed 100 uu above the origin.
+host warp client point 17332 12821 213
+sleep 2
+client look actor BP_PanelSwitch_WithoutScreen_C_0 100
+client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+unless host log "host sent CompleteSubObjective\(Assault_O1, Assault_SO4\)" count=1 client look actor BP_PanelSwitch_WithoutScreen_C_0 60
+unless host log "host sent CompleteSubObjective\(Assault_O1, Assault_SO4\)" count=1 client key E
+try client wait log "Use press: interactor target BP_PanelSwitch_WithoutScreen_C_0" timeout=4
+unless host log "host sent CompleteSubObjective\(Assault_O1, Assault_SO4\)" count=1 client look actor BP_PanelSwitch_WithoutScreen_C_0 140
+unless host log "host sent CompleteSubObjective\(Assault_O1, Assault_SO4\)" count=1 client key E
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO4\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO4\)" timeout=30
+host wait log "card049: host sent CompleteSubObjective\(Assault_O1, Assault_SO0\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(Assault_O1, Assault_SO0\)" timeout=30
+host wait log "card049: host sent CompleteObjective\(Assault_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(Assault_O1\)" timeout=30
+# TacSupport: presence _1 (the SO0 marker), Morita _1 pickup (SO2).
+# Both players into BP_PlayerPresence_C_1.
+host warp actor BP_PlayerPresence_C_1 300
+host warp client BP_PlayerPresence_C_1 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_1 80 timeout=60
+& client goto actor BP_PlayerPresence_C_1 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_1 40
+host warp client BP_PlayerPresence_C_1 60
+sleep 1
+host warp actor BP_WeaponPickup_MoritaMk1_C_1 100
+sleep 1
+host look actor BP_WeaponPickup_MoritaMk1_C_1
+host key E
+sleep 2
+unless host log "host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO2\)" count=1 host key E
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO2\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO2\)" timeout=30
+# Resupply call (c238 lines 41-55): SO3 and SO4, then SO41 by itself (pod health pickup).
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+client wait near 11600 13300 350 300 timeout=10
+sleep 1
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO3\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO3\)" timeout=30
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO4\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO4\)" timeout=30
+try host warp actor BP_ResupplyRack_Level0_C 150
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO41\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO41\)" timeout=30
+# Bombing run (c127-c1m1 bombing block): pickup E (SO5), Five + LMB (SO6), bombs land (SO7).
+host warp actor BP_TacSuppPickup_BombingRun_Tutorial_C 10
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 600
+client wait near 12519 13417 247 800 timeout=10
+sleep 1
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+sleep 1
+host key E
+sleep 1
+unless host log "EquipTacticalSupportAbility: .*config class Config_TacSupp_BombingRun_Tutorial_C" count=1 host key E
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO5\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO5\)" timeout=30
+host look point 12665 14500 -482
+sleep 2
+host charge 0 20000 1
+try host charge 1 20000 1
+host key Five
+sleep 2
+host key LeftMouseButton
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO6\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO6\)" timeout=30
+client wait log "copy of host [0-9]+: \S*BP_SupportFlare_Tutorial\.BP_SupportFlare_Tutorial_C" timeout=20
+client wait log "copy of host [0-9]+: \S*BombingRun\S*Projectile" timeout=20
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO7\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO7\)" timeout=30
+host wait log "card049: host sent CompleteSubObjective\(TacSupport_01, TacSupport_SO0\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(TacSupport_01, TacSupport_SO0\)" timeout=30
+host wait log "card049: host sent CompleteObjective\(TacSupport_01\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(TacSupport_01\)" timeout=30
+# ShootingRange: presence _4 on the way in, Morita _0 (SO1; it completes at once when a Morita is held),
+# presence _17 (SO2, activates targets _1 and _2), then 10 range hits in the real play order (H:3916-4297).
+# Both players into BP_PlayerPresence_C_4.
+host warp actor BP_PlayerPresence_C_4 300
+host warp client BP_PlayerPresence_C_4 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_4 80 timeout=60
+& client goto actor BP_PlayerPresence_C_4 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_4 40
+host warp client BP_PlayerPresence_C_4 60
+sleep 1
+try host wait log "card049: host sent AddSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=10
+unless host log "host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" count=1 host warp actor BP_WeaponPickup_MoritaMk1_C_0 100
+unless host log "host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" count=1 host look actor BP_WeaponPickup_MoritaMk1_C_0
+unless host log "host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" count=1 host key E
+host wait log "card049: host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO1\)" timeout=30
+# Both players into BP_PlayerPresence_C_17.
+host warp actor BP_PlayerPresence_C_17 300
+host warp client BP_PlayerPresence_C_17 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_17 80 timeout=60
+& client goto actor BP_PlayerPresence_C_17 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_17 40
+host warp client BP_PlayerPresence_C_17 60
+sleep 1
+host wait log "card049: host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO2\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO2\)" timeout=30
+# Firing spot (c143): the range lane.
+# Run 3: 5600 14400 -200 was under the floor (host fell to KillZ). Presence _17 (5311 13281 187) is on it.
+host warp actor point 5311 13381 287
+host warp client point 5411 13381 287
+host key Two
+# Target 1 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_1, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_1 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_1 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_1
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 1/10\)" timeout=10
+# Target 2 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_2, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_2 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_2 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_2
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 2/10\)" timeout=10
+# Target 3 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_11, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_11 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_11 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_11
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 3/10\)" timeout=10
+# Target 4 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_3, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_3 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_3 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_3
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 4/10\)" timeout=10
+# Target 5 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_4, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_4 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_4 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_4
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 5/10\)" timeout=10
+# Target 6 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_10, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_10 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_10 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_10
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 6/10\)" timeout=10
+# Target 7 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_5, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_5 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_5 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_5
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 7/10\)" timeout=10
+# Target 8 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_6, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_6 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_6 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_6
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 8/10\)" timeout=10
+# Target 9 of 10: BP_KillableBuilding_Base_TargetRangeTarger_C_9, shot while up; InstaKill only if the shots missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_TargetRangeTarger_C_9 " timeout=5
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 host look actor BP_KillableBuilding_Base_TargetRangeTarger_C_9 0 bounds
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 host key LeftMouseButton 1500
+sleep 1
+unless host log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" count=1 host kill actor BP_KillableBuilding_Base_TargetRangeTarger_C_9
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 9/10\)" timeout=10
+# Count 10: the grenade target (real play: a frag), InstaKill if the frag missed.
+try host wait log "card065: host t=\d+ Activate\(1\) BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 " timeout=5
+host look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 0 bounds
+host key G
+sleep 5
+unless host log "ShootingRange_SO3 \(count 10/10\)" count=1 host kill actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1
+host wait log "native IncrementObjectiveCount ShootingRange_O1/ShootingRange_SO3 \(count 10/10\)" timeout=10
+client wait log "card049: client t=\d+ replayed IncrementObjectiveCount\(ShootingRange_SO3\)" count=10 timeout=30
+host wait log "card049: host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO0\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO0\)" timeout=30
+host wait log "card049: host sent CompleteObjective\(ShootingRange_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(ShootingRange_O1\)" timeout=30
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," timeout=30
+# CaptureTheFlag: the gated presence _7 (both players, c227-presence.txt), LaserMorita pickup (SO1).
+host warp actor point -3454 9300 248
+# c248-c1m1: from -3654 9300 250 the client moved 0 uu in 16 s on a clear 2-point path; it starts beside the host.
+host warp client point -3454 9450 248
+client wait near -3454 9450 248 150 timeout=10
+# Card 225: client pause menu while beside the host; the host marker hides while the screen is up.
+client mark
+client key Escape 150
+try client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGamePause\)" since-mark timeout=10
+try client wait log "card110: client slot 1 hidden \(screen up\)" since-mark timeout=10
+client shot c225-client-paused
+client mark
+# Senior 2026-11-13 (b4d): `key Escape` does not reach Slate focus (card 222) and left the menu up; real key.
+client winkey Escape
+try client wait log "card067: dump \d+ in \S+ \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=10
+try client wait log "card110: client slot 1 shown over" since-mark timeout=10
+client shot c225-client-unpaused
+# Card 220: each player walks into BP_TutorialPromptTrigger_C_9 (-3065 7963 97) in turn; the walker's side passes,
+# the other side skips.
+host mark
+client mark
+host goto -3065 7963 97 60 timeout=60
+try host wait log "card220: \S+ prompt trigger BP_TutorialPromptTrigger_C_9 entered by \S+: own pawn, passed" since-mark timeout=15
+try client wait log "card220: \S+ prompt trigger BP_TutorialPromptTrigger_C_9 entered by \S+: other player, skipped" since-mark timeout=15
+host shot c220-host-in
+client shot c220-client-host-in
+host goto -3454 9300 248 80 timeout=60
+host mark
+client mark
+client goto -3065 7963 97 60 timeout=60
+try client wait log "card220: \S+ prompt trigger BP_TutorialPromptTrigger_C_9 entered by \S+: own pawn, passed" since-mark timeout=15
+try host wait log "card220: \S+ prompt trigger BP_TutorialPromptTrigger_C_9 entered by \S+: other player, skipped" since-mark timeout=15
+client shot c220-client-in
+host shot c220-host-client-in
+client goto -3454 9450 248 80 timeout=60
+host warp actor point -3454 9300 248
+host warp client point -3454 9450 248
+client wait near -3454 9450 248 150 timeout=10
+& host goto actor BP_PlayerPresence_C_7 80 timeout=60
+& client goto actor BP_PlayerPresence_C_7 150 timeout=60
+try join
+# Card 267 run C: both players walk through door _0 (x -3674) into _7 (x -4255); no warp across the doorway. The
+# warps below run only when the walk did not fire the presence, so the proof is read from the order of the rows.
+client shot c267-client-door0
+try host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2 players inside" timeout=20
+unless host log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2" count=1 host warp actor BP_PlayerPresence_C_7 40
+unless host log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2" count=1 host warp client BP_PlayerPresence_C_7 60
+host wait log "card227: host/standalone presence BP_PlayerPresence_C_7 fired after hold: 2 of 2 players inside" timeout=30
+host wait log "card049: host sent AddSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" timeout=30
+host warp actor BP_WeaponPickup_LaserMorita_C_0 100
+sleep 1
+host look actor BP_WeaponPickup_LaserMorita_C_0
+host key E
+sleep 2
+unless host log "host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" count=1 host key E
+host wait log "card049: host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO1\)" timeout=30
+# Card 267 run C: the level script's loadout swap is mirrored to the client's server copy (card267 rows); both
+# inventory rows must list BP_Weapon_LaserMorita_C.
+sleep 2
+host inventory
+client inventory
+host shot c267-host-laser
+client shot c267-client-laser
+# Card 278: client drops and card 045 reconnects; the host's new server copy gets the script loadout rows replayed.
+host mark
+client mark
+client disconnect
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=180
+try host wait log "card278: host (applied \d+ script loadout rows to the respawned copy|replay skipped)" since-mark timeout=60
+client wait state pawn=client-own timeout=120
+sleep 3
+host inventory
+client inventory
+client shot c278-client-rejoined
+host shot c278-host-rejoined
+host warp client BP_WeaponPickup_LaserMorita_C_0 200
+# SO2: presence _8 at the satchel building (card054x: completes on entry; door _1 closes, LaserTroopersRed wave).
+# Card 267 run C: both players walk from the _7 room through door _1 (x -4630) to _8; no warp across the doorway.
+# The warps below run only when the walk did not complete SO2.
+& host goto actor BP_PlayerPresence_C_8 80 timeout=120
+& client goto actor BP_PlayerPresence_C_8 80 timeout=120
+try join
+client shot c267-client-door1
+sleep 1
+unless host log "host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO2\)" count=1 host warp actor BP_PlayerPresence_C_8 40
+unless host log "host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO2\)" count=1 host warp client BP_PlayerPresence_C_8 60
+sleep 1
+host wait log "card049: host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO2\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO2\)" timeout=30
+client wait log "card161: client t=\d+ DoorOp state 3 BP_Door_Sliding_Large_C_1: applied" timeout=20
+# SO3: the satchel pickup.
+host warp actor BP_SatchelItemPickup_CTF_C_0 100
+sleep 1
+host look actor BP_SatchelItemPickup_CTF_C_0
+host key E
+sleep 2
+unless host log "host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO3\)" count=1 host key E
+host wait log "card049: host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO3\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO3\)" timeout=30
+# SO4: the placement site is a hold interaction: real play (playtest-host-20261107-1416-live.log) pressed at
+# t=153911315 and SO4 completed at t=153913820 (2.5 s). A tap logs Prime then Cancel (c240-c1m1-r4), so one hold of 3.2 s, no tap retries.
+host warp actor BP_SatchelPlacementSite_Flag_C 100
+sleep 1
+host look actor BP_SatchelPlacementSite_Flag_C
+host key E 3200 timeout=20
+host wait log "card049: host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO4\)" timeout=40
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO4\)" timeout=30
+host wait log "card049: host sent CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO0\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteSubObjective\(CaptureTheFlag_O1, CaptureTheFlag_SO0\)" timeout=30
+host wait log "card049: host sent CompleteObjective\(CaptureTheFlag_O1\)" timeout=30
+client wait log "card049: client t=\d+ replayed CompleteObjective\(CaptureTheFlag_O1\)" timeout=30
+# Asteroid_O1: presence _11 adds it; the game never completes it, the mission ends by travel.
+# Gate (senior, r4): presence _11 steps run only after the host CaptureTheFlag_O1 Complete row; no retry.
+host mark
+# Both players into BP_PlayerPresence_C_11.
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" host warp actor BP_PlayerPresence_C_11 300
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" host warp client BP_PlayerPresence_C_11 400
+sleep 1
+# c248-c1m1: the volume's centre (-8631 24011 520) is 423 uu above the ground the pawns stand on (z 97) and does not
+# project to the navmesh (0 points, both sides); the walk goes to the ground under it.
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" & host goto -8631 24011 97 80 timeout=60
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" & client goto -8631 24011 97 120 timeout=60
+try join
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" host warp actor BP_PlayerPresence_C_11 40
+when host last "host sent CompleteObjective\(CaptureTheFlag_O1\)" "CaptureTheFlag_O1" host warp client BP_PlayerPresence_C_11 60
+sleep 1
+host wait log "card049: host sent AddObjective\(Asteroid_O1\)" timeout=30
+# Real play client (UBWCoop-menu-20261108-191343.log): "card049: client t=N AddObjective(Asteroid_O1)", its own
+# script call, not a replay; either form passes.
+client wait log "card049: client t=\d+ (replayed )?AddObjective\(Asteroid_O1\)" timeout=30
+# Objective lists on both sides before the travel resets them (must match), with a digest round (host since the mark
+# before _11). The mission-end frontend is the only 3D_Frontend world with net mode 2 (the start-up one is net mode 0).
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client objectives
+host shot c240-host-end
+client shot c240-client-end
+# Mission end (c248-c1m1, real play 153936049): WB_TrooperLevelEnd opens about 16 s after AddObjective(Asteroid_O1) on
+# both sides and waits for its Next button; the host presses it, the client's screen must follow the host.
+host wait log "card018: host SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" timeout=60
+client wait log "card018: client SetInputMode_UIOnlyEx called by BP function ExecuteUbergraph_WB_TrooperLevelEnd" timeout=30
+# c240-c1m1-r6: a click 109 ms after the screen opened did nothing (the widget's InputEnabled? gate, no log line for it;
+# the real player pressed about 9 s after the screen opened). The host clicks again every 3 s until it leaves for
+# 3D_Frontend, at most 8 times.
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+# Mission end: the host Browses to 3D_Frontend, then both reach FED_C2M1.
+host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+# c240-c1m1-r7: with FromLevelComplete the 3D frontend opens the next mission's brief (WB_MissionBriefVideo_C) and
+# waits for a key; in real play (153946087) the host's Enter started the Browse to FED_C2M1. The client is in the
+# host's frontend first (card045 reconnect), then the host continues: `ui continue` (card 067), then `key Enter`,
+# then `winkey Enter` (card 222, the OS key route that reaches Slate), every 3 s, at most 8 times each, until the
+# host Browses to FED_C2M1. The client presses nothing.
+# c240-c1m1-r8: `ui continue` failed (no WB_Stack_C pause requester on the frontend), 8 `key Enter` did nothing,
+# the first `winkey Enter` started the Browse; the client followed by its card045 reconnect.
+client wait log "card045: client t=\d+ reconnected \(\d+\)" timeout=60
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host ui continue
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host key Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+unless host log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." count=1 try host winkey Enter
+try host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=3
+host wait log "card045: host t=\d+ Browse URL: .* map ./Game/Maps/FED/FED_C2M1." timeout=10
+host wait log "card052: t=\d+ world FED_C2M1 \(package /Game/Maps/FED/FED_C2M1" timeout=300
+client wait log "card052: t=\d+ world FED_C2M1 \(package /Game/Maps/FED/FED_C2M1" timeout=300
+sleep 10
+host quit
+client quit

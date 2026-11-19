@@ -1,0 +1,9 @@
+# Card 118, test only: a forced client access violation in game, to show the crash trace (one vectored-handler
+# block, then ReportCrash with UE's error text). The host stays up.
+# Run: SCENARIO=tools/scenarios/c118-crash.txt FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1" tools/run_pair.sh <tag> 300
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+try client crash av timeout=5
+sleep 15

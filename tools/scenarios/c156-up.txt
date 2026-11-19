@@ -1,0 +1,95 @@
+# Card 156 proof: every client return to Up goes through the one owner (c156_client_up), and 5 s later the client has
+# bShowMouseCursor 0, viewport capture 1, HUD UIMode not 1, no IMC_DummyUI_KBM and no live death screen; a scripted
+# move and fire work after each. One FAST=1 pair run on FED_C1M1 (GOD=0). Transitions: Downed -> Up, Out -> Up, and
+# game over (all down, death screens) -> host checkpoint load -> client rejoin (map load). The bug hits also carry the
+# label fix proof (enemies.cpp: armour portion +0x44, health +0x40). Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c156-up.txt DEPLOY=1 FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C136_LOG=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=10
+# Both take a Morita and equip it.
+host goto actor BP_WeaponPickup_MoritaMk1_C 120
+host look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+host key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(host-own\)" since-mark timeout=10
+host key Two
+host wait log "playlog: host t=\d+ weapon slot 0 host-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+client goto actor BP_WeaponPickup_MoritaMk1_C 120
+client wait log "card095: client t=\d+ collision BP_WeaponPickup_MoritaMk1_C_0 .*InteractionCollider .*0 -> 1" timeout=20
+client look actor BP_WeaponPickup_MoritaMk1_C
+host mark
+client key E
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_MoritaMk1_C, .*\(server-copy\)" since-mark timeout=10
+client key Two
+client wait log "playlog: client t=\d+ weapon slot 0 client-own: .* -> BP_Weapon_MoritaMk1" timeout=15
+host wait log "playlog: host t=\d+ weapon slot 1 server-copy: .* -> BP_Weapon_MoritaMk1" timeout=10
+failsoft
+# Bug hits on both players (the label fix proof), then the bugs go.
+host warp actor point 12500 14100 400
+host warp client point 12600 14200 400
+host spawn bug 12300 13900 400 0
+host spawn bug 12300 14300 400 180
+host spawn bug 12700 13900 400 90
+host wait log "playlog: host t=\d+ hit slot 1 " timeout=40
+try host wait log "playlog: host t=\d+ hit slot 0 " timeout=20
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# 1. Downed -> Up.
+host warp actor point 12500 14100 400
+host warp client point 12600 14100 400
+client wait near 12600 14100 400 150 timeout=5
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host look point 12600 14100 350
+try host key E 6000 timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\):" since-mark timeout=15
+client wait log "card156: client t=\d+ back to Up \(revive from Downed\) \+5 s" since-mark timeout=10
+client goto 12900 14100 400 120 timeout=15
+client look point 12900 30000 600
+host mark
+client key LeftMouseButton 800
+host wait log "playlog: host t=\d+ shot s seq=" since-mark timeout=10
+# 2. Out -> Up is not driven: card 130 sends an AI trooper to a downed client within 4000 uu, and it revives
+#    the client from Downed in about 5 s (c156-r1), before the 30 s bleedout. Out -> Up runs the same
+#    c156_client_up call as Downed -> Up (kKind table).
+# 3. Game over -> checkpoint -> client rejoin (map load). Save with both Up, then all down.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+client mark
+host down client
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=20
+host mark
+client mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=90
+host wait log "card143: host t=\d+ Restore applied" since-mark timeout=60
+client wait log "card156: client t=\d+ back to Up \(map load\):" since-mark timeout=30
+client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" since-mark timeout=10
+client wait state pawn=client-own timeout=30
+try client key Two
+# The rejoin spawns the client at the player start: back to the bug field, then a walk there.
+host warp client point 12500 14100 400
+client wait near 12500 14100 400 300 timeout=10
+client goto 12900 14100 400 120 timeout=20
+client look point 12900 30000 600
+host mark
+client key LeftMouseButton 800
+host wait log "playlog: host t=\d+ shot s seq=" since-mark timeout=10
+client inventory
+client quit
+sleep 2
+host quit

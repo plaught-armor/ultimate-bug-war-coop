@@ -1,0 +1,73 @@
+# Card 177, run c177-r1c (one build, one run; method changed after r1 and r1b). FED_C2M1, the c186-r2 route: the
+# two squad Morita troopers (BP_AI_Trooper_Morita_C, IsNPC2D sprites, spawned at 231802 43172 and 232448 43195 next
+# to the player start 232629 43682) die through the same TryPlayDeathAnimation path as the laser troopers. The
+# FED_C1M1 laser wave is out of reach: the level script adds CaptureTheFlag_O1 only through its own tutorial sequence,
+# and completions by command (r1, r1b) never add it. Parts: 1, a live kill in the client's view; 2, a kill with the
+# client far away (out of relevancy, at 222858 -90404), then the client brought in (arrival: both corpses); 3, a
+# client rejoin (the replay carries the rows); 4, the travel (map totals). Predictions in
+# docs/cards/177-no-ragdoll-corpse-end-pose.md, "Run c177-r1". Every state step waits for its log line; the only
+# sleeps are replication waits.
+# Run: SCENARIO=tools/scenarios/c177-r1.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      tools/run_pair.sh c177-r1c 900
+failsoft
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host wait log "card098: host spawn BP_AI_Trooper_Morita_C" count=2 timeout=60
+host ui continue
+# Part 1: a live kill in the client's view.
+host warp actor BP_AI_Trooper_Morita_C 700
+host warp client BP_AI_Trooper_Morita_C 900
+sleep 3
+both look actor BP_AI_Trooper_Morita_C
+host mark
+client mark
+host kill actor BP_AI_Trooper_Morita_C
+host wait log "card177: host sprite death BP_AI_Trooper_Morita_C guid 0x[0-9a-f]+ seq \S+ \(\d+ frames, \d+ ms\), sent to 1 PCs" since-mark timeout=10
+host wait log "card177: host sprite rest BP_AI_Trooper_Morita_C" since-mark timeout=15
+client wait log "card177: client sprite row guid 0x[0-9a-f]+ seq \S+, host age \d+ ms" since-mark timeout=10
+client shot live-corpse
+host shot live-corpse
+# Part 2: the client far away, the second Morita killed, then the client brought in.
+client mark
+host warp client point 222858 -90404 8700
+client wait near 222858 -90404 8700 800 timeout=60
+sleep 4
+host mark
+host kill actor BP_AI_Trooper_Morita_C
+host wait log "card177: host sprite death BP_AI_Trooper_Morita_C" since-mark timeout=10
+client wait log "card177: client sprite row guid" since-mark timeout=10
+sleep 3
+client mark
+host warp client BP_AI_Trooper_Morita_C 900
+client wait log "card177: client sprite death BP_AI_Trooper_Morita_C guid 0x[0-9a-f]+ seq \S+, arrival, rest state set" since-mark timeout=30
+try client wait log "card177: client sprite death BP_AI_Trooper_Morita_C .*, arrival, rest state set" count=2 since-mark timeout=10
+client wait log "card177: client sprite read-back BP_AI_Trooper_Morita_C" since-mark timeout=10
+both look actor BP_AI_Trooper_Morita_C
+sleep 1
+client shot arrived-corpse
+host shot arrived-corpse
+# Part 3: the rejoin. The replay at the joining PC's first Pong carries every row.
+client disconnect
+client mark
+host mark
+host wait log "card098: host spawn BP_PlayerController_C" since-mark timeout=120
+host wait log "card177: host sprite replay to a joining PC: \d+ rows sent" since-mark timeout=60
+client wait log "card045: client t=\d+ reconnected" timeout=120
+try client wait state pawn=client-own timeout=60
+host warp client BP_AI_Trooper_Morita_C 900
+try client wait log "card177: client sprite death BP_AI_Trooper_Morita_C .*, arrival, rest state set" count=2 since-mark timeout=30
+both look actor BP_AI_Trooper_Morita_C
+client shot rejoin-corpse
+host shot rejoin-corpse
+# Part 4: the travel. The LoadMap enter path logs both sides' sprite death totals for FED_C2M1.
+host mark
+client mark
+host travel next
+try host wait log "card177: host sprite death map totals" since-mark timeout=60
+try client wait log "card177: client sprite death map totals" since-mark timeout=60
+client wait log "reconnected \(" timeout=120
+try client wait state pawn=client-own timeout=120
+try host wait state pawn=host-own timeout=120
+host quit
+client quit

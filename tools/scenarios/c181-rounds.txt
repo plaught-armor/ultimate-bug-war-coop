@@ -1,0 +1,192 @@
+# fire test: weapon fire is what this scenario measures, so its clears may use fire (drive.py lint, 2026-11-19).
+# Card 181 run (build 5, faaa085d7714170b): the host copy fires exactly the client's rounds. Card 180 scenario shape
+# (c176-click.txt short presses at the c119 throw spot, FED_C1M1 FAST), no flare, no travel. 24 short client presses
+# with holds near a Morita round boundary (about 85 ms: 80 to 95 ms and 165 to 180 ms), then two long bursts of about
+# 35 rounds each with the magazine filled and reloaded first. Every press waits for its relay release row, then for
+# its card181 press-end row (try: a press whose copy fired nothing and got no report prints none).
+# Predictions: docs/cards/181-copy-round-count-exact.md, "Run c181-b5 predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env SCENARIO=tools/scenarios/c181-rounds.txt DEPLOY=1 FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_GOD=1" tools/run_pair.sh c181-b5 900
+failsoft
+void unless host dll faaa085d7714170b
+void unless client dll faaa085d7714170b
+host wait state map=FED_C1M1 pawn=host-own timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=120 void
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot c181-client-hud
+host shot c181-host-hud
+# The client takes the Morita at the range (c180-r1 lines 14-28): the players spawn unarmed on FED_C1M1 (c181-b5r2
+# fired BP_Weapon_Unarmed_C, 0 card181 rows).
+host mark
+client mark
+host warp client BP_PlayerPresence_C_2 300
+try host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=4
+client goto actor BP_PlayerPresence_C_2 80 timeout=30
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(Assault_SO1\)" since-mark timeout=10
+host warp client BP_WeaponPickup_MoritaMk1_C_0 120
+client wait near 6427 11587 200 300 timeout=10
+client look actor BP_WeaponPickup_MoritaMk1_C_0
+client key E
+host wait log "card097: host t=\d+ subsystem ObjectiveComplete\(ShootingRange_SO1\)" since-mark timeout=10
+# Both players at the c119 throw spot (c176-click), facing the open field; clear, then refill and reload.
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+host wait stand 11700 13400 any 300 timeout=15
+client wait stand 11600 13300 any 300 timeout=15
+client clear 1500 45
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+host wait stand 11700 13400 any 300 timeout=15
+client wait stand 11600 13300 any 300 timeout=15
+client ammo fill
+client key R
+client look point 11700 14500 140
+client shot c181-client-aim
+host look point 11600 14500 140
+host shot c181-host-aim
+# Press 1: 80 ms.
+host mark
+client key LeftMouseButton 80
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 2: 85 ms.
+host mark
+client key LeftMouseButton 85
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 3: 90 ms.
+host mark
+client key LeftMouseButton 90
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 4: 95 ms.
+host mark
+client key LeftMouseButton 95
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 5: 82 ms.
+host mark
+client key LeftMouseButton 82
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 6: 88 ms.
+host mark
+client key LeftMouseButton 88
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 7: 93 ms.
+host mark
+client key LeftMouseButton 93
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 8: 86 ms.
+host mark
+client key LeftMouseButton 86
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 9: 165 ms.
+host mark
+client key LeftMouseButton 165
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 10: 170 ms.
+host mark
+client key LeftMouseButton 170
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 11: 175 ms.
+host mark
+client key LeftMouseButton 175
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 12: 180 ms.
+host mark
+client key LeftMouseButton 180
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 13: 168 ms.
+host mark
+client key LeftMouseButton 168
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 14: 172 ms.
+host mark
+client key LeftMouseButton 172
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 15: 178 ms.
+host mark
+client key LeftMouseButton 178
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 16: 166 ms.
+host mark
+client key LeftMouseButton 166
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 17: 81 ms.
+host mark
+client key LeftMouseButton 81
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 18: 94 ms.
+host mark
+client key LeftMouseButton 94
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 19: 87 ms.
+host mark
+client key LeftMouseButton 87
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 20: 91 ms.
+host mark
+client key LeftMouseButton 91
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 21: 169 ms.
+host mark
+client key LeftMouseButton 169
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 22: 177 ms.
+host mark
+client key LeftMouseButton 177
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 23: 174 ms.
+host mark
+client key LeftMouseButton 174
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Press 24: 179 ms.
+host mark
+client key LeftMouseButton 179
+host wait log "card024: host relay release \(" since-mark timeout=5
+try host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=3
+# Burst 1: about 35 rounds (Morita about 85 ms per round), magazine refilled and reloaded first.
+client ammo fill
+client key R
+host mark
+client key LeftMouseButton 3000 timeout=20
+host wait log "card024: host relay release \(" since-mark timeout=8
+host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=5
+host shot c181-burst1-host
+# Burst 2: about 35 rounds (Morita about 85 ms per round), magazine refilled and reloaded first.
+client ammo fill
+client key R
+host mark
+client key LeftMouseButton 3000 timeout=20
+host wait log "card024: host relay release \(" since-mark timeout=8
+host wait log "card181: host t=\d+ \S+ press ended \(" since-mark timeout=5
+host shot c181-burst2-host
+# Run end: one more press ends the last row; then quit.
+host mark
+client key LeftMouseButton 85
+host wait log "card024: host relay release \(" since-mark timeout=5
+sleep 2
+client quit
+sleep 2
+host quit

@@ -1,0 +1,345 @@
+# Card 130 FED_C1M1 soak at double speed (FAST=1, card 127 shape, about 5 min): the host sets TimeDilation 2.0
+# (replicated). The c119 tac order (items 2/L, 5), a host frag (item 9), 12 rounds of 3 spawned WarriorBugs killed
+# near the players (card 038 dead set, card 039 gore, fx tables), the rest of TacSupport by command, then travel next.
+# Read afterwards: table peaks, the first c38 prune line, WARN classes, objectives on both sides (lists must match).
+# Run: SCENARIO=tools/scenarios/c130-soak2x.txt DEPLOY=1 FAST=1 tools/run_pair.sh c130d5 1200
+# The game's own flight skip: hold SpaceBar (IA_ExitDropship) in the transport dropship; it calls SkipFlight on
+# every dropship of the map (playtest: caller exe+0x508BA87, execSkipFlight). FAST=1 alone does not skip
+# (UBWCOOP_SKIP_FLIGHT needs UBWCOOP_AUTODROPSHIP).
+host wait log "dropship-watch: local pawn is transport dropship" count=1 timeout=240
+host key SpaceBar 3000
+try host wait log "dropship-watch: t=\d+s PC pawn is now" count=1 timeout=60
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+client wait log "card120: client t=\d+ minimap origin" timeout=30
+host speed 2
+sleep 3
+host objective complete Assault_SO0
+host objective complete ShootingRange_SO0
+host objective complete ShootingRange_SO3
+host objective complete TacSupport_SO2
+host warp actor point 11700 13400 350
+host warp client point 11600 13300 350
+sleep 1
+host look point 11700 14500 140
+host charge 0 20000 1
+sleep 2
+host key Four
+sleep 2
+host key LeftMouseButton
+host wait log "SetObjectiveVisibility\(TacSupport_SO41\) bools 11" timeout=60
+host warp actor BP_ResupplyRack_Level0_C 150
+try host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=15
+try host objective complete TacSupport_SO41
+host wait log "host show BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=20
+sleep 2
+host warp actor BP_TacSuppPickup_BombingRun_Tutorial_C 10
+host warp client BP_TacSuppPickup_BombingRun_Tutorial_C 600
+sleep 1
+host look actor BP_TacSuppPickup_BombingRun_Tutorial_C
+host key E
+host wait log "DisablePickup on BP_TacSuppPickup_BombingRun_Tutorial_C" timeout=5
+# The pickup look leaves the camera pitched at the ground (-87 deg); level it toward the bug spawns before the strikes.
+host look point 12500 14100 450
+sleep 2
+# c130x4: no bombs without the charge (c119 order).
+host charge 0 20000 1
+try host charge 1 20000 1
+host key Four
+sleep 2
+host key LeftMouseButton
+client wait log "copy of host [0-9]+: \S*BP_SupportFlare\.BP_SupportFlare_C" count=2 timeout=20
+# c130d2/d3: key Four here equips Config_TacSupp_Resupply_C (host EquipTacticalSupportAbility), so no bomb comes; open item.
+try client wait log "copy of host [0-9]+: \S*BombingRun\S*Projectile" timeout=10
+sleep 3
+host key Four
+sleep 1
+host key LeftMouseButton
+sleep 3
+client shot c130x-client-strike
+host shot c130x-host-strike
+sleep 3
+client shot c130x-client-strike2
+# Item 9: a host frag the client sees (card130 client fx checks).
+try host goto actor BP_GrenadeAmmoPickup_Frag_C 80 timeout=20
+host key G
+try client wait log "card074: client t=\d+ GrenadeExplode" timeout=15
+client shot c130x-client-grenade
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+# Soak hold (about 4 min real, 8 min game at 2.0): 20 rounds of 3 WarriorBugs left alive 8 s near the players
+# (live AI, attacks, gore), then killed: grows the card 038 dead set and the fx/ticket tables under load.
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+sleep 8
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host objectives
+client objectives
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host objectives
+client objectives
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host spawn bug 12300 13900 400 0
+host spawn bug 12700 13900 400 90
+host spawn bug 12300 14300 400 180
+try host wait log "card125: host spawned" timeout=5
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+try host kill actor BP_AI_WarriorBug_C
+host objectives
+client objectives
+try host objective complete TacSupport_SO6
+try host objective complete TacSupport_SO7
+try host objective complete TacSupport_SO0
+sleep 3
+host objectives
+client objectives
+host shot c130d-host-end
+client shot c130d-client-end
+host travel next
+# The game's own flight skip: hold SpaceBar (IA_ExitDropship) in the transport dropship; it calls SkipFlight on
+# every dropship of the map (playtest: caller exe+0x508BA87, execSkipFlight). FAST=1 alone does not skip
+# (UBWCOOP_SKIP_FLIGHT needs UBWCOOP_AUTODROPSHIP).
+host wait log "dropship-watch: local pawn is transport dropship" count=2 timeout=240
+# C2M1 has no brief cutscene: its any-key loading screen stays up with the world paused, and injected keys never
+# reach its Slate OnKeyUp (card 067). A human key closes it; the driver uses ui continue (the same BP steps).
+host ui continue
+host key SpaceBar 3000
+try host wait log "dropship-watch: t=\d+s PC pawn is now" count=2 timeout=60
+client wait log "reconnected \(" timeout=120
+client wait state pawn=client-own timeout=120
+host wait state pawn=host-own timeout=120
+host shot c130d-host-c2
+client shot c130d-client-c2
+host quit
+client quit

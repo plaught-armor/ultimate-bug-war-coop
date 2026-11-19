@@ -1,0 +1,141 @@
+# Build b7b-2, the last run of the batch (senior decision 2026-11-13 after the stand probe): everything that does not
+# need the C2M1 closure. Card 300 is out: the C2M1 chain cannot be command-completed (probe logs/b7b-2-probe-host.log:
+# `objective complete LOS_O01_SO01` completed LOS_O01 and the level script never added LOS_O01_SO02).
+# Starts on FED_C2M1 (UBWCOOP_TRAVEL); the nuke launcher and nuke ammo pickups are C2M1 actors present at map start.
+# Predictions (rows from both logs):
+#  press  client "card050: client ... Use press: interactor target null (null)" after the first warp, no exception.
+#  306    client swap by interact on BP_WeaponPickup_NukeLauncher_C_0: card050 "UseName sent" (by host id if a copy),
+#         card021 GiveWeaponByClass(NukeLauncher), host "card306: host ... support swap"; zero re-pickup; map-end
+#         tally "card306: inert spawns N, null returned to game callers 0" on both sides.
+#  302    the client takes nuke ammo with the host about 94k uu away (beyond 300 m): host pickup-class sounds skipped,
+#         "acting copy <copy> (overlap)".
+#  304    host fires within 50 m of the client: map-end "card304: audio rows N, owner unresolved N, ..." (does
+#         owner unresolved hold).
+#  294    all down (client then host), death screen, host checkpoint load: client "host restart (...)", "second
+#         CompleteDeath skipped", "restart done in N ms: death screens built 1, respawns in the old world 0".
+#  O01    LOS_O01_SO01 by real play (try only, rows): both inside BP_PlayerPresence_C_2 (hand stand from
+#         logs/c177-r2-host.log:4044), host ext row for _2 within 5 s, clear rounds, the script's own
+#         AddSubObjective(LOS_O01, LOS_O01_SO02).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/b7b-2.txt FAST=1 GOD=0
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" tools/run_pair.sh b7b-2 3600
+# (lane 2: the b7b-2 DLL copied into game2/ by hand; no DEPLOY.)
+failsoft
+void unless host dll 19701cf1398614b9
+void unless client dll 19701cf1398614b9
+host wait state map=FED_C2M1 pawn=host-own timeout=240 void
+client wait state map=FED_C2M1 pawn=client-own timeout=180 void
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host clear 6000 kill
+# --- Press at nothing after the first warp: the client looks straight up.
+host warp client BP_WeaponPickup_NukeLauncher_C_0 150
+sleep 1
+client mark
+client look 0 89
+client key E
+try client wait log "card050: client t=\d+ Use press: interactor target null \(null\)" since-mark timeout=5
+sleep 1
+client shot b7b2-press-at-nothing
+# --- 306: swap by interact.
+host mark
+client mark
+client look actor BP_WeaponPickup_NukeLauncher_C_0
+client shot b7b2-306-aim
+client key E
+try client wait log "card050: client t=\d+ Use press: interactor target \S+ .*UseName sent" since-mark timeout=5
+client wait log "card021: client GiveWeaponByClass\(BP_WeaponDefinition_NukeLauncher_C" since-mark timeout=10
+try host wait log "card306: host t=\d+ support swap" since-mark timeout=5
+sleep 2
+client inventory
+client shot b7b2-306-after
+# --- 302: the client spends two rockets (below max), the host clears at the ammo twice, the client is placed there,
+# the host leaves (about 94k uu), the client walks onto the pickup.
+client look 0 60
+client key LeftMouseButton 6000 timeout=15
+sleep 3
+client look 0 60
+client key LeftMouseButton 6000 timeout=15
+sleep 3
+host warp actor BP_AmmoPickup_NukesSmall_C_0 300
+host clear 2000 kill
+sleep 2
+host clear 2000 kill
+host warp client BP_AmmoPickup_NukesSmall_C_0 300
+host warp actor point 232629 43682 9092
+sleep 1
+host mark
+client mark
+client goto actor BP_AmmoPickup_NukesSmall_C_0 10 timeout=30
+try host wait log "card071: host t=\d+ AddAmmunitions" since-mark timeout=5
+try host wait log "acting copy \S+ \(overlap\)" since-mark timeout=10
+client shot b7b2-302-pickup
+# --- 304: the host comes back within 15 m of the client and fires.
+host warp actor BP_AmmoPickup_NukesSmall_C_0 1500
+host clear 2000 kill
+sleep 1
+host look 0 30
+host key LeftMouseButton 2000
+sleep 2
+# --- 294: save, all down (client first, then the host), death screen, host checkpoint load.
+host mark
+host travel save
+host wait log "card121: host t=\d+ save engine save runs" since-mark timeout=20
+sleep 2
+host mark
+client mark
+host down client
+sleep 2
+host down host
+client wait log "card044: client t=\d+ death screen WB_PlayerDeathScreen_C" since-mark timeout=40
+sleep 2
+host shot b7b2-294-host-dead
+client shot b7b2-294-client-dead
+host mark
+client mark
+host travel checkpoint
+host wait log "card121: host t=\d+ save engine load done" since-mark timeout=60
+try client wait log "card294: client t=\d+ host restart" since-mark timeout=30
+client wait log "card045: client t=\d+ reconnected" since-mark timeout=120
+try client wait log "card294: client t=\d+ restart done in \d+ ms: death screens built \d+, respawns in the old world \d+" since-mark timeout=60
+client wait state pawn=client-own timeout=60
+host wait state pawn=host-own timeout=60
+host ui continue
+sleep 3
+client shot b7b2-294-client-after
+# --- LOS_O01_SO01 by real play (rows only): both into BP_PlayerPresence_C_2 at the c177-r2 stand.
+host objective now
+host clear 6000 kill
+host warp actor point 227445 39891 8615
+host mark
+client mark
+host warp client point 227245 39891 8615
+try host wait log "card132: host ext BP_PlayerPresence_C \S+ at \(229051, 41029, 8745\) 0x\w+ -> 0x\w+, X row sent" since-mark timeout=5
+try host wait log "card140: host attached BP_EncounterManager_C" since-mark timeout=5
+host shot b7b2-o01-host-in
+client shot b7b2-o01-client-in
+sleep 5
+host clear 6000 kill
+sleep 5
+host clear 6000 kill
+sleep 5
+host clear 6000 kill
+try host wait log "card049: host sent AddSubObjective\(LOS_O01, LOS_O01_SO02\)" since-mark timeout=45
+host clear 6000 kill
+try host wait log "card049: host sent AddSubObjective\(LOS_O01, LOS_O01_SO02\)" since-mark timeout=45
+host objective now
+host objectives
+client objectives
+# --- Map end on both sides: card306, card304, card303, card293 tallies.
+host mark
+client mark
+host travel next
+try host wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=60
+try client wait log "card306: inert spawns \d+, null returned to game callers \d+" since-mark timeout=60
+try host wait log "card304: audio rows" since-mark timeout=5
+try client wait log "card304: audio rows" since-mark timeout=5
+client wait log "reconnected \(" since-mark timeout=120
+sleep 3
+client quit
+sleep 2
+host quit

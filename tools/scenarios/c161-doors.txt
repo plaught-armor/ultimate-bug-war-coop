@@ -1,0 +1,76 @@
+# Card 161 run (with the card 159 lead fix batched): the host opens and closes the capture-the-flag sliding door
+# BP_Door_Sliding_Large_C_0 by the test command; the client follows by DoorOp and its own door triggers are refused.
+# The client walks north through door _0 while it is closed (expected blocked), open (arrives) and closed again
+# (expected blocked). Then a travel: the post-travel dropship check round must match (card 159 lead).
+# Predictions in docs/cards/161-doors-host-owned.md. Every state step waits for its log line.
+# Run: SCENARIO=tools/scenarios/c161-doors.txt DEPLOY=1 FAST=1 GOD=0 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1"
+#      tools/run_pair.sh <tag> 900
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 \(.*\) at .* tracked" timeout=30
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 \(.*\) at .* tracked" timeout=30
+host ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+host goto -3454 9686 148 300 timeout=90
+client goto -3674 9600 150 150 timeout=90
+# Run c: straight walks, no navmesh (run a's navmesh path went round the door at x -3417). Each walker goes by
+# navmesh to (-3620, 9560), 290 uu south of the door (run b's warps wedged the host and the client's was snapped
+# back), faces north and holds W 3 s (about 2100 uu); arrival at y 10400 = passed, else blocked.
+# Closed: the host walks first as the reference, then the client.
+host goto -3620 9560 150 80 timeout=30
+host look point -3620 30000 300
+sleep 1
+host key W 3000
+try host wait near -3620 10400 150 300 timeout=2
+host shot c161-host-closed
+host goto -3454 9300 150 300 timeout=30
+client goto -3620 9560 150 80 timeout=30
+client look point -3620 30000 300
+sleep 1
+client key W 3000
+try client wait near -3620 10400 150 300 timeout=2
+client shot c161-client-closed
+host shot c161-host-sees-client-closed
+# The host opens it; the client follows and walks north through it.
+client goto -3620 9560 150 80 timeout=30
+client look point -3620 30000 300
+client mark
+host mark
+host door open BP_Door_Sliding_Large_C_0
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState \d -> [12]," since-mark timeout=10
+client wait log "card161: client t=\d+ DoorOp Open Door BP_Door_Sliding_Large_C_0: applied" since-mark timeout=10
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState \d -> [12]," since-mark timeout=5
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," since-mark timeout=15
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 2 -> 1," since-mark timeout=15
+client shot c161-client-open
+host shot c161-host-open
+client key W 3000
+try client wait near -3620 10400 150 300 timeout=2
+client shot c161-client-open-walked
+# The host closes it; the client follows and walks south into it.
+client goto -3620 10200 150 80 timeout=30
+client look point -3620 0 300
+client mark
+host mark
+host door close BP_Door_Sliding_Large_C_0
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState \d -> [03]," since-mark timeout=10
+client wait log "card161: client t=\d+ DoorOp Close Door BP_Door_Sliding_Large_C_0: applied" since-mark timeout=10
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState \d -> [03]," since-mark timeout=5
+host wait log "card161: host t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 3 -> 0," since-mark timeout=15
+client wait log "card161: client t=\d+ door BP_Door_Sliding_Large_C_0 DoorState 3 -> 0," since-mark timeout=15
+client shot c161-client-closed2
+host shot c161-host-closed2
+client key W 3000
+try client wait near -3620 9500 150 300 timeout=2
+client shot c161-client-after-walk
+host shot c161-host-sees-client-after
+# Card 159 lead: a travel with flying dropships; the post-travel check round matches.
+client mark
+host travel next
+client wait log "card120: client t=\d+ minimap origin" since-mark timeout=240
+client wait log "card159: client t=\d+ dropship \S+ check: " since-mark timeout=60
+sleep 5
+client quit
+sleep 2
+host quit

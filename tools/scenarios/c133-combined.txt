@@ -1,0 +1,76 @@
+# Cards 131 step 3 and 133 step 4, one run on FED_C2M1 (FAST=1).
+# Part 1 (131): the host kills the LOS Bugnest and three WarriorBugs in the client's view; client and host shots at
+# the edge and +5 s. Part 2 (133): the client takes a satchel, holds Use on the CAC flak bug site; the host runs the
+# HoldDone, the building explodes, the 'S' row reaches the client once.
+# Run: SCENARIO=tools/scenarios/c133-combined.txt DEPLOY=1 FAST=1 \
+#      HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen" \
+#      CLIENT_EXTRA_ENV="UBWCOOP_C99_LOG=1" tools/run_pair.sh c133x1 1500
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=180
+host ui continue
+sleep 3
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 1500
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 900
+sleep 2
+host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+client shot c133x-nest-before
+host kill actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7
+sleep 1
+client shot c133x-nest-edge
+host shot c133x-nest-edge
+sleep 5
+client shot c133x-nest-5s
+host shot c133x-nest-5s
+# Three WarriorBugs in the client's view (spawn points from c130-combined item 15).
+host warp actor point 229312 38956 9100
+host warp client point 229512 38956 9100
+sleep 2
+host spawn bug 229112 39656 9000 0
+host spawn bug 229512 39656 9000 90
+host spawn bug 229112 40056 9000 180
+sleep 3
+client look point 229312 39800 9000
+host look point 229312 39800 9000
+client shot c133x-bugs-before
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+host kill actor BP_AI_WarriorBug_C
+sleep 1
+client shot c133x-bugs-edge
+host shot c133x-bugs-edge
+sleep 5
+client shot c133x-bugs-5s
+host shot c133x-bugs-5s
+# Part 2: satchel pickup, then the CAC site.
+host warp actor point 226350 -21639 6950
+host warp client point 226150 -21639 6900
+sleep 3
+client look actor BP_SatchelItemPickup_C -40
+client key E 1500
+sleep 2
+client shot c133x-satchel-taken
+host warp client point 207674 -21649 8450
+host warp actor point 207474 -21549 8450
+sleep 2
+client goto actor BP_SatchelPlacementSite_C 90 timeout=60
+client look actor BP_SatchelPlacementSite_C
+host look actor BP_SatchelPlacementSite_C
+client shot c133x-site-before
+client key E 3200 timeout=20
+try client wait log "card133: client t=\d+ own hold completed" timeout=10
+host wait log "card133: host t=\d+ HoldDone from" timeout=15
+client look actor BP_SatchelBuilding_Flakbug_C
+host look actor BP_SatchelBuilding_Flakbug_C
+client shot c133x-hold-edge
+host shot c133x-hold-edge
+try client wait log "card098: client t=\d+ world S BP_SatchelBuilding_Flakbug.*applied ReceiveOnSatchelExploded" timeout=40
+client shot c133x-explode
+host shot c133x-explode
+sleep 5
+client shot c133x-explode-5s
+host shot c133x-explode-5s
+host objectives
+client objectives
+host quit
+client quit

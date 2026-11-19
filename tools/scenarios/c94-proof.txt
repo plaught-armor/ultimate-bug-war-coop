@@ -1,0 +1,28 @@
+# Card 094 proof: two client jumps on flat ground, then a client vault at the playtest spot (the client's stuck
+# jumps in the 2026-11-05 playtest were at about (-523, -1202, 103), facing yaw ~87), then one more jump on the far
+# side so both logs print the pawn's position.
+# Run: SCENARIO=tools/scenarios/c94-proof.txt DEPLOY=1 FAST=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C94_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C94_LOG=1" tools/run_pair.sh <tag> 400
+host wait state pawn=host-own timeout=240
+client wait state pawn=client-own timeout=120
+host ui continue
+sleep 3
+client key SpaceBar 100
+sleep 2
+client key SpaceBar 100
+sleep 2
+client goto -523 -1202 104 60
+host goto -523 -1500 104 150
+client look 87 0
+host look actor BP_PlayerCharacterMI_C 60
+client shot pre-vault
+host shot pre-vault
+client key SpaceBar 100
+sleep 3
+client shot post-vault
+host look actor BP_PlayerCharacterMI_C 60
+host shot post-vault
+client key SpaceBar 100
+sleep 2
+client quit
+host quit
