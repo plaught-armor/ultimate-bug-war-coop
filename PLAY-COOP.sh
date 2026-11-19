@@ -44,6 +44,48 @@ unpack_installer() {   # unpacks the GOG installer into ./game; returns 1 if non
     mv -T game.part game || { say "Could not move the unpacked game into place: remove the old game folder and try again."; exit 3; }
 }
 
+REPO_API=https://api.github.com/repos/plaught-armor/ultimate-bug-war-coop/releases/latest
+
+# Asks to update when GitHub has a newer release than build/RELEASE.txt. Any failure (no network, no curl,
+# odd reply) skips the check and starts the installed version. UBW_NO_UPDATE=1 skips it too.
+check_update() {
+    [[ -z ${UBW_NO_UPDATE:-} && -f build/RELEASE.txt ]] || return 0
+    command -v curl >/dev/null && command -v unzip >/dev/null || return 0
+    local mine latest json url tmp
+    mine=$(tr -d '[:space:]' < build/RELEASE.txt)
+    json=$(curl -fsSL --max-time 5 "$REPO_API" 2>/dev/null) || return 0
+    latest=$(grep -o '"tag_name": *"b[0-9]*"' <<<"$json" | grep -o 'b[0-9]*' | head -1)
+    url=$(grep -o '"browser_download_url": *"[^"]*\.zip"' <<<"$json" | grep -o 'https://[^"]*' | head -1)
+    [[ $mine =~ ^b[0-9]+$ && $latest =~ ^b[0-9]+$ && -n $url ]] || return 0
+    (( ${latest#b} > ${mine#b} )) || return 0
+    ask "A new UBW Co-op version is out: $latest (you have $mine). Both players need the same version. Update now?" \
+        || return 0
+    note "Downloading $latest."
+    tmp=$(mktemp -d "$PWD/.update.XXXXXX") || return 0
+    if curl -fsSL --max-time 120 -o "$tmp/u.zip" "$url" && unzip -q "$tmp/u.zip" -d "$tmp" \
+        && [[ -f $tmp/UBW-Coop/build/dwmapi.dll && -f $tmp/UBW-Coop/PLAY-COOP.sh ]]; then
+        # mv, not cp: this running script keeps reading its old file, and the new one starts fresh below.
+        local f
+        for f in PLAY-COOP.sh HOW-TO-PLAY.txt tools/playtest.sh build/dwmapi.dll build/VERSION.txt build/RELEASE.txt; do
+            [[ -f $tmp/UBW-Coop/$f ]] && mkdir -p "$(dirname "$f")" && mv -f "$tmp/UBW-Coop/$f" "$f"
+        done
+        echo "$latest" > build/RELEASE.txt   # also when the zip has none, so it does not ask again
+        rm -rf "$tmp"
+        note "Updated to $latest."
+        exec ./PLAY-COOP.sh "$@"
+    fi
+    rm -rf "$tmp"
+    say "The update download failed. Starting the installed version $mine."
+}
+
+ask() {   # yes/no question in a window if possible, else on the terminal; no answer means no
+    command -v kdialog >/dev/null && { kdialog --yesno "$1"; return; }
+    command -v zenity >/dev/null && { zenity --question --text="$1"; return; }
+    [[ -t 0 ]] || return 1
+    local r; read -r -p "$1 [y/N] " r; [[ $r == [yY]* ]]
+}
+
+check_update "$@"
 command -v umu-run >/dev/null || { say "umu-run is missing. Install it once: sudo pacman -S umu-launcher"; exit 3; }
 if [[ -z ${GAME_DIR:-} ]]; then
     GAME_DIR=$(find_installed)

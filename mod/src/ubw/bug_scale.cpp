@@ -472,6 +472,7 @@ void c111_step(void* engine) {
         g_c112.world = reinterpret_cast<uintptr_t>(world);
     }
     c113_step(world, GetTickCount64());
+    c502_session_step(world); // card 502 (3)
     void* const manager = c31_weak_get(g_c111.manager);
     const uint32_t players = manager != nullptr ? c111_players(manager) : 0;
     if (manager == nullptr || players == g_c111.players) {

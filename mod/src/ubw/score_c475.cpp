@@ -547,28 +547,392 @@ void c491_pawn_row(const uint8_t* pawn, const char* what, int32_t total) {
               object_name(pawn).text, own ? "own" : "proxy", static_cast<unsigned long long>(c41_guid(pawn)),
               static_cast<unsigned>(pawn[kActorLocalRole]), level, props[0] != '\0' ? props : " none");
 }
-} // namespace
 
-void c491_pawn_rows(const void* sub, const char* what) {
-    if (!g_c99_log || sub == nullptr || g_weak_get == nullptr) {
-        return;
-    }
-    const void* seen[kC491Pawns] = {};
+// The distinct BP_PlayerCharacterMI_C functions bound to `sub`'s OnFedScoreGained (every pawn copy on this side), at
+// most kC491Pawns; returns the count.
+int32_t c491_bound_pawns(const void* sub, const uint8_t* (&out)[kC491Pawns]) {
     int32_t n = 0;
+    if (sub == nullptr || g_weak_get == nullptr) {
+        return 0;
+    }
     const auto* const data = static_cast<const uint8_t*>(read_ptr(sub, kC475Delegate));
     const int32_t num = read_i32(sub, kC475Delegate + kArrayNum);
     for (int32_t i = 0; data != nullptr && i < num && i < kC475MaxBound && n < kC491Pawns; ++i) {
         const auto* const target =
             static_cast<const uint8_t*>(g_weak_get(data + static_cast<size_t>(i) * kScriptDelegateBytes));
         if (target == nullptr || strcmp(class_name(target).text, kC491PawnClass) != 0 ||
-            std::find(seen, seen + n, target) != seen + n) {
+            std::find(out, out + n, target) != out + n) {
             continue;
         }
-        seen[n++] = target;
+        out[n++] = target;
+    }
+    return n;
+}
+} // namespace
+
+void c491_pawn_rows(const void* sub, const char* what) {
+    if (!g_c99_log) {
+        return;
+    }
+    const uint8_t* pawns[kC491Pawns] = {};
+    const int32_t n = c491_bound_pawns(sub, pawns);
+    for (int32_t i = 0; i < n; ++i) {
         if (note_event_cap(g_c491_pawn_rows, kC491PawnRows, "card491 pawn rows")) {
-            c491_pawn_row(target, what, c475_total_of(sub));
+            c491_pawn_row(pawns[i], what, c475_total_of(sub));
         }
     }
+}
+
+// Card 491 b260 (c245b259a): the host pays every ResupplyUpgraded.
+//
+// BP_PlayerCharacterMI_C's FedScoreGained (bound to OnFedScoreGained on every pawn copy on every machine) compares the
+// total with its own FEDScoreThresholdsArray[ResupplyLevel]; on a crossing it steps ResupplyLevel (a Blueprint int
+// with no native symbol: its offset is fixed when the class links, so it is found by name), plays the upgrade sound,
+// steps the tier and calls AddFedScore(ResupplyUpgraded) for +15000. Each copy holds its own level, so a copy behind
+// the other machine's paid where that one did not (c245b259a: SO2 the client's proxy 0x14 at 0, SO3 the host's
+// rejoin proxy 0xDB2 at 0). The host's awards are the score:
+// - client: every native AddFedScore tagged ResupplyUpgraded is dropped, one row each;
+// - host: after each one, "U <guid hex> <level> 1" to every client: the client sets that pawn's ResupplyLevel and
+//   adds the award through the original AddFedScore (total, history, broadcast, popup line), not through the detour;
+// - the registry's "resupply" join replay (before "objective"): "U <guid> <level> 0" per bound pawn, levels only, so
+//   the objective replay's score does not step a client copy the host already stepped.
+// The host's frames go on the same reliable channel as the "T" totals (card 323), after the award they carry.
+namespace {
+constexpr char kC491ResupplyTag[] = "FedScoreSystem.Reward.ResupplyUpgraded";
+constexpr char kC491LevelName[] = "ResupplyLevel";
+constexpr uint32_t kC491ResupplyRows = 400; // per map, per side
+
+struct C491Resupply {
+    const void* cls;   // the class `offset` was resolved on this map; null: not resolved yet
+    int32_t offset;    // ResupplyLevel, -1 when the class has none
+    int32_t paid;      // host: ResupplyUpgraded awards sent with "U ... 1"
+    int32_t dropped;   // client: native ResupplyUpgraded calls dropped
+    int32_t applied;   // client: "U ... 1" awards added
+    uint32_t rows;     // log budget
+};
+constexpr C491Resupply kC491ResupplyNone{nullptr, -1, 0, 0, 0, 0};
+C491Resupply g_c491r = kC491ResupplyNone;
+
+// b262, client: each bound pawn's last seen ResupplyLevel, so a change no "U" row made logs once, with its time
+// (c245b260a: proxy 0x14 went 1 -> 0 between two awards, by no Blueprint write).
+struct C491Watch {
+    const void* pawn[kC491Pawns];
+    int32_t level[kC491Pawns];
+    int32_t n;
+    int32_t refused; // FedScoreGained calls refused (c491_pe)
+};
+C491Watch g_c491w{};
+} // namespace
+// Game thread: set just before AddFedScore(tag)'s original runs; its first AddFedScoreText (the same award) clears it
+// and passes the detour (c245b260a: paid twice on the host). One shot, not a depth: an award a Blueprint makes inside
+// the broadcast is a new one (c245b261a: a depth gate passed the step's ResupplyUpgraded, host paid 0).
+bool g_c491_inner_text = false;
+namespace {
+uint64_t g_c491_resupply_fname = 0; // the tag's FName, made once (FNames live for the process)
+
+bool c491_is_resupply(uint64_t tag) {
+    return strcmp(fname_text(&tag).text, kC491ResupplyTag) == 0;
+}
+
+uint64_t c491_resupply_fname() {
+    if (g_c491_resupply_fname == 0 && g_fname_ctor != nullptr) {
+        wchar_t wide[sizeof(kC491ResupplyTag)] = {};
+        for (size_t i = 0; i + 1 < sizeof(kC491ResupplyTag); ++i) {
+            wide[i] = static_cast<wchar_t>(kC491ResupplyTag[i]);
+        }
+        g_fname_ctor(&g_c491_resupply_fname, wide, kFNameAdd);
+    }
+    return g_c491_resupply_fname;
+}
+
+// ResupplyLevel's offset on `pawn`'s class or a super, -1 when none; resolved once per map, one row.
+int32_t c491_level_offset(const uint8_t* pawn) {
+    const void* const cls = pawn != nullptr ? read_ptr(pawn, kObjectClass) : nullptr;
+    if (cls == nullptr || strcmp(class_name(pawn).text, kC491PawnClass) != 0) {
+        return -1;
+    }
+    if (cls == g_c491r.cls) {
+        return g_c491r.offset;
+    }
+    int32_t off = -1;
+    const void* c = cls;
+    for (int s = 0; c != nullptr && s < kPropMaxSupers && off < 0; ++s, c = read_ptr(c, kStructSuper)) {
+        const void* f = read_ptr(c, kStructChildProperties);
+        for (int i = 0; f != nullptr && i < kPropMaxFields && off < 0; ++i, f = read_ptr(f, kFieldNext)) {
+            const auto* const field = static_cast<const uint8_t*>(f);
+            ObjectName k{};
+            const bool match = strcmp(fname_text(field + kFieldName).text, kC491LevelName) == 0 &&
+                               prop_kind(field, k) == PropKind::SInt && read_i32(field, kPropertyElementSize) == 4;
+            off = match ? read_i32(field, kPropertyOffset) : -1;
+        }
+    }
+    g_c491r.cls = cls;
+    g_c491r.offset = off;
+    log::line("%scard491: %s t=%llu ResupplyLevel offset 0x%X on %s%s", off < 0 ? "WARN " : "",
+              g_client_session ? "client" : "host", static_cast<unsigned long long>(GetTickCount64()),
+              static_cast<unsigned>(off), kC491PawnClass, off < 0 ? " not found (no level sync this map)" : "");
+    return off;
+}
+
+int32_t c491_level_of(const uint8_t* pawn) {
+    const int32_t off = c491_level_offset(pawn);
+    return off >= 0 ? read_i32(pawn, off) : -1;
+}
+
+// The innermost Blueprint caller when it is a player pawn copy, else null.
+const uint8_t* c491_caller_pawn() {
+    const auto* const p = static_cast<const uint8_t*>(g_c322_bp_caller);
+    return p != nullptr && strcmp(class_name(p).text, kC491PawnClass) == 0 ? p : nullptr;
+}
+
+// The watch entry of `pawn` set to `level` (a write the mod made, or a first sight); added when absent.
+void c491_watch_set(const void* pawn, int32_t level) {
+    for (int32_t i = 0; i < g_c491w.n; ++i) {
+        if (g_c491w.pawn[i] == pawn) {
+            g_c491w.level[i] = level;
+            return;
+        }
+    }
+    if (g_c491w.n < kC491Pawns) {
+        g_c491w.pawn[g_c491w.n] = pawn;
+        g_c491w.level[g_c491w.n] = level;
+        ++g_c491w.n;
+    }
+}
+
+constexpr char kC491PromptClass[] =
+    "/Game/Blueprints/UI_Aloft/Gameplay_HUD/WB_Tactical_Support_Prompt_Default_v2.WB_Tactical_Support_Prompt_Default_v2_C";
+constexpr int32_t kC491Levels = 3;      // ResupplyLevel 0..3 (the Blueprint steps while below 3)
+constexpr size_t kC491ParmsBytes = 64;  // GetAllWidgetsOfClass parms (context 8, array 16, class 8, bool)
+constexpr size_t kC491ArrayBytes = 16;  // TArray: data, num, max
+
+// The parameter `name`'s offset in `fn`'s parms, -1 when absent or past kC491ParmsBytes.
+int32_t c491_parm(const void* fn, const char* name, size_t bytes) {
+    const uint8_t* const p = prop_find_prop(fn, name);
+    const int32_t off = p != nullptr ? read_i32(p, kPropertyOffset) : -1;
+    return off >= 0 && static_cast<size_t>(off) + bytes <= kC491ParmsBytes ? off : -1;
+}
+
+// Client, a "U ... 1" row for the own pawn: what the Blueprint's step does on the own screen, the level write aside
+// (the row made it): Upgrade() on each WB_Tactical_Support_Prompt_Default_v2 (UWidgetBlueprintLibrary::
+// GetAllWidgetsOfClass through ProcessEvent on its CDO, as the Blueprint calls it) and the level's Supply_Upgrade sound
+// through the original PlaySound2D. Returns the widgets upgraded, -1 when the lookup failed; `played` the sound.
+int32_t c491_own_step(void* pawn, int32_t level, bool* played) {
+    *played = false;
+    if (level >= 1 && level <= kC491Levels && g_sound_base_class != nullptr && g_orig_c99_sound_2d != nullptr) {
+        char path[kAssetPathChars];
+        snprintf(path, sizeof(path),
+                 "/Game/Audio/Assets/UI/FED/MS_UI_FED_FedScore_Supply_Upgrade_0%d.MS_UI_FED_FedScore_Supply_Upgrade_0%d",
+                 level, level);
+        void* const sound = c74_find_asset(path, g_sound_base_class());
+        if (sound != nullptr) {
+            g_orig_c99_sound_2d(pawn, sound, 1.0f, 1.0f, 0.0f, nullptr, pawn, false);
+            *played = true;
+        }
+    }
+    static void* cdo = nullptr; // the CDO lives for the process
+    static uint64_t get_name = 0;
+    static uint64_t upgrade_name = 0;
+    cdo = cdo != nullptr ? cdo : g_static_find_object(nullptr, nullptr, L"/Script/UMG.Default__WidgetBlueprintLibrary", false);
+    void* const get = cdo != nullptr && fname_cached(get_name, L"GetAllWidgetsOfClass") != 0
+                          ? g_find_function(cdo, get_name)
+                          : nullptr;
+    void* const cls = g_uclass_class != nullptr ? c74_find_asset(kC491PromptClass, g_uclass_class()) : nullptr;
+    const int32_t o_ctx = get != nullptr ? c491_parm(get, "WorldContextObject", sizeof(void*)) : -1;
+    const int32_t o_found = get != nullptr ? c491_parm(get, "FoundWidgets", kC491ArrayBytes) : -1;
+    const int32_t o_cls = get != nullptr ? c491_parm(get, "WidgetClass", sizeof(void*)) : -1;
+    const int32_t o_top = get != nullptr ? c491_parm(get, "TopLevelOnly", 1) : -1;
+    if (cls == nullptr || o_ctx < 0 || o_found < 0 || o_cls < 0 || o_top < 0 || g_orig_process_event == nullptr) {
+        return -1;
+    }
+    alignas(16) uint8_t parms[kC491ParmsBytes] = {};
+    memcpy(parms + o_ctx, &pawn, sizeof(pawn));
+    memcpy(parms + o_cls, &cls, sizeof(cls));
+    parms[o_top] = 0; // nested widgets too (the prompt sits inside the HUD)
+    g_orig_process_event(cdo, get, parms);
+    void* const* const data = static_cast<void* const*>(read_ptr(parms, static_cast<size_t>(o_found) + kArrayData));
+    const int32_t num = read_i32(parms, static_cast<size_t>(o_found) + kArrayNum);
+    int32_t upgraded = 0;
+    for (int32_t i = 0; data != nullptr && i < num && i < kC491Pawns; ++i) {
+        void* const up = data[i] != nullptr && fname_cached(upgrade_name, L"Upgrade") != 0
+                             ? g_find_function(data[i], upgrade_name)
+                             : nullptr;
+        if (up != nullptr) {
+            alignas(16) uint8_t none[kC491ParmsBytes] = {};
+            g_orig_process_event(data[i], up, none);
+            ++upgraded;
+        }
+    }
+    if (data != nullptr && g_memory_free != nullptr) {
+        g_memory_free(const_cast<void**>(data)); // the array the call filled is ours
+    }
+    return upgraded;
+}
+
+// Client, ChanOp::Score "U <guid hex> <level> <award 0|1>".
+void c491_resupply_apply(void* pc, void* sub, const char* text) {
+    unsigned long long guid = 0;
+    int level = -1;
+    int award = 0;
+    if (sscanf_s(text, "U %llx %d %d", &guid, &level, &award) != 3 || award < 0 || award > 1) {
+        log::line("WARN card491: client resupply frame '%s' did not parse", text);
+        return;
+    }
+    auto* const pawn = guid != 0 ? static_cast<uint8_t*>(c41_resolve_player(pc, guid)) : nullptr;
+    const int32_t off = pawn != nullptr ? c491_level_offset(pawn) : -1;
+    const int32_t was = off >= 0 ? read_i32(pawn, off) : -1;
+    const bool set = off >= 0 && level >= 0;
+    if (set) {
+        const int32_t v = level;
+        memcpy(pawn + off, &v, sizeof(v));
+        c491_watch_set(pawn, v);
+    }
+    // b262: the own pawn's step effects on an award row only (a join replay row, award 0, sets the level silently)
+    const bool own = set && award == 1 && pc != nullptr && read_ptr(pc, kControllerPawn) == pawn;
+    bool played = false;
+    const int32_t upgraded = own ? c491_own_step(pawn, level, &played) : -2;
+    const int32_t before = c475_total_of(sub);
+    const uint64_t tag = award == 1 ? c491_resupply_fname() : 0;
+    const bool paid = tag != 0 && g_orig_c99_score != nullptr;
+    if (paid) {
+        ++g_c491r.applied;
+        g_c491_inner_text = true; // its inner AddFedScoreText passes the detour (b262)
+        g_orig_c99_score(sub, tag); // the original: its pawn Blueprints' own ResupplyUpgraded calls are dropped
+        g_c491_inner_text = false;
+    }
+    const bool ok = (level < 0 || set) && (award == 0 || paid) && (!own || (played && upgraded >= 0));
+    if (!ok || note_event_cap(g_c491r.rows, kC491ResupplyRows, "card491 resupply rows")) {
+        log::line("%scard491: client t=%llu U pawn %s guid 0x%llX level %d -> %d%s; award %d (applied %d), total %d -> "
+                  "%d; own step %s (sound %s, prompts upgraded %d)", ok ? "" : "WARN ",
+                  static_cast<unsigned long long>(GetTickCount64()),
+                  pawn != nullptr ? object_name(pawn).text : "unresolved", guid, was, level, set ? "" : " not set",
+                  award, g_c491r.applied, before, c475_total_of(sub), own ? "run" : "none",
+                  played ? "played" : "none", upgraded);
+    }
+}
+} // namespace
+
+// Both sides, both AddFedScore detours: ResupplyLevel's offset once per map, before the first award runs.
+void c491_resupply_arm(const void* sub) {
+    if (g_c491r.cls != nullptr) {
+        return;
+    }
+    const uint8_t* pawns[kC491Pawns] = {};
+    if (c491_bound_pawns(sub, pawns) > 0) {
+        c491_level_offset(pawns[0]);
+    }
+}
+
+// Client, both AddFedScore detours: true for a native ResupplyUpgraded, which the caller drops.
+bool c491_resupply_drop(const void* sub, uint64_t tag) {
+    if (!g_client_session || !c491_is_resupply(tag)) {
+        return false;
+    }
+    ++g_c491r.dropped;
+    const uint8_t* const pawn = c491_caller_pawn();
+    if (note_event_cap(g_c491r.rows, kC491ResupplyRows, "card491 resupply rows")) {
+        log::line("card491: client t=%llu suppressed ResupplyUpgraded #%d: pawn %s guid 0x%llX level %d, total %d",
+                  static_cast<unsigned long long>(GetTickCount64()), g_c491r.dropped,
+                  pawn != nullptr ? object_name(pawn).text : "none",
+                  static_cast<unsigned long long>(pawn != nullptr ? c41_guid(pawn) : 0),
+                  pawn != nullptr ? c491_level_of(pawn) : -1, c475_total_of(sub));
+    }
+    return true;
+}
+
+// Card 491 b262, client, every ProcessEvent (detour_process_event): true refuses a player pawn's FedScoreGained, the
+// Blueprint's own resupply step (ubergraph @7554: level + 1, AddFedScore(ResupplyUpgraded), Upgrade() on the support
+// prompts, the Supply_Upgrade sound). ReceiveBeginPlay binds it on every pawn, proxies included, so a client stepped
+// on its own score (c245b260a FAIL 2); the host's "U" row runs the step (c491_resupply_apply). A pawn's
+// ReceiveBeginPlay logs its level before the Blueprint runs. Two FName compares per call; the class only on a match.
+bool c491_pe(void* object, const void* function) {
+    static uint64_t gained_name = 0;
+    static uint64_t begin_name = 0;
+    const uint64_t name = read_u64(function, kObjectName);
+    const bool gained = name == fname_cached(gained_name, L"FedScoreGained") && gained_name != 0;
+    const bool begin = !gained && name == fname_cached(begin_name, L"ReceiveBeginPlay") && begin_name != 0;
+    if ((!gained && !begin) || strcmp(class_name(object).text, kC491PawnClass) != 0) {
+        return false;
+    }
+    const auto* const pawn = static_cast<const uint8_t*>(object);
+    g_c491w.refused += gained ? 1 : 0;
+    if (note_event_cap(g_c491r.rows, kC491ResupplyRows, "card491 resupply rows")) {
+        log::line("card491: client t=%llu %s pawn %s guid 0x%llX level %d (refused %d)",
+                  static_cast<unsigned long long>(GetTickCount64()),
+                  gained ? "refused FedScoreGained on" : "ReceiveBeginPlay of", object_name(pawn).text,
+                  static_cast<unsigned long long>(c41_guid(pawn)), c491_level_of(pawn), g_c491w.refused);
+    }
+    return gained;
+}
+
+// Card 491 b262, client, every tick: a bound pawn's ResupplyLevel change that no "U" row made, one row each.
+void c491_level_watch(const void* sub) {
+    const uint8_t* pawns[kC491Pawns] = {};
+    const int32_t n = g_c491r.cls != nullptr ? c491_bound_pawns(sub, pawns) : 0;
+    for (int32_t i = 0; i < n; ++i) {
+        const int32_t level = c491_level_of(pawns[i]);
+        int32_t k = 0;
+        for (; k < g_c491w.n && g_c491w.pawn[k] != pawns[i]; ++k) {
+        }
+        if (k == g_c491w.n) {
+            c491_watch_set(pawns[i], level); // first sight
+            continue;
+        }
+        if (g_c491w.level[k] != level) {
+            log::line("WARN card491: client t=%llu pawn %s guid 0x%llX ResupplyLevel %d -> %d, not by a U row",
+                      static_cast<unsigned long long>(GetTickCount64()), object_name(pawns[i]).text,
+                      static_cast<unsigned long long>(c41_guid(pawns[i])), g_c491w.level[k], level);
+            g_c491w.level[k] = level;
+        }
+    }
+}
+
+// Host, both AddFedScore detours after the original: a ResupplyUpgraded award and its pawn's level to every client.
+void c491_resupply_paid(const void* sub, uint64_t tag) {
+    if (g_client_session || sub == nullptr || !c491_is_resupply(tag)) {
+        return;
+    }
+    ++g_c491r.paid;
+    const uint8_t* const pawn = c491_caller_pawn();
+    const uint64_t guid = pawn != nullptr ? c41_guid(pawn) : 0;
+    const int32_t level = pawn != nullptr ? c491_level_of(pawn) : -1;
+    char text[64];
+    snprintf(text, sizeof(text), "U %llX %d 1", static_cast<unsigned long long>(guid), level);
+    const C95Fanout f = c95_send_all(read_ptr(sub, kObjectOuter), ChanOp::Score, text); // a world subsystem: outer world
+    const bool ok = f.sent == f.to && guid != 0 && level >= 0;
+    if (!ok || note_event_cap(g_c491r.rows, kC491ResupplyRows, "card491 resupply rows")) {
+        log::line("%scard491: host t=%llu ResupplyUpgraded #%d: pawn %s guid 0x%llX level %d, total %d; U sent to %d of "
+                  "%d clients", ok ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), g_c491r.paid,
+                  pawn != nullptr ? object_name(pawn).text : "none", static_cast<unsigned long long>(guid), level,
+                  c475_total_of(sub), f.sent, f.to);
+    }
+}
+
+// Host, the registry's "resupply" join replay (before "objective"): every bound pawn's level to one PC.
+void c491_resupply_join_replay(void* pc) {
+    if (g_client_session || pc == nullptr || sprint_side(pc) != kSideServerCopy) {
+        return;
+    }
+    const void* const sub = c475_subsystem(g_actor_get_world(pc));
+    const uint8_t* pawns[kC491Pawns] = {};
+    const int32_t n = c491_bound_pawns(sub, pawns);
+    char list[kC491Pawns * 28 + 1] = {};
+    size_t used = 0;
+    int32_t sent = 0;
+    for (int32_t i = 0; i < n; ++i) {
+        const uint64_t guid = c41_guid(pawns[i]);
+        const int32_t level = c491_level_of(pawns[i]);
+        char text[64];
+        snprintf(text, sizeof(text), "U %llX %d 0", static_cast<unsigned long long>(guid), level);
+        const bool ok = guid != 0 && level >= 0 && c95_send_one(pc, ChanOp::Score, text);
+        sent += ok ? 1 : 0;
+        const int w = snprintf(list + used, sizeof(list) - used, " 0x%llX=%d%s", static_cast<unsigned long long>(guid),
+                               level, ok ? "" : "(not sent)");
+        used = w > 0 ? std::min(sizeof(list) - 1, used + static_cast<size_t>(w)) : used;
+    }
+    log::line("%scard491: host t=%llu resupply join replay to %s: %d of %d pawn levels sent:%s",
+              sent == n ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text, sent, n,
+              n > 0 ? list : " none bound");
 }
 
 // Host, the registry's "score" join replay (after "objective").
@@ -621,6 +985,10 @@ void c475_receive(void* pc, const WireString* s) {
                   static_cast<unsigned long long>(GetTickCount64()), sub != nullptr ? 1 : 0);
         return;
     }
+    if (text[0] == 'U') {
+        c491_resupply_apply(pc, sub, text); // card 491 b260
+        return;
+    }
     if (text[0] == 'T') {
         long long host_total = 0;
         if (sscanf_s(text, "T %lld", &host_total) != 1 || host_total < INT32_MIN || host_total > INT32_MAX) {
@@ -671,6 +1039,13 @@ void c475_receive(void* pc, const WireString* s) {
 
 // Both sides, map end: a replay cut by the map change is dropped.
 void c475_map_end(void*) {
+    if (g_c491r.paid + g_c491r.dropped + g_c491r.applied != 0) {
+        log::line("card491: %s t=%llu map end: ResupplyUpgraded paid %d (host), dropped %d, applied %d (client)",
+                  g_client_session ? "client" : "host", static_cast<unsigned long long>(GetTickCount64()), g_c491r.paid,
+                  g_c491r.dropped, g_c491r.applied);
+    }
+    g_c491r = kC491ResupplyNone; // card 491 b260: the "resupply" join replay has no map end of its own
+    g_c491w = C491Watch{};        // b262
     g_c475c = C475Client{};
     g_c323h = C323Host{};
     g_c323c = C323Client{};
@@ -681,6 +1056,8 @@ void c475_map_end(void*) {
 void c475_step(void* engine) {
     if (g_client_session) {
         c323_client_step(GetTickCount64());
+        void* const world = engine != nullptr ? g_get_game_world(engine) : nullptr;
+        c491_level_watch(c475_subsystem(world)); // b262
     } else {
         c323_host_step(engine);
     }

@@ -17,8 +17,8 @@
 #      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c245a 3600
 # Expected wall: about 40 min.
 voidsoft
-void unless host dll d7711448006d4100
-void unless client dll d7711448006d4100
+void unless host dll e138228037a8dede
+void unless client dll e138228037a8dede
 host wait state map=FED_C4M2 timeout=240 void
 client wait state map=FED_C4M2 pawn=client-own timeout=180
 try host ui continue

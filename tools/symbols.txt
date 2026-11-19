@@ -76,6 +76,16 @@ FWeakObjectPtr_Get ?Get@FWeakObjectPtr@@QEBAPEAVUObject@@XZ
 # void ASTEncounterManagerBase::StartEncounter() / ActivateCurrentWave()  -- hooked
 ASTEncounterManagerBase_StartEncounter ?StartEncounter@ASTEncounterManagerBase@@QEAAXXZ
 ASTEncounterManagerBase_ActivateCurrentWave ?ActivateCurrentWave@ASTEncounterManagerBase@@QEAAXXZ
+# Card 503 (diag): the encounter manager's wave events and USTEncounterWaveBase::OnSpawnCancelled  -- hooked
+ASTEncounterManagerBase_OnWaveNPCSpawned ?OnWaveNPCSpawned@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@PEAVASTNonPlayableCharacterBase@@@Z
+ASTEncounterManagerBase_OnWaveNPCKilled ?OnWaveNPCKilled@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@PEAVASTNonPlayableCharacterBase@@@Z
+ASTEncounterManagerBase_OnWaveSpawnComplete ?OnWaveSpawnComplete@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@@Z
+ASTEncounterManagerBase_OnWaveEnd ?OnWaveEnd@ASTEncounterManagerBase@@AEAAXPEAVUSTEncounterWaveBase@@@Z
+ASTEncounterManagerBase_TriggerNextWave ?TriggerNextWave@ASTEncounterManagerBase@@AEAAXXZ
+ASTEncounterManagerBase_BP_OnEncounterEnded ?BP_OnEncounterEnded@ASTEncounterManagerBase@@IEAAXXZ
+USTEncounterWaveBase_OnSpawnCancelled ?OnSpawnCancelled@USTEncounterWaveBase@@AEAAXAEBUFSTSpawnResult@@@Z
+# int32 ASTEncounterManagerBase::GetCurrentWaveID() const  -- card 503 rows
+ASTEncounterManagerBase_GetCurrentWaveID ?GetCurrentWaveID@ASTEncounterManagerBase@@QEBAHXZ
 # FSTSpawnResult ASTSpawnerBase::PerformSpawn(const FSTSpawnParameters&)  -- hooked (hidden return)
 ASTSpawnerBase_PerformSpawn ?PerformSpawn@ASTSpawnerBase@@IEAA?AUFSTSpawnResult@@AEBUFSTSpawnParameters@@@Z
 # FString ASTSpawnerBase::QueueSpawnRequest(const FSTSpawnParameters&, float)  -- hooked (hidden return)

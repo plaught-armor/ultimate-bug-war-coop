@@ -13,9 +13,9 @@
 # Guid matching: each client's card043 row for the other client's pawn names its guid G (host slot 1 or 2); the
 # Warp and BugForm rows on that client must name the same G (or a card209 held row for G followed by its applied row).
 voidsoft
-void unless host dll d7711448006d4100
-void unless client dll d7711448006d4100
-void unless client2 dll d7711448006d4100
+void unless host dll e138228037a8dede
+void unless client dll e138228037a8dede
+void unless client2 dll e138228037a8dede
 # Card 320 hold (c469c shape): C2M1 starts with each player in the dropship (pawn=other), so the pawn waits come
 # after every player's continue.
 host wait state map=FED_C2M1 timeout=300 void

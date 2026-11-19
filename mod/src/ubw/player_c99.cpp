@@ -851,33 +851,52 @@ bool c99_score_line_ok() {
 }
 } // namespace
 
+// Card 491 b260: both AddFedScore hooks are always installed (score_c475.cpp, the resupply section); the card 099
+// and card 491 diag rows log under UBWCOOP_C99_LOG only.
 void detour_c99_score_text(void* subsystem, uint64_t tag, void* text, int32_t amount) {
-    if (c99_score_line_ok()) {
+    if (g_c99_log && c99_score_line_ok()) {
         log::line("card099: %s AddFedScore(tag, text, %d) %s, caller exe+0x%llX", side_text(), amount,
                   fname_text(&tag).text, exe_rva(_ReturnAddress()));
     }
     // b232: the resupply state before and after each ResupplyUpgraded (the step the client paid twice). b238 (card 491
     // next diag): before and after every award, so ResupplyLevel and the thresholds show around each one.
+    if (g_c491_inner_text) { // card 491 b262: AddFedScore(tag)'s own inner call, the award its detour handles
+        g_c491_inner_text = false;
+        g_orig_c99_score_text(subsystem, tag, text, amount);
+        return;
+    }
     char what[96];
+    c491_resupply_arm(subsystem);
+    if (c491_resupply_drop(subsystem, tag)) {
+        return;
+    }
     snprintf(what, sizeof(what), "before %s", fname_text(&tag).text);
     c491_pawn_rows(subsystem, what);
     g_orig_c99_score_text(subsystem, tag, text, amount);
     snprintf(what, sizeof(what), "after %s", fname_text(&tag).text);
     c491_pawn_rows(subsystem, what);
+    c491_resupply_paid(subsystem, tag);
 }
 
 void detour_c99_score(void* subsystem, uint64_t tag) {
-    if (c99_score_line_ok()) {
+    if (g_c99_log && c99_score_line_ok()) {
         log::line("card099: %s AddFedScore(tag) %s, caller exe+0x%llX, Blueprint %s", side_text(), fname_text(&tag).text,
                   exe_rva(_ReturnAddress()), g_c322_bp_caller != nullptr ? class_name(g_c322_bp_caller).text : "none");
     }
     // b232: AddFedScore(tag) gets the card 491 rows too (it also broadcasts OnFedScoreGained)
     char what[96];
+    c491_resupply_arm(subsystem);
+    if (c491_resupply_drop(subsystem, tag)) {
+        return;
+    }
     snprintf(what, sizeof(what), "before %s (tag only)", fname_text(&tag).text); // b238: every award
     c491_pawn_rows(subsystem, what);
-    g_orig_c99_score(subsystem, tag);
+    g_c491_inner_text = true; // its first AddFedScoreText is this award (b262); a Blueprint's award inside the
+    g_orig_c99_score(subsystem, tag); // broadcast is a new one and goes through the detours
+    g_c491_inner_text = false;
     snprintf(what, sizeof(what), "after %s (tag only)", fname_text(&tag).text);
     c491_pawn_rows(subsystem, what);
+    c491_resupply_paid(subsystem, tag);
 }
 
 } // namespace ubw::hooks

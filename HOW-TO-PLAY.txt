@@ -66,4 +66,6 @@ PROBLEMS
 "Could not find the game"    Do PART 1, Step 4.
 "Wrong game version"         You need the GOG version 1.2.0 files.
 Both players must use the same zip (the version is in build/VERSION.txt).
+Updates: at each start PLAY-COOP.sh checks GitHub for a newer release and asks before it
+updates. Without internet it starts as is. To skip the check: UBW_NO_UPDATE=1 ./PLAY-COOP.sh
 Not on the same home network? You need a VPN like Tailscale to connect.

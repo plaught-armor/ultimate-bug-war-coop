@@ -271,4 +271,56 @@ bool detour_c128_kick(void* session, void* pc, const void* reason) {
     return g_orig_c128_kick(session, pc, reason);
 }
 
+// Card 502 (3): AGameSession::MaxPlayers (globalconfig int32) caps logins: ApproveLogin refuses a join once
+// AtCapacity counts MaxPlayers players. The co-op session takes up to kC502MaxPlayers (host + 3 friends). Once per
+// listen world the host logs the value its GameSession holds and raises it to kC502MaxPlayers when below; a higher
+// value stays. Every field is resolved by name (UWorld::AuthorityGameMode, AGameModeBase::GameSession,
+// AGameSession::MaxPlayers), and the row names the class of each object read, so a wrong object shows in the row.
+namespace {
+constexpr int32_t kC502MaxPlayers = 4;
+uintptr_t g_c502_world = 0;
+} // namespace
+
+void c502_session_step(void* world) {
+    if (world == nullptr || reinterpret_cast<uintptr_t>(world) == g_c502_world) {
+        return;
+    }
+    const uint8_t* world_prop = nullptr;
+    const void* const mode = prop_object_field(world, "AuthorityGameMode", &world_prop);
+    const uint8_t* mode_prop = nullptr;
+    void* const session =
+        mode != nullptr ? const_cast<void*>(prop_object_field(mode, "GameSession", &mode_prop)) : nullptr;
+    const bool no_prop = world_prop == nullptr || (mode != nullptr && mode_prop == nullptr);
+    if (no_prop) {
+        g_c502_world = reinterpret_cast<uintptr_t>(world); // one row per world: the class has no such property
+        log::line("WARN card502: host t=%llu world %s (%s) mode %s (%s): no %s property; nothing written",
+                  static_cast<unsigned long long>(GetTickCount64()), object_name(world).text, class_name(world).text,
+                  mode != nullptr ? object_name(mode).text : "none", mode != nullptr ? class_name(mode).text : "none",
+                  world_prop == nullptr ? "AuthorityGameMode" : "GameSession");
+        return;
+    }
+    if (session == nullptr) {
+        return; // the game mode spawns its GameSession in InitGame; the next tick tries again
+    }
+    g_c502_world = reinterpret_cast<uintptr_t>(world);
+    const uint8_t* const f = prop_find_prop(read_ptr(session, kObjectClass), "MaxPlayers");
+    if (f == nullptr || read_i32(f, kPropertyElementSize) != static_cast<int32_t>(sizeof(int32_t))) {
+        log::line("WARN card502: host t=%llu mode %s (%s), session %s (%s) has no int32 MaxPlayers; nothing written",
+                  static_cast<unsigned long long>(GetTickCount64()), object_name(mode).text, class_name(mode).text,
+                  object_name(session).text, class_name(session).text);
+        return;
+    }
+    uint8_t* const field = static_cast<uint8_t*>(session) + read_i32(f, kPropertyOffset);
+    int32_t was = 0;
+    memcpy(&was, field, sizeof(was));
+    if (was < kC502MaxPlayers) {
+        memcpy(field, &kC502MaxPlayers, sizeof(kC502MaxPlayers));
+    }
+    int32_t now = 0;
+    memcpy(&now, field, sizeof(now));
+    log::line("card502: host t=%llu mode %s (%s), session %s (%s): MaxPlayers %d -> %d (want >= %d)",
+              static_cast<unsigned long long>(GetTickCount64()), object_name(mode).text, class_name(mode).text,
+              object_name(session).text, class_name(session).text, was, now, kC502MaxPlayers);
+}
+
 } // namespace ubw::hooks
