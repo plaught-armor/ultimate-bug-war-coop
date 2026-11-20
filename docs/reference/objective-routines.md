@@ -262,6 +262,17 @@ Every routine change, scenario edit and run review checks this list first. A new
     posted `goto actor X 120 timeout=30`, five words, which the DLL parses as a coordinate goto and skips ("bad
     coordinate or radius"). The pickup still landed from the go stand. A routine that walks calls run_step with the
     goto, then `wait goto timeout=S`.
+36. **The now row's actor[0] first word is a name stem, not always a class** (soak3m1b366a, b366, senior 2026-11-20).
+    FED_C3M1 Beach_SO1_A-C print `actor[0] BP_Switch_C (BP_PanelSwitch_WithoutScreen_C)`: the instances are named
+    BP_Switch_C_4/_0/_6 but their class is the panel switch. `look actor` matches an exact name or an exact class, so
+    `look actor BP_Switch_C` found nothing on the client (try 1-3 "no such actor") and the soak did 0 of 18 rows.
+    routine_use now looks at the step's own instance from its card070 row (step_instance), as the satchel take does.
+    A routine that looks at an actor by the now-row word must use the instance or the parenthesized class.
+37. **Every routine with a go gate needs the same settle hold** (soak3m1b366b, b366, senior 2026-11-20). With lesson
+    36 fixed, Beach_SO1_A completed, but the Beach_SO1_B stand settles 59 uu after the warp on every try. routine_use
+    failed the go gate on that drift (3 of 3 tries, 48 rounds in 40 s), while routine_presence already held drift up
+    to STAY_LEFT_UU. routine_use now holds drift up to USE_DRIFT_UU (200 uu) and lets the focus gate decide. A new
+    routine that calls step_go must apply a drift hold too.
 
 ## Proof status
 

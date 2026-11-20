@@ -987,6 +987,7 @@ STAY_EVERY_S = 5      # stay period: one `clear 4000 kill`, then up to 5 s on th
 STAY_TRY_S = STAY_EVERY_S
 STAY_LEFT_UU = 1500   # farther than this from where the stay began = left the stand (c504b4 off-navmesh drift 461 uu)
 GO_DRIFT_RX = re.compile(r"moved (\d+) uu after the warp")
+USE_DRIFT_UU = 200     # a use stand may settle this far after the warp; the focus gate still decides
 
 
 def pawn_xyz(role):
@@ -1132,9 +1133,20 @@ def routine_use(roles, step, actor, prefix):
     looks at the switch, focus gate, E, then the Complete row."""
     host, why = roles["host"], "no try"
     presser = roles.get("client", host)
+    # soak3m1b366a: FED_C3M1 Beach_SO1_A-C actor[0] is `BP_Switch_C (BP_PanelSwitch_WithoutScreen_C)`, a name stem,
+    # not a class. `look actor` matches an exact name or an exact class, so it found nothing ("no such actor") and
+    # 0 of 18 rows were done. Look at the step's own instance (card070 row, BP_Switch_C_4) when there is one.
+    actor = step_instance(host, step) or actor
     for n in range(1, ROUTINE_TRIES + 1):
-        why = step_go(host) or \
-            focus_gate(presser, actor, command_line("shot", [shot_tag(step, n)], prefix)[0])
+        why = step_go(host)
+        drift = GO_DRIFT_RX.search(why or "")
+        if drift and int(drift.group(1)) <= USE_DRIFT_UU:
+            # soak3m1b366b Beach_SO1_B: the switch stand settles 59 uu after the warp on every try, so the go gate
+            # failed 3 of 3 tries in each of 48 rounds. The focus gate below is the real check that the presser
+            # can use the switch, so a small settle is held as in routine_presence.
+            note(f"objective go: use try {n}: go drift held ({why})")
+            why = None
+        why = why or focus_gate(presser, actor, command_line("shot", [shot_tag(step, n)], prefix)[0])
         if why:
             note(f"objective go: use gate failed: try {n} {why}")
             continue
