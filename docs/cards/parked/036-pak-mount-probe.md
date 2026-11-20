@@ -2,7 +2,7 @@
 
 Status: draft (senior, 2026-11-03). Send only after the user says go and the junior has been cleared.
 
-Read `docs/STATE.md` first ("Mod code rules"), then `docs/reference/iostore-extract.md` and memory note `game-files-read-only`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules"), then `docs/reference/iostore-extract.md` and memory note `game-files-read-only`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

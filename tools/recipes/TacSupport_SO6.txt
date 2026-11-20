@@ -1,0 +1,10 @@
+# TacSupport_SO6: c335-range-load.txt lines 265-273, written by tools/gen_recipes.py. Do not edit.
+host clear 1500 kill
+host wait log "card070: host t=\d+ TacSupport_SO6 actors 1: TacSupport_SO6 (\S+)" timeout=10
+client look actor {g1} 0
+client shot c310-tac-so6
+client key Five
+client key LeftMouseButton
+host objective wait TacSupport_SO6 30
+client wait log "copy of host [0-9]+: \S*BP_SupportFlare_Tutorial\.BP_SupportFlare_Tutorial_C" timeout=20
+client wait log "copy of host [0-9]+: \S*BombingRun\S*Projectile" timeout=20

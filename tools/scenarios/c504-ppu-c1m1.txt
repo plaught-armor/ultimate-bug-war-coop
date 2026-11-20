@@ -1,0 +1,39 @@
+# Card 504: presence, use and pickup routine proof on FED_C1M1, one run. Each routine step is one
+# `host objective do <id>` (tools/drive.py: routine_presence, routine_use, routine_pickup; at most 3 tries each).
+# Assault_SO0 (the marker parent, presence _2) and TacSupport_SO0 (presence _1) are bootstraps: their Complete rows
+# come only with the last child (card 240 rows 5 and 13), so they stay a plain go, then the child's Add row.
+# Assault_SO1 completes inside _2 from the SO0 go (b14 soak), so the presence proofs are SO2 and SO3.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c504-ppu-c1m1.txt FAST=1
+#      GOD=1 HOST_EXTRA_ENV="UBWCOOP_AUTODROPSHIP=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c504p1 900
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
+failsoft
+host wait state map=FED_C1M1 pawn=host-own timeout=300 void
+client wait state pawn=client-own timeout=180
+voidsoft
+host ui continue
+client ui continue
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client wait log "playlog: client t=\d+ clock 1:" timeout=10
+client shot c504-client-ingame
+host shot c504-host-ingame
+# ASSAULT: SO0 bootstrap (presence _2), SO1 completes inside it.
+host objective expect Assault_SO0
+host clear 1500 kill
+host objective go all
+host wait log "card049: host sent AddSubObjective\(Assault_O1, Assault_SO1\)" timeout=60
+host objective wait Assault_SO1 60
+# PRESENCE routine.
+host objective do Assault_SO2
+host objective do Assault_SO3
+# USE routine (BP_PanelSwitch_WithoutScreen_C_0; the client presses).
+host objective do Assault_SO4
+host wait log "card049: host sent CompleteObjective\(Assault_O1\)" timeout=30
+# TACSUPPORT: SO0 bootstrap (presence _1), then the PICKUP routine (BP_WeaponPickup_MoritaMk1_C_1).
+host objective expect TacSupport_SO0
+host clear 1500 kill
+host objective go all
+host wait log "card049: host sent SetObjectiveVisibility\(TacSupport_SO2\)" timeout=60
+host objective do TacSupport_SO2
+host shot c504-end

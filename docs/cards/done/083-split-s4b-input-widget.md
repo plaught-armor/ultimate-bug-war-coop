@@ -4,7 +4,7 @@ Status: sent 2026-11-05 15:24 to junior ultimate-bug-war-coop-bb, after card 082
 
 This is the second half of S4 in `docs/split-map.md` ("Move order"). Card 082 moved `ue/actor` and `ue/gas`. Use its names and follow its rules: a typedef goes with its pointer, `extern` pointers stay resolved by today's `kCalls`, each offset is checked against an engine type, and a function whose log text names a card stays.
 
-Read the card 082 Report and Senior review, `docs/split-map.md` (the "Proposed files" rows `ue/input.cpp` and `ue/widget.cpp`, and every "Section map" row that cuts names to them), and `mod/src/ue/actor.h`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 082 Report and Senior review, `docs/split-map.md` (the "Proposed files" rows `ue/input.cpp` and `ue/widget.cpp`, and every "Section map" row that cuts names to them), and `mod/src/ue/actor.h`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

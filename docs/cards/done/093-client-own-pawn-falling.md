@@ -8,7 +8,7 @@ Read:
 - card 014 (the own-pawn collision watch, `fix_own_pawn`, and the `chain:` lines in `ubw/input_diag.cpp`);
 - card 013's PhysWalking table (`FindFloor`, `StartFalling`, `CheckFall`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

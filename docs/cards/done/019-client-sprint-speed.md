@@ -1,6 +1,6 @@
 # Card 019: Client sprint raises speed
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 019. Then read card 018's report and its senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card018{a,b}-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 019. Then read card 018's report and its senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card018{a,b}-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

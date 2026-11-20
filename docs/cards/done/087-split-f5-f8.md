@@ -8,7 +8,7 @@ Read:
 - the card 085 Review;
 - `docs/split-map.md` rows F5-F8.
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## The moves
 

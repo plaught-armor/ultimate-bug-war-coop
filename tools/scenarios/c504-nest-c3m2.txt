@@ -1,0 +1,48 @@
+# Card 504: nest routine proof on FED_C3M2 nests Monorail_SO2_A-D. Each nest is one `host objective do <id>`
+# (tools/drive.py routine_nest: go all, clear 3000 kill, look actor <nest> 0 hole with the hole gate, grenade fill 2,
+# key G, objective wait; at most 3 tries). Monorail_SO1 (kind other, presence by go) comes first: its routine is not
+# built yet, so it stays a plain go and wait.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c504-nest-c3m2.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1
+#      UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c504n2 900
+# Senior 2026-11-13 (card 264): fail fast on a stale deploy or a wrong map.
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
+failsoft
+# b271 (c243b271a/b): FED_C3M2 starts in the dropship, so the host pawn is "other" until the card 320 hold ends,
+# and the hold waits for the client's continue: the map waits come first, the pawn waits after both continues.
+host wait state map=FED_C3M2 timeout=240 void
+client wait state map=FED_C3M2 timeout=180 void
+# Senior r9 (discovery mode): after the DLL and map checks a void is logged with its fail shots and the run goes
+# on, so one launch shows every fault of the route. A run with any void is not the soak.
+voidsoft
+host ui continue
+# Senior 2026-11-13: in every 241-243 run the client stayed on the operation card (WB_Loading_Screen_Final_C, "PRESS
+# ANY KEY TO CONTINUE"), so its key input went to the card. Close it the way c135-r2 does and prove it, fail fast.
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+client shot c504-client-ingame
+void unless client log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" before client log "cmd: \d+ shot \S*c504-client-ingame"
+host shot c504-host-ingame
+host wait log "card049: host t=\d+ Add\w*Objectives?\((?:\w+, )?Monorail_SO2(?:, \w+)?\)" timeout=120
+# Fail fast: no start setup Add row, the run ends here.
+host shot c504-start-add-check
+void unless host log "card049: host t=\d+ Add\w*Objectives?\((?:\w+, )?Monorail_SO2(?:, \w+)?\)" before host log "cmd: \d+ shot \S*c504-start-add-check"
+# MONORAIL (table rows 1-5).
+# MONORAIL_SO1: presence, completed by the go itself (c243b283a).
+host objective expect Monorail_SO1
+host objective go all
+host objective wait Monorail_SO1 20
+# NESTS: one routine each.
+host objective do Monorail_SO2_A
+host objective do Monorail_SO2_B
+host objective do Monorail_SO2_C
+host objective do Monorail_SO2_D
+host objective wait Monorail_SO2 20
+host shot c504-end

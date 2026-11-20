@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 09:52 to junior ultimate-bug-war-coop-bb, after card 066 was accepted. Drafted 2026-11-05 (senior). FED_C1M1 has no player mech, so this matters from FED_C2M1 on.
 
-Read `docs/STATE.md` ("Duplicate mechs", "Client cannot enter a mech"), the card 032 Report (all of it, including the note on the mission-brief pause), and the card 054 Report and relay table (`kC54Relays`, hooks.cpp ~21395). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Duplicate mechs", "Client cannot enter a mech"), the card 032 Report (all of it, including the note on the mission-brief pause), and the card 054 Report and relay table (`kC54Relays`, hooks.cpp ~21395). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

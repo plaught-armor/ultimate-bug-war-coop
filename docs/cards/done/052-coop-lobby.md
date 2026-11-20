@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04. The user made multiplayer setup UX a priority.
 
-Read `docs/STATE.md`, the card 031 Report and Senior review (the native UMG overlay), the card 045 Report (Browse URL `listen` in place; the client's reconnect uses `g_travel.url`), and `docs/PLAYTEST.md`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md`, the card 031 Report and Senior review (the native UMG overlay), the card 045 Report (Browse URL `listen` in place; the client's reconnect uses `g_travel.url`), and `docs/PLAYTEST.md`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

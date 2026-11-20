@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, and milestone 5 ("Overlay groundwork"). Then read `docs/design/coop-channel-lobby-downed.md` section 2. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, and milestone 5 ("Overlay groundwork"). Then read `docs/design/coop-channel-lobby-downed.md` section 2. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

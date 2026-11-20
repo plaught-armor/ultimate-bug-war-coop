@@ -8,7 +8,7 @@ Read:
   the "players 1 -> 2" refresh, the open point about 3 of 23 waves);
 - `docs/design/coop-channel-lobby-downed.md` item 4 (ready-up on the mission map, under the pause).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `700ec68235953110` (card 111).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `700ec68235953110` (card 111).
 
 ## Why
 

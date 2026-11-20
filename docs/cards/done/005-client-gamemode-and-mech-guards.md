@@ -1,6 +1,6 @@
 # Card 005: Client GameMode-null crash in SetupInputComponent, mech input guards, and an authority-getter sweep
 
-Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 004" entry. Then read the report in `docs/cards/004-setplayer-guard-and-sweep.md`, which has the SetPlayer map and the `find_lp_derefs.py` sweep output. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 004" entry. Then read the report in `docs/cards/004-setplayer-guard-and-sweep.md`, which has the SetPlayer map and the `find_lp_derefs.py` sweep output. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 After card 004, **the host survives the client joining**. The **client** now crashes on its own join path. The crash happens on the client's main thread (thread 884), with `EXCEPTION_ACCESS_VIOLATION` reading `0x10`:

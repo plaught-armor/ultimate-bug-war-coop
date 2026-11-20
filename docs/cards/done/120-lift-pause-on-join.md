@@ -8,7 +8,7 @@ Read:
   pausing screens");
 - `c50_pong` in `mod/src/ubw/weapons.cpp` (first Pong per map: `ponged`, replays).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `4b162843fc154d5f` (card 119).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `4b162843fc154d5f` (card 119).
 
 ## Why
 

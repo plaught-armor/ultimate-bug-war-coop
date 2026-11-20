@@ -9,7 +9,7 @@ Read:
 - Trust model (user): play is between friends only, so the netcode uses fast paths with basic crash-safety checks and
   no anti-cheat validation.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `9d6329427cc72647` (card 104).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `9d6329427cc72647` (card 104).
 
 ## Why
 

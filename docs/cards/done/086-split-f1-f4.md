@@ -8,7 +8,7 @@ Read:
 - `docs/split-map.md`, the `ubw/` file table and rows F1-F4;
 - the `hooks.cpp` prologue (lines 1-40) and epilogue (`} // namespace`, `install()`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

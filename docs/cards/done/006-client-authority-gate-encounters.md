@@ -1,6 +1,6 @@
 # Card 006: Keep server-only encounter and spawn logic off the client
 
-Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 005" entry. Then read the report in `docs/cards/005-client-gamemode-and-mech-guards.md`, especially its section 7, which predicted this crash. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 005" entry. Then read the report in `docs/cards/005-client-gamemode-and-mech-guards.md`, especially its section 7, which predicted this crash. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 Card 005 works: the client's deferred input path ran and added 4 contexts. The client then crashed on its main thread (thread 956), reading `0x28` at `UNavigationSystemV1::ProjectPointToNavigation+0x1C` with `this == null`.

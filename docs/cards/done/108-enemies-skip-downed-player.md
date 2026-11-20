@@ -7,7 +7,7 @@ Read:
 - card 103 Report (`c103_enemy_pc`, `c103_player_slot`, the primary-target ring);
 - card 106 Report, the Downed row (bugs hit the downed client, 25 damage x3, bleedout -2.5 s each).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `bbee121209725fa4` (card 107, play build).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `bbee121209725fa4` (card 107, play build).
 
 ## Why
 

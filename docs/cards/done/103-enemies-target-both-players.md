@@ -8,7 +8,7 @@ Read:
 - card 102, Out of scope (the enemy functions this card owns);
 - `docs/STATE.md`, the sync rule (enemies are the host's; card 098 enemy table).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `00a35c0c5d36d47d` (card 105).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `00a35c0c5d36d47d` (card 105).
 
 ## Why
 

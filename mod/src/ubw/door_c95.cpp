@@ -306,6 +306,25 @@ C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool prio
     return f;
 }
 
+// Card 519: the blob frame to the same set as c95_send_all, through each PC's pace queue.
+C95Fanout c95_send_blob_all(const void* world, ChanOp op, const uint8_t* bytes, int32_t n) {
+    static wchar_t wire[kChanBlobFrame]; // game thread only
+    C95Fanout f{};
+    const WireString w = chan_blob_frame(static_cast<wchar_t>(op), bytes, n, wire);
+    for (int s = 0; world != nullptr && w.num > 0 && s < kC17Slots; ++s) {
+        void* const pc = g_get_player_controller(world, s);
+        const C50Copy* const c = pc != nullptr && sprint_side(pc) == kSideServerCopy ? c50_copy(object_index(pc), false)
+                                                                                     : nullptr;
+        if (c != nullptr && c->ponged) {
+            ++f.to;
+            const bool sent = chan_send_client(pc, w);
+            f.sent += sent ? 1 : 0;
+            g_c95.sent += sent ? 1u : 0u;
+        }
+    }
+    return f;
+}
+
 // Host: the remote PCs that have sent their first Pong this map (c95_send_all's set).
 int32_t c95_ponged_count(const void* world) {
     int32_t n = 0;
@@ -479,7 +498,7 @@ void c95_receive(void* pc, const WireString* s) {
     }
     const StaticClassFn* const cls[] = {&g_c95_door_class};
     void* const door = c50_find_placed(g_actor_get_world(pc), cls, 1, name);
-    if (door == nullptr && c161_receive(name, op, text)) { // card 161: a BP_Door_Base door of that name took it
+    if (door == nullptr && c161_receive(g_actor_get_world(pc), name, op, text)) { // card 161: a BP_Door_Base door of that name took it
         ++g_c95.applied;
         c132_ledger_result(C132Result::Applied, nullptr);
         return;

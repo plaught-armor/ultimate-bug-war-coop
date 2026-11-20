@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, rows 006 and 020 to 022, and the known issue "Enemies are not replicated (milestone 3)". That issue carries every static lead this card relies on. Repo root: `/path/to/ultimate-bug-war-coop`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, rows 006 and 020 to 022, and the known issue "Enemies are not replicated (milestone 3)". That issue carries every static lead this card relies on. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

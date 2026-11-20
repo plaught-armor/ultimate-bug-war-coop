@@ -15,8 +15,8 @@
 #      UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
 #      tools/run_pair.sh c247<build> 3600
 voidsoft
-void unless host dll e138228037a8dede
-void unless client dll e138228037a8dede
+void unless host dll 729695d7a1d46794
+void unless client dll 729695d7a1d46794
 host wait state map=FED_C5M2 timeout=240 void
 client wait state map=FED_C5M2 pawn=client-own timeout=180
 try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
@@ -105,7 +105,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -177,7 +177,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -249,7 +249,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -321,7 +321,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -393,7 +393,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -465,7 +465,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -537,7 +537,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -609,7 +609,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -681,7 +681,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -753,7 +753,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -842,7 +842,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -914,7 +914,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -986,7 +986,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1058,7 +1058,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1130,7 +1130,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1202,7 +1202,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1274,7 +1274,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1346,7 +1346,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1418,7 +1418,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1490,7 +1490,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1579,7 +1579,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1651,7 +1651,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1723,7 +1723,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1795,7 +1795,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1867,7 +1867,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -1939,7 +1939,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2011,7 +2011,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2083,7 +2083,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2155,7 +2155,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2227,7 +2227,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2316,7 +2316,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2388,7 +2388,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2460,7 +2460,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2532,7 +2532,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2604,7 +2604,7 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2676,7 +2676,456 @@ when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| ->
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
-when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === block 36
+# --- block 36: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-36-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-36-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-36-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-36-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-36-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-36-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 36: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === block 37
+# --- block 37: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-37-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-37-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-37-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-37-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-37-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-37-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 37: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === block 38
+# --- block 38: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-38-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-38-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-38-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-38-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-38-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-38-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 38: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === block 39
+# --- block 39: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-39-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-39-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-39-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-39-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-39-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-39-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 39: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === card 485 shot: after-block-39
+# --- card 485 shot: after-block-39
+try client wait log "card485: client guid (0x\w+) first rendered .* body 0 at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=1
+try host clear 4000 kill
+try host warp client point {g2+250} {g3} {g4+150}
+try host warp actor point {g2} {g3+250} {g4+150}
+try client look point {g2} {g3} {g4}
+try host look point {g2} {g3} {g4}
+try client shot c485-after-block-39
+try host shot c485-after-block-39
+# === digest round: after block 39
+# --- digest round: after block 39
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === block 40
+# --- block 40: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-40-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-40-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-40-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-40-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-40-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-40-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 40: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === block 41
+# --- block 41: the live current step
+host mark
+try host objective now
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" stuck host log "WARN cmd: \d+ objective wait {g1} (15|5) -> failed" count=10
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective expect {g1}
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 1500 kill
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective go all
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" client shot c247-41-go
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host shot c247-41-go
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " try host wait log "c284: use stand (\w+)[: ]" since-mark timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " retry 1 try client look actor {g1} 0 ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds sweep ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor {g1} 0 bounds focus={g1}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client shot c247-41-use
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind use " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" client shot c247-41-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host shot c247-41-nest
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host clear 1500 kill
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when client last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try client key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" retry 1 try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole ;; when host last "cmd: \d+ aim: (no )?hit " "hit (?!BP_DestructibleSpawner_Bugnest_HumanGameplay_C)|no hit|, (1[6-9]\d\d|[2-9]\d{3}|\d{5,}) uu" host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 300 ;; try host look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C 0 hole within=1600 hit=BP_DestructibleSpawner_Bugnest_HumanGameplay_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" host grenade fill 5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host key G 200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind nest " when host last "(card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C|cmd: \d+ objective go)" "objective go" try host wait log "card098: host t=\d+ BP_DestructibleSpawner_Bugnest_HumanGameplay_C" new timeout=5
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client BP_SatchelItemPickup_C 100 live
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host wait log "cmd: \d+ objective now:   stand \((-?\d+), (-?\d+), (-?\d+)\) from actor " since-mark timeout=2
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " try host warp client point {g1} {g2} {g3}
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host warp client BP_SatchelPlacementSite_C 200 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " retry 1 try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 front ;; when client last "cmd: \d+ aim: focus" "focus none" try client look actor BP_SatchelPlacementSite_C 0 ;; when client last "cmd: \d+ aim: focus" "focus none" host warp client BP_SatchelPlacementSite_C 200 behind ;; try client look actor BP_SatchelPlacementSite_C 0 focus=BP_SatchelPlacementSite_C
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client shot c247-41-satchel
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 front
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host warp client BP_SatchelPlacementSite_C 150 behind
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" try client look actor BP_SatchelPlacementSite_C 0
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" host clear 1500 kill max-left=99
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(card050: client t=\d+ Use press: interactor target |card456: client t=\d+ hold (released|interrupted) )" "(target (?!BP_SatchelPlacementSite_C)|completed 0 )" client key E 3200
+when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind other " when client last "(UBWCoop attach: proxy module|cmd: \d+ key E 3201 )" "UBWCoop attach" when client last "(card133: client t=\d+ own hold completed on |card050: client t=\d+ Use press: interactor target )" "own hold completed" client key E 3201
+# --- block 41: wait for the step
+try host wait log "cmd: \d+ objective now: \d+ row\(s\) under \S+, current (\w+);" since-mark timeout=2
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "host kind marker " try host objective wait {g1} 5
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective go(: host kind \w+| all -> failed)" "^(?!.*host kind marker )" try host objective wait {g1} 15
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host clear 4000 kill max-left=99
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" try host objective wait {g1} 3
+when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "failed" try host objective next
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
@@ -2701,6 +3150,48 @@ host objectives
 client objectives
 host shot c247-end
 client shot c247-end
-try host wait log "card049: host t=\d+ (sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=60
+try host wait log "collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship_C, LocalRole 3\) player-inside flag 0 -> 0" timeout=180
+try host warp client BP_PlayerTransportDropship_C_2 400
+try client look actor BP_PlayerTransportDropship_C_2 within=800
+client shot c247-board
+client mark
+client key E
+try client wait log "collision: client EnterDropship" since-mark timeout=10
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host warp actor BP_PlayerTransportDropship_C_2 400
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host look actor BP_PlayerTransportDropship_C_2 within=800
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 host key E
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host wait log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=10
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host warp actor BP_PlayerTransportDropship_C_2 400
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host look actor BP_PlayerTransportDropship_C_2 within=800
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 host key E
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host wait log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=10
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host warp actor BP_PlayerTransportDropship_C_2 400
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host look actor BP_PlayerTransportDropship_C_2 within=800
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 host key E
+unless host log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" count=1 try host wait log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=10
+host mark
+client mark
+try host wait log "card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=30
+try host wait log "card260: host EndLevel, sent to " timeout=60
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." unless host log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next
+when host last "card260: host EndLevel, sent to " "." try host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=3
+when host last "card260: host EndLevel, sent to " "." host wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)" timeout=120
+when host last "card260: host EndLevel, sent to " "." client wait log "card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)" timeout=60
+when host last "card260: host EndLevel, sent to " "." try host wait log "card330: host map FED_C5M2 step " timeout=30
+when host last "card260: host EndLevel, sent to " "." try client wait log "card330: client map FED_C5M2 step " timeout=30
 client quit
 host quit

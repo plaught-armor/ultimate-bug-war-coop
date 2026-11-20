@@ -1,0 +1,5 @@
+# ShootingRange_SO2: c335-range-load.txt lines 291-294, written by tools/gen_recipes.py. Do not edit.
+host clear 1500 kill
+# b17 item 2: the host stays out of the lane; only the client takes the stand point.
+host objective go client
+host objective wait ShootingRange_SO2 60

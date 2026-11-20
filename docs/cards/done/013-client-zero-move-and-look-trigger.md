@@ -1,6 +1,6 @@
 # Card 013: The client's local move has zero displacement; IA_Look never triggers on the client
 
-Read `docs/STATE.md` first: the "Mod code rules" section and rows 010 to 013. Then read card 012 in full, including the senior review and its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card012-{host,client}.log`.
+Read `docs/STATE.md` first: the "Mod code rules" section and rows 010 to 013. Then read card 012 in full, including the senior review and its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card012-{host,client}.log`.
 
 ## Why
 Card 012's run narrowed both client faults to one function each.

@@ -2,7 +2,7 @@
 
 Status: done 2026-11-04 (audit; fixes carded separately). Picked by the user. Step 0 is a small card 046 follow-up the user decided on (the kill-floor hit ignores armour).
 
-Read `docs/STATE.md` first (known issue "Checkpoint state not synced to the client"), then card 045 (Report and Senior review) and card 021 (weapon grants). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first (known issue "Checkpoint state not synced to the client"), then card 045 (Report and Senior review) and card 021 (weapon grants). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

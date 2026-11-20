@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 14:07 to junior ultimate-bug-war-coop-bb, after card 079 was accepted. Drafted 2026-11-05 (senior). This is S3 in `docs/split-map.md` ("Move order").
 
-Read `docs/split-map.md` ("Proposed files" row `ue/reflect.cpp`, every "Section map" row that cuts names to `ue/reflect.cpp`, "Engine typedefs and constants left in a block", "Senior correction", "Renames", "CMake"), the card 077 and 078 Reports and Senior reviews, and `mod/src/ue/core.h`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/split-map.md` ("Proposed files" row `ue/reflect.cpp`, every "Section map" row that cuts names to `ue/reflect.cpp`, "Engine typedefs and constants left in a block", "Senior correction", "Renames", "CMake"), the card 077 and 078 Reports and Senior reviews, and `mod/src/ue/core.h`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

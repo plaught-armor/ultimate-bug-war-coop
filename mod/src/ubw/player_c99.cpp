@@ -640,6 +640,7 @@ void c160_host_ads_bits(const void* pc, uint32_t arg) {
 
 void c99_arm_map() {
     c103_arm_map();
+    c532_arm_map(); // card 532: tables, pending rows and world reset per map
     log::line("card160: map: host skipped server copy effects: %u 2D sounds, %u material parameters, %u widgets; "
               "muted %u 2D component sounds (%u muted auto-destroy components still live)",
               g_c160.count[kC160Sound], g_c160.count[kC160Mpc], g_c160.count[kC160Widget], g_c160.count[kC160Mute],

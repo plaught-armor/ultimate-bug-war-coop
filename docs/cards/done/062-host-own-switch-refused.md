@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 (senior). The playtest is postponed, so the code freeze is lifted. The play build `a4d3f58896432b28` stays saved, read-only, at `build/dwmapi-play-a4d3f58896432b28.dll`.
 
-Read the card 060 Report and Senior review (including its correction), and the card 057 Report. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 060 Report and Senior review (including its correction), and the card 057 Report. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

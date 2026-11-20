@@ -309,6 +309,7 @@ void detour_npc_death_event(void* npc, const void* damage_event) {
     c37_note_npc("HandleDeathEvent", npc, 0.0f, 0.0f, false);
     c38_note_npc(true, npc);
     g_orig_npc_death_event(npc, damage_event);
+    c506_dead_note(npc, "death event"); // card 506
 }
 
 void detour_npc_start_dying(void* npc) {
@@ -318,9 +319,11 @@ void detour_npc_start_dying(void* npc) {
     c37_note_npc("StartDying", npc, 0.0f, 0.0f, false);
     c38_note_npc(false, npc);
     g_orig_npc_start_dying(npc);
+    c506_dead_note(npc, "start dying"); // card 506
 }
 
-// Log-only, target only: the health-changed handler's two float arguments (the revive path).
+// The health-changed handler's two float arguments, log-only and target only (the revive path). Card 506: ungated, the
+// host's health edge for a 3D NPC that dies with no death animation (c506_dead_note).
 void detour_npc_health_changed(void* npc, float a, float b) {
     if (g_c25_kill && c25_is_target(npc) &&
         note_event_cap(g_c25.target_lines, kC25TargetLines, "card025 NPC death path")) {
@@ -328,6 +331,7 @@ void detour_npc_health_changed(void* npc, float a, float b) {
     }
     c37_note_npc("HandleHealthValueChangedEvent", npc, a, b, true);
     g_orig_npc_health_changed(npc, a, b);
+    c506_dead_note(npc, "health edge"); // card 506
 }
 
 void detour_npc_revived(void* npc) {
@@ -1159,6 +1163,13 @@ void c293_step(void* engine) {
     for (int32_t i = 0; i < count; ++i) {
         void* const npc = read_ptr(data + static_cast<size_t>(i) * kMinimapMarkerSize, kMinimapMarkerSource);
         if (npc == nullptr || !is_a(npc, g_npc_class())) {
+            continue;
+        }
+        // Between the 1 Hz samples only listed suspects are sampled, so their leave keeps tick resolution; every
+        // other marker waits for the next 1 Hz sample (c263L, 150 bugs: one trace per marker per tick was 225 us
+        // per host tick).
+        const C293Dwell* const known = second ? nullptr : c293_dwell_find(npc, false);
+        if (!second && (known == nullptr || !known->listed)) {
             continue;
         }
         float health = 0.0f;

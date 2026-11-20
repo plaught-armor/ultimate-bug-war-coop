@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 16:25 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
 
-Read the card 084 Review, the S7 row of `docs/split-map.md`, and `hooks.cpp` from the chan header comment (~6200, "Wire string") to `detour_logout` (~6830). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 084 Review, the S7 row of `docs/split-map.md`, and `hooks.cpp` from the chan header comment (~6200, "Wire string") to `detour_logout` (~6830). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

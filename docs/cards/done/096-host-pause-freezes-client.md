@@ -8,7 +8,7 @@ Read:
 - `mod/src/ubw/hooks_internal.h` around `kPauseRequesters` (card 015 notes on `USTGameInstance` pause requests and
   `UpdatePause`), and `mod/src/ubw/dropship.cpp` `detour_request_pause` / `detour_request_unpause`.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `96c41a875d2030cb` (card 095).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `96c41a875d2030cb` (card 095).
 
 ## Why
 

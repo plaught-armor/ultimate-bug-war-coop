@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 03:44 to junior ultimate-bug-war-coop-bb, after card 071 was accepted.
 
-Read `docs/STATE.md` ("Ammo is not synced") and the card 069 and 071 Reports. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Ammo is not synced") and the card 069 and 071 Reports. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

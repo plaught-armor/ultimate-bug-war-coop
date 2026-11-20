@@ -2,7 +2,7 @@
 
 Status: done 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 028. Then read card 028's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 028. Then read card 028's report and senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

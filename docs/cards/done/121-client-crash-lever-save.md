@@ -8,7 +8,7 @@ Read:
 - card 048 Report (client checkpoint save and load, `USTSaveComponent`);
 - card 100 Report (client skips local `CompleteObjective`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `4b162843fc154d5f` (card 119). Do this after
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `4b162843fc154d5f` (card 119). Do this after
 card 120; build on its DLL if card 120 is accepted first.
 
 ## Why

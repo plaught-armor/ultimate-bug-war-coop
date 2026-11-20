@@ -1,6 +1,6 @@
 # Card 008: Client cannot move: find out why, log it, then fix it
 
-Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 006" entry. Then read the reports in cards 005 (client input contexts) and 007. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 006" entry. Then read the reports in cards 005 (client input contexts) and 007. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 With cards 001 to 007 in place, both instances stay up with the client in the map. What the user sees (screenshot, 2026-11-02):

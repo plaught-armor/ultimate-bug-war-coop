@@ -9,7 +9,7 @@ Read:
 - card 111 Report (what the wave budget covers: pre-made procedural lists; not explicit lists at data +0x70,
   bosses or spawners outside encounters).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114; card 115 built no play change).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114; card 115 built no play change).
 
 ## Why
 

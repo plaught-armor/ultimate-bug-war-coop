@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 (senior, revised: audit step removed, widget path from Addendum 2, FName hash and TMap layout in Addendum 3). Not a playtest blocker.
 
-Read `docs/STATE.md` and the card 049 Report and Senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` and the card 049 Report and Senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

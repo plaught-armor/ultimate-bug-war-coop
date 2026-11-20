@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 029. Then read card 029's report and senior review (section 4, mechs), and `docs/design/coop-channel-lobby-downed.md` section 4. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 029. Then read card 029's report and senior review (section 4, mechs), and `docs/design/coop-channel-lobby-downed.md` section 4. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

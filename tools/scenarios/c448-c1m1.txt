@@ -10,8 +10,8 @@
 #      tools/run_pair.sh c448b186a 720
 # Expected wall: about 7 min.
 voidsoft
-void unless host dll e138228037a8dede
-void unless client dll e138228037a8dede
+void unless host dll d05e6ac4a87eaec9
+void unless client dll d05e6ac4a87eaec9
 host wait state map=FED_C1M1 pawn=host-own timeout=240 void
 client wait state map=FED_C1M1 pawn=client-own timeout=180
 host ui continue
@@ -242,4 +242,6 @@ host mark
 client mark
 client disconnect
 try host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Downed\): kept Health -1\.0" since-mark timeout=30
+# Card 509: two players, so no other remote PC gets the leaver's Up (a plain line, not the b282 WARN guid 0x0).
+try host wait log "card508: host t=\d+ leaver pawn id \d+ \(slot \d\) was Downed: no other remote PC, no Up sent" since-mark timeout=10
 try client wait log "reconnected \(" since-mark timeout=120

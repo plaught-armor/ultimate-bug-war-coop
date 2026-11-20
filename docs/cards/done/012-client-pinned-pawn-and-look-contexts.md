@@ -1,6 +1,6 @@
 # Card 012: The client pawn is pinned between corrections; prove where client mouse look stops
 
-Read `docs/STATE.md` first: the "Mod code rules" section and rows 008 to 012. Then read card 011 in full, including the senior review and its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card011-{host,client}.log`.
+Read `docs/STATE.md` first: the "Mod code rules" section and rows 008 to 012. Then read card 011 in full, including the senior review and its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card011-{host,client}.log`.
 
 ## Why
 Card 011's run disproved every earlier hypothesis.

@@ -2,7 +2,7 @@
 
 Status: draft (senior, 2026-11-03). Send only after the user says go and the junior has been cleared.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 028, 033 and 034. Then read card 034's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 028, 033 and 034. Then read card 034's report and senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

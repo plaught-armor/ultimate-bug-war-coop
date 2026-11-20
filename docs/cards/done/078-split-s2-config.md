@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 13:21 to junior ultimate-bug-war-coop-bb, after card 077 was accepted. Drafted 2026-11-05 (senior). This is S2 in `docs/split-map.md` ("Move order"), with two changes to the map's S2 row, given under "Map changes" below.
 
-Read `docs/split-map.md` ("Proposed files", "Move order", the `g_gate_diag` row and the `install` row), the card 077 Report and Senior review, `mod/src/config.h` and `mod/src/config.cpp`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/split-map.md` ("Proposed files", "Move order", the `g_gate_diag` row and the `install` row), the card 077 Report and Senior review, `mod/src/config.h` and `mod/src/config.cpp`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

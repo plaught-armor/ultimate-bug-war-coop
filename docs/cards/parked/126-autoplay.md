@@ -9,7 +9,7 @@ Read:
 - card 067 Report (`ui continue`), card 121 Report (`ui click`); memory rule: movie cutscenes advance on Enter;
 - card 076 and card 125 Reports (fire, mech and turret use).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: card 125's.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: card 125's.
 
 ## Why
 

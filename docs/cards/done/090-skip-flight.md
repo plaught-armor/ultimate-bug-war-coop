@@ -8,7 +8,7 @@ Read:
 - the dropship detours `detour_skip_flight` and `detour_set_state`, and `log_dropship_call`;
 - `CallSpec` in `ue/hooktable.h`; game call rows go in `kCallsUbw` (`ubw/hooks_ubw.cpp`) unless the target is a `ue/` slot.
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

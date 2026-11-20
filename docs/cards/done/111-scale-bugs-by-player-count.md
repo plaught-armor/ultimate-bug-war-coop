@@ -7,7 +7,7 @@ Read:
 - card 103 Report (attack tickets: `GetTicketPriorityScore`, the ticket manager);
 - card 043 roster (`c43_roster`, player count on the host).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `a9ef553e1cddadbf` (card 110).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `a9ef553e1cddadbf` (card 110).
 
 ## Why
 

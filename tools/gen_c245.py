@@ -5,7 +5,12 @@ Objective-driven (card 284): every step reads the live objective (expect / go / 
 table is tools/c245_eggs.txt, the 81 egg actor names by count area, taken from the level script's EggDestroyed bound
 events (card 245 step 1 part B). Usage: python3 -I tools/gen_c245.py <dll hash16> > tools/scenarios/c245-c4m2.txt
 """
+import os
 import sys
+
+# Card 502 (b263): C502=1 adds client2 (a CLIENT2=1 three-instance run) and a split round; output
+# tools/scenarios/c502-c4m2.txt.
+C502 = os.environ.get('C502') == '1'
 
 DLL = sys.argv[1] if len(sys.argv) > 1 else "0000000000000000"
 out = []
@@ -79,9 +84,31 @@ def hold(oid, rounds=30, radius=4000, go=False):
 
 
 def digest(tag):
-    out.extend(['# digest round: %s' % tag, 'host mark', 'client mark', 'host objectives',
+    out.extend(['# digest round: %s' % tag, 'host mark', 'client mark'] + (['client2 mark'] if C502 else []) +
+               ['host objectives',
                 r'host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15',
                 r'client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30'])
+    if C502:
+        out.extend([r'client2 wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " '
+                    r'since-mark timeout=30'])
+
+
+def split_round():
+    """Card 502 finding 1: client2 stands at BP_PlayerPresence_C_176 (the Brain Bug arena, about 60000 uu from the
+    start), past the 15000 uu net cull from the host and the client, so each digest leaves out a culled player pawn.
+    The host lists the guids in the B frame and each client leaves its own entries for them out: the round lines show
+    mismatches 0 with no slot sums query, and one card323 culled-guid row on each side."""
+    out.extend(['# --- Card 502 finding 1: client2 split past the net cull.',
+                'host mark', 'host warp client2 BP_PlayerPresence_C_176 60',
+                # The channels close some time after the warp; a timer round then lists the culled guids.
+                r'try host wait log "card323: host t=\d+ digest round \d+ culled guids \S+: left out" since-mark '
+                r'timeout=40'])
+    digest('card 502 split, client2 at C_176')
+    out.extend([r'try host wait log "card323: host t=\d+ digest round \d+ culled guids \S+: left out" since-mark '
+                r'timeout=5',
+                r'try client wait log "card323: client t=\d+ digest round \d+ culled guids \S+ \(host\): [1-9]" '
+                r'since-mark timeout=5',
+                'client2 shot c502-split-client2'])
 
 
 # Card 323 done-when (join while the host is in a seat): the client disconnects and rejoins (card 045 follow, the c447
@@ -113,8 +140,15 @@ def rejoin_rounds():
                     'try client ui continue', 'client wait state pawn=client-own timeout=120',
                     r'try host wait log "card323: host t=\d+ seat join replay to \S+: %s mech pilot row\(s\)" '
                     r'since-mark timeout=30' % (r'[1-9]\d*' if tag == 'mech' else r'\d+'),
-                    'try client warp actor %s 600' % seat, 'try client look actor %s 150' % seat, 'sleep 1',
+                    'try host warp client %s 600' % seat, 'try client look actor %s 150' % seat, 'sleep 1',
                     'client shot c245-323-%s-client' % tag])
+        if C502:
+            # Card 502 finding 2: after the rejoin the host's `client` is the rejoined client's new pawn (role row).
+            out.extend([r'try host wait log "card502: host t=\d+ PC \S+ is client$" since-mark timeout=10',
+                        'host warp client %s 700' % seat,
+                        # c502b278b line 743: the 700 uu warp moved the client off the 150 uu look; its E found
+                        # target null, so no refusal row. Look again from the new spot.
+                        'try client look actor %s 150' % seat])
         if tag == 'mech':
             # Card 452: the rejoined client's E on the piloted mech is refused (no second pilot).
             out.extend(['try client key E',
@@ -198,8 +232,19 @@ host clear 4000 kill'''
 
 def main():
     areas = read_eggs('tools/c245_eggs.txt')
-    out.append(HEAD % {'dll': DLL})
+    head = HEAD % {'dll': DLL}
+    if C502:
+        gate = 'host wait log "card320: host t=\\d+ hold off after'
+        assert head.count(gate) == 1
+        head = head.replace('void unless client dll %s' % DLL, 'void unless client dll %s\nvoid unless client2 dll %s'
+                            % (DLL, DLL))
+        head = head.replace(gate, 'client2 wait state map=FED_C4M2 pawn=client-own timeout=180\n'
+                            'try client2 wait log "card135: client t=\\d+ screen prompt ready" timeout=30\n'
+                            'try client2 ui continue\n' + gate)
+    out.append(head)
     digest('map start (shield off branch)')
+    if C502:
+        split_round()
     out.append('# --- Tunnel: BP_PlayerPresence_C_6 completes Tunnel_O1; Tunnel_SO1 cascades; the three islands are added.')
     presence('Tunnel_SO1', completes='Tunnel_O1')
     out.append(r'host wait log "card049: host t=\d+ Add\w*Objectives?\((\w+, )?Sewers_SO0(, \w+)?\)" timeout=20')
@@ -352,9 +397,16 @@ def main():
         # at 3227 uu): the Brain Bug moves between stage spots, so a retry warps again before it looks.
         # c245b202a line 674: round 05 still voided after both retries (Actor_7 at 1007 uu, StaticMeshActor_2787),
         # so the senior order for b203 is more retries at a closer stand: retry 3 (drive.py MAX_RETRY) at 900 uu.
-        out.append(u + 'retry 3 host warp client BP_AI_BrainBug_C 900 ;; '
-                       'client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; '
-                       'client shot c245-boss-%02d ;; client key LeftMouseButton 5000' % i)
+        # Card 501 parked (senior, 2026-11-19, user order): the boss warp landing is a test-tool bug (c502b263a,
+        # b265, b266, b267 line 761 voided), so the step is a try and leaves the run whole. Then a hit= gate voided
+        # under try too, so the look had no hit= gate; card 504 below changes that.
+        # Card 504: the warp checks its own landing (standing, sight to the boss, the next ranked candidate on a
+        # fault; one result row), so no retry wraps it. Each part is a try: a look whose hit= gate does not hold is
+        # "TRY-FAIL gate not held" and the fire it gates is skipped as "not proved" (drive.py), never a VOID.
+        out.append(u + 'try host warp client BP_AI_BrainBug_C 900')
+        out.append(u + 'try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug')
+        out.append(u + 'try client shot c245-boss-%02d' % i)
+        out.append(u + 'try client key LeftMouseButton 5000')
         # c245b201a line 720: "objective now" failed "no current step" in the gap between BrainBug_SO7 and the
         # BrainBug_O1 complete; the "host objectives" rows before and after the rounds show the state instead.
     done('BrainBug_O1', 30)

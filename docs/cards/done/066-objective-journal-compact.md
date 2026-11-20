@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 09:11 to junior ultimate-bug-war-coop-bb, after card 047 was accepted. Ready since 2026-11-05 (senior, refreshed after card 070). Low priority; it matters only for a client that joins late in a long stretch with no checkpoint.
 
-Read `docs/STATE.md`, then the card 049 and 053 Reports and the card 058 WARN note. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md`, then the card 049 and 053 Reports and the card 058 WARN note. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

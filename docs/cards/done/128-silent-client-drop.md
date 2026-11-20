@@ -8,7 +8,7 @@ Read:
 - card 026 Report (ping/pong), card 045 Report (client follows travel), card 049 (journal sync slot), card 113 Report
   (session players, the rejoin grace).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: card 125's `69e1cb9079f52374`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: card 125's `69e1cb9079f52374`.
 
 ## Why
 

@@ -1,6 +1,6 @@
 # Card 016: Client on foot: why IA_Look never triggers, why jump does nothing, what sprint changes
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 014 to 016. Then read card 015's report and its senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card015{k,s}-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 014 to 016. Then read card 015's report and its senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card015{k,s}-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

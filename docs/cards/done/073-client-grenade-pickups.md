@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 04:46 to junior ultimate-bug-war-coop-bb, after card 070 was accepted.
 
-Read `docs/STATE.md` ("Ammo is not synced", "Ability net policy") and the card 071 Report, section "Grenades". Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Ammo is not synced", "Ability net policy") and the card 071 Report, section "Grenades". Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

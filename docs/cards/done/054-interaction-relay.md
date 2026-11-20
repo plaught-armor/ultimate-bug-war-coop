@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 (senior, revised: audit replaced by Addendum 3, key and table decided).
 
-Read `docs/STATE.md` ("Client interactions are client-only"), the card 043 Report (`ChanOp::Use`), the card 050 Report and card 050's own Addendum 4, and this card's Addendums 3 and 4 (the symbols and test driver are ready there). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Client interactions are client-only"), the card 043 Report (`ChanOp::Use`), the card 050 Report and card 050's own Addendum 4, and this card's Addendums 3 and 4 (the symbols and test driver are ready there). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

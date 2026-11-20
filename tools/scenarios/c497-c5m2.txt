@@ -15,8 +15,8 @@
 #      UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
 #      tools/run_pair.sh c247<build> 3600
 voidsoft
-void unless host dll e138228037a8dede
-void unless client dll e138228037a8dede
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
 host wait state map=FED_C5M2 timeout=240 void
 client wait state map=FED_C5M2 pawn=client-own timeout=180
 try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60

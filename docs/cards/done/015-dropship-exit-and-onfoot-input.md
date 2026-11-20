@@ -1,6 +1,6 @@
 # Card 015: Get the host out of the FED_C1M1 dropship unattended; make the client collision guard dropship-aware; take input rows on foot
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 013 to 015. Then read card 014's report and its senior review at the end. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card014{b,c,d}-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 013 to 015. Then read card 014's report and its senior review at the end. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card014{b,c,d}-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

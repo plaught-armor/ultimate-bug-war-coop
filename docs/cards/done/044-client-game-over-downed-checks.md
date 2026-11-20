@@ -2,7 +2,7 @@
 
 Status: done 2026-11-04.
 
-Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", known issue "Game over on the client"), then card 043 (the whole card, including its Report and Senior review). The code is the card 043 block in `mod/src/hooks.cpp` (`c43_*`). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", known issue "Game over on the client"), then card 043 (the whole card, including its Report and Senior review). The code is the card 043 block in `mod/src/hooks.cpp` (`c43_*`). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

@@ -1,6 +1,6 @@
 # Card 022: Each player sees the other's body; sprint speed matches between players
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, rows 018 to 022, the reports of cards 020 and 021, and the known issue about the shadow blob (it has the static lead). Then read card 019's report and its senior review. Card 020 found the client's copy of the host pawn has its movement set at 0 (MaxWalkSpeed 0); include it in the part A audit. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card019f-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, rows 018 to 022, the reports of cards 020 and 021, and the known issue about the shadow blob (it has the static lead). Then read card 019's report and its senior review. Card 020 found the client's copy of the host pawn has its movement set at 0 (MaxWalkSpeed 0); include it in the part A audit. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card019f-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

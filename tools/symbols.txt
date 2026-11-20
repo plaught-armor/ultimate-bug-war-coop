@@ -183,6 +183,16 @@ UCharacterMovementComponent_ServerMove_PerformMovement ?ServerMove_PerformMoveme
 # void UCharacterMovementComponent::TickComponent(float, ELevelTick, FActorComponentTickFunction*)  -- hook (card 019:
 # rcx cmc, xmm1 delta, r8d tick type, r9 tick function; feeds the remote pawn's input before the tick consumes it)
 UCharacterMovementComponent_TickComponent ?TickComponent@UCharacterMovementComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+# void ASTNonPlayableCharacterBase::Tick(float)  -- hook (card 527: NPC actor tick time, FX flag only)
+ASTNonPlayableCharacterBase_Tick ?Tick@ASTNonPlayableCharacterBase@@UEAAXM@Z
+# void FSTBugProceduralAnimationData::UpdateFromNPC(const ASTNonPlayableCharacterBase&, float)  -- hook (card 533: stale floor component guard)
+FSTBugProceduralAnimationData_UpdateFromNPC ?UpdateFromNPC@FSTBugProceduralAnimationData@@QEAAXAEBVASTNonPlayableCharacterBase@@M@Z
+# void USkeletalMeshComponent::TickComponent(float, ELevelTick, FActorComponentTickFunction*)  -- hook (card 527:
+# mesh tick time of NPC-owned meshes, FX flag only)
+USkeletalMeshComponent_TickComponent ?TickComponent@USkeletalMeshComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+# void UADSpriteAnimatorComponent::TickComponent(float, ELevelTick, FActorComponentTickFunction*)  -- hook (card 527:
+# 2D bug sprite tick time, FX flag only)
+UADSpriteAnimatorComponent_TickComponent ?TickComponent@UADSpriteAnimatorComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
 # void APawn::Internal_AddMovementInput(FVector WorldAccel, bool bForce)  -- call (card 019: the remote pawn's
 # server copy gets the client's move input; FVector by value = pointer to a caller copy, callee reads [rdx])
 APawn_Internal_AddMovementInput ?Internal_AddMovementInput@APawn@@QEAAXU?$TVector@N@Math@UE@@_N@Z
@@ -212,6 +222,8 @@ AActor_execSetActorEnableCollision ?execSetActorEnableCollision@AActor@@SAXPEAVU
 UPrimitiveComponent_SetCollisionEnabled ?SetCollisionEnabled@UPrimitiveComponent@@UEAAXW4Type@ECollisionEnabled@@@Z
 # void UPrimitiveComponent::SetCollisionProfileName(FName, bool)  -- hook (card 237: relayed beside the collision journal; the UStaticMeshComponent override calls this base first)
 UPrimitiveComponent_SetCollisionProfileName ?SetCollisionProfileName@UPrimitiveComponent@@UEAAXVFName@@_N@Z
+# void UPrimitiveComponent::SetCollisionResponseToChannel(ECollisionChannel, ECollisionResponse)  -- call (card 542: client NPC proxy capsules ignore PhysicsBody)
+UPrimitiveComponent_SetCollisionResponseToChannel ?SetCollisionResponseToChannel@UPrimitiveComponent@@UEAAXW4ECollisionChannel@@W4ECollisionResponse@@@Z
 # void ASTPlayerTransportDropship::EnterDropship()  -- hook (capped log)
 ASTPlayerTransportDropship_EnterDropship ?EnterDropship@ASTPlayerTransportDropship@@AEAAXXZ
 # void ASTPlayerTransportDropship::DescendToLandCompleted()  -- hook (capped log)
@@ -580,6 +592,9 @@ UADHealthUtilityLibrary_DealDamageTags ?DealDamage@UADHealthUtilityLibrary@@SAXP
 USTDebugSaveTracker_SetAutoSaveEnabled ?SetAutoSaveEnabled@USTDebugSaveTracker@@QEAAX_N@Z
 # virtual void UObject::ProcessEvent(UFunction*, void*)  -- hooked (log only, inside the card 030 death window)
 UObject_ProcessEvent ?ProcessEvent@UObject@@UEAAXPEAVUFunction@@PEAX@Z
+# Card 507: void ProcessLocalScriptFunction(UObject* Context, FFrame& Stack, void* Result)  -- hooked (client: the BP
+#   VM's own door calls refused; UObject::ProcessInternal calls it for every local script function body)
+ProcessLocalScriptFunction ?ProcessLocalScriptFunction@@YAXPEAVUObject@@AEAUFFrame@@QEAX@Z
 
 # Card 031: lobby overlay render test (native UMG, no assets)
 # FStaticConstructObjectParameters::FStaticConstructObjectParameters(const UClass*)  -- called (0x80-byte block)
@@ -727,6 +742,8 @@ ASTNonPlayableCharacterBase_GetGoreLocation ?GetGoreLocation@ASTNonPlayableChara
 ASTNonPlayableCharacterBase_IsNPC2D ?IsNPC2D@ASTNonPlayableCharacterBase@@IEBA_NXZ
 FBodyInstanceCore_ShouldInstanceSimulatingPhysics ?ShouldInstanceSimulatingPhysics@FBodyInstanceCore@@QEBA_NXZ
 USkeletalMeshComponent_UpdateKinematicBonesToAnim ?UpdateKinematicBonesToAnim@USkeletalMeshComponent@@QEAAXAEBV?$TArray@U?$TTransform@N@Math@UE@@V?$TSizedDefaultAllocator@$0CA@@@@@W4ETeleportType@@_NW4EAllowKinematicDeferral@@@Z
+# Card 524: void USceneComponent::K2_SetRelativeLocation(FVector NewLocation, bool bSweep, FHitResult& SweepHitResult, bool bTeleport)
+USceneComponent_K2_SetRelativeLocation ?K2_SetRelativeLocation@USceneComponent@@QEAAXU?$TVector@N@Math@UE@@_NAEAUFHitResult@@1@Z
 USkeletalMeshComponent_GetSkeletalCenterOfMass ?GetSkeletalCenterOfMass@USkeletalMeshComponent@@QEBA?AU?$TVector@N@Math@UE@@XZ
 # Card 132 pose journal
 FBodyInstance_GetUnrealWorldTransform ?GetUnrealWorldTransform@FBodyInstance@@QEBA?AU?$TTransform@N@Math@UE@@_N0@Z
@@ -844,6 +861,20 @@ ASTCharacter_ActorFullyLoaded ?ActorFullyLoaded@ASTCharacter@@UEAAXPEAVUSTSaveCo
 USTSaveComponent_LoadOwnerVariables_Pawn ?LoadOwnerVariables_Pawn@USTSaveComponent@@AEAAXPEAVAPawn@@PEAVUWorld@@AEAVFArchive@@@Z
 # static FGuid USTSaveComponent::GetSaveId(const AActor*)  -- called (FGuid via hidden pointer: rcx out, rdx actor)
 USTSaveComponent_GetSaveId ?GetSaveId@USTSaveComponent@@SA?AUFGuid@@PEBVAActor@@@Z
+# static UClass* USTSaveComponent::StaticClass()  -- called (card 531: the class GetSaveId passes to FindComponentByClass)
+USTSaveComponent_StaticClass ?StaticClass@USTSaveComponent@@SAPEAVUClass@@XZ
+# virtual UActorComponent* AActor::FindComponentByClass(TSubclassOf<UActorComponent>) const  -- hook (card 536: per-thread cache; the class arrives by pointer)
+AActor_FindComponentByClass ?FindComponentByClass@AActor@@UEBAPEAVUActorComponent@@V?$TSubclassOf@VUActorComponent@@@@@Z
+# void AActor::AddOwnedComponent(UActorComponent*)  -- hook (card 537: bump the actor's component-set generation)
+AActor_AddOwnedComponent ?AddOwnedComponent@AActor@@QEAAXPEAVUActorComponent@@@Z
+# void AActor::RemoveOwnedComponent(UActorComponent*)  -- hook (card 537)
+AActor_RemoveOwnedComponent ?RemoveOwnedComponent@AActor@@QEAAXPEAVUActorComponent@@@Z
+# void AActor::ResetOwnedComponents()  -- hook (card 537)
+AActor_ResetOwnedComponents ?ResetOwnedComponents@AActor@@QEAAXXZ
+# bool USTAttackComponent::DoesTargetMeetConditions(const FSTAttackTargetConditions&, AActor*) const  -- hook (card 538: repeat counts)
+USTAttackComponent_DoesTargetMeetConditions ?DoesTargetMeetConditions@USTAttackComponent@@EEBA_NAEBUFSTAttackTargetConditions@@PEAVAActor@@@Z
+# void UCharacterMovementComponent::FindFloor(const FVector&, FFindFloorResult&, bool, const FHitResult*) const  -- hook (card 535: client NavWalking NPC proxies skip the floor sweep)
+UCharacterMovementComponent_FindFloor ?FindFloor@UCharacterMovementComponent@@UEBAXAEBU?$TVector@N@Math@UE@@AEAUFFindFloorResult@@_NPEBUFHitResult@@@Z
 # void USTSaveComponent::PrepareForSave()  -- unhooked since card 121 (card 119's per-copy skip; PerformSave covers it)
 USTSaveComponent_PrepareForSave ?PrepareForSave@USTSaveComponent@@QEAAXXZ
 # static void ASTPlayerCharacter::execCompleteDeath(UObject*, FFrame&, void*)  -- hooked (log only)
@@ -1318,6 +1349,10 @@ USTTacticalSupportSlot_DestroyTacticalSupportAbility ?DestroyTacticalSupportAbil
 UADTargetComponent_SelectPrimaryTarget ?SelectPrimaryTarget@UADTargetComponent@@IEAAXXZ
 UADTargetComponent_SetPrimaryTarget ?SetPrimaryTarget@UADTargetComponent@@QEAA_NPEAVAActor@@@Z
 UADTargetComponent_FindTargetData ?FindTargetData@UADTargetComponent@@QEBAPEBUFADTargetData@@PEBVAActor@@@Z
+# card 532: client NPC targeting off, host primary target relayed
+UADTargetComponent_TickComponent ?TickComponent@UADTargetComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+UADTargetComponent_GetPrimaryTarget ?GetPrimaryTarget@UADTargetComponent@@QEBA_NAEAUFADTargetData@@@Z
+UADTargetComponent_FindPrimaryTargetData ?FindPrimaryTargetData@UADTargetComponent@@IEAAPEAUFADTargetData@@XZ
 USTEncounterWaveBase_FactorDifficultyIntoWaveBudget ?FactorDifficultyIntoWaveBudget@USTEncounterWaveBase@@QEBAHAEBU?$TObjectPtr@VUSTPreMadeEncounterWaveData@@@@H@Z
 ASTTicketManager_CreateTicketContainer ?CreateTicketContainer@ASTTicketManager@@AEAAXW4ESTTicketType@@HM@Z
 ASTTicketManager_TryRefreshTicketContainer ?TryRefreshTicketContainer@ASTTicketManager@@AEAA_NW4ESTTicketType@@HM@Z
@@ -1775,3 +1810,28 @@ GUObjectArray ?GUObjectArray@@3VFUObjectArray@@A
 ASTWeapon_ShowWeapon ?ShowWeapon@ASTWeapon@@QEAAXXZ
 # UClass* ASTWeapon::StaticClass()  -- card 494: the equipped weapon is an ASTWeapon before ShowWeapon
 ASTWeapon_StaticClass ?StaticClass@ASTWeapon@@SAPEAVUClass@@XZ
+# card 534: world query cost by caller (diag)
+UWorld_SweepSingleByChannel ?SweepSingleByChannel@UWorld@@QEBA_NAEAUFHitResult@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_SweepMultiByChannel ?SweepMultiByChannel@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_SweepTestByChannel ?SweepTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@0AEBU?$TQuat@N@34@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_SweepSingleByObjectType ?SweepSingleByObjectType@UWorld@@QEBA_NAEAUFHitResult@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+UWorld_SweepMultiByObjectType ?SweepMultiByObjectType@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+UWorld_LineTraceMultiByChannel ?LineTraceMultiByChannel@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1W4ECollisionChannel@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_LineTraceTestByChannel ?LineTraceTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@0W4ECollisionChannel@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_OverlapAnyTestByChannel ?OverlapAnyTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@34@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+UWorld_OverlapMultiByObjectType ?OverlapMultiByObjectType@UWorld@@QEBA_NAEAV?$TArray@UFOverlapResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+UWorld_ComponentSweepMulti ?ComponentSweepMulti@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@PEAVUPrimitiveComponent@@AEBU?$TVector@N@Math@UE@@2AEBU?$TQuat@N@56@AEBUFComponentQueryParams@@@Z
+UWorld_ComponentOverlapMulti ?ComponentOverlapMulti@UWorld@@QEBA_NAEAV?$TArray@UFOverlapResult@@V?$TSizedDefaultAllocator@$0CA@@@@@PEBVUPrimitiveComponent@@AEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@56@AEBUFComponentQueryParams@@AEBUFCollisionObjectQueryParams@@@Z
+USceneComponent_UpdateOverlaps ?UpdateOverlaps@USceneComponent@@QEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+
+# Card 545: the native Kismet queries, keyed by return address (diag; b360 hooked the exec thunks, never called)
+# static bool UKismetSystemLibrary::CapsuleTraceSingleForObjects(const UObject*, FVector, FVector, float, float,
+#     const TArray<TEnumAsByte<EObjectTypeQuery>>&, bool, const TArray<AActor*>&, EDrawDebugTrace::Type, FHitResult&,
+#     bool, FLinearColor, FLinearColor, float)
+UKismetSystemLibrary_CapsuleTraceSingleForObjects ?CapsuleTraceSingleForObjects@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@1MMAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@3UFLinearColor@@7M@Z
+# static bool UKismetSystemLibrary::SphereOverlapComponents(const UObject*, FVector, float,
+#     const TArray<TEnumAsByte<EObjectTypeQuery>>&, UClass*, const TArray<AActor*>&, TArray<UPrimitiveComponent*>&)
+UKismetSystemLibrary_SphereOverlapComponents ?SphereOverlapComponents@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@MAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@PEAVUClass@@AEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@AEAV?$TArray@PEAVUPrimitiveComponent@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+UPrimitiveComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@UPrimitiveComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+USkinnedMeshComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@USkinnedMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+USkeletalMeshComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@USkeletalMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z

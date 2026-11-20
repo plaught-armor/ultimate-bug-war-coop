@@ -1,6 +1,6 @@
 # Card 010: Client mouse look is dead, and client WASD lags
 
-Read `docs/STATE.md` first: the "Mod code rules" section, plus the rows and results for cards 008 and 009. Then read the reports and senior reviews in cards 008 and 009, which own the client input code and logging you will extend. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, plus the rows and results for cards 008 and 009. Then read the reports and senior reviews in cards 008 and 009, which own the client input code and logging you will extend. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 The card 009 run used `UBWCOOP_CLIENT_GAMEONLY=1` on the client. With it, the client's viewport has the same mouse capture and lock as the host's: capture 1 (CapturePermanently_IncludingInitialMouseDown), lock 1, `bShowMouseCursor 0`. Its input receiver and the four input mapping contexts are set (cards 008 and 009). Even so, the user reports:

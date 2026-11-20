@@ -344,6 +344,41 @@ int32_t objects_of_class(const void* cls, const void** out, int32_t cap, bool su
     return n;
 }
 
+int32_t objects_census(const void* const* classes, int32_t n_classes, int32_t* counts) {
+    const uint8_t* const base = ue::hooktable::g_exe_base;
+    if (classes == nullptr || counts == nullptr || n_classes <= 0 || base == nullptr) {
+        return 0;
+    }
+    for (int32_t k = 0; k < n_classes; ++k) {
+        counts[k] = 0;
+    }
+    const uint8_t* const array = base + ubw::offsets::GUObjectArray.rva;
+    const auto* const chunks = static_cast<const uint8_t* const*>(read_ptr(array, kObjArrayChunks));
+    const int32_t num = read_i32(array, kObjArrayNum);
+    if (chunks == nullptr || num <= 0) {
+        return 0;
+    }
+    int32_t live = 0;
+    for (int32_t i = 0; i < num && i < kObjScanMax; ++i) {
+        const uint8_t* const chunk = chunks[i / kObjChunkItems];
+        if (chunk == nullptr) {
+            i += kObjChunkItems - 1 - i % kObjChunkItems; // the rest of an absent chunk
+            continue;
+        }
+        const uint8_t* const item = chunk + static_cast<size_t>(i % kObjChunkItems) * kObjItemBytes;
+        const void* const object = read_ptr(item, 0);
+        if (object == nullptr || (read_i32(item, kObjItemFlags) & kObjItemGone) != 0) {
+            continue;
+        }
+        ++live;
+        const void* const cls = read_ptr(object, kObjectClass);
+        for (int32_t k = 0; k < n_classes; ++k) {
+            counts[k] += (cls == classes[k] && cls != nullptr) ? 1 : 0;
+        }
+    }
+    return live;
+}
+
 void* find_class(const wchar_t* path) {
     return g_static_find_object != nullptr ? g_static_find_object(g_uclass_class(), nullptr, path, false) : nullptr;
 }

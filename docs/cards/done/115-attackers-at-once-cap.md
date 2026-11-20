@@ -9,7 +9,7 @@ Read:
 - card 103 Report (`GetTicketPriorityScore` 0x05191D40, the ticket manager, the enemy's target player);
 - `mod/src/ubw/bug_scale.cpp` (`kC111Scale`, `c111_players`, the `RequestTicket` peak log).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114).
 
 ## Why
 

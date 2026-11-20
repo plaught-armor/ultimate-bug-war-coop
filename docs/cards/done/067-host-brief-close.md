@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 23:15 to junior ultimate-bug-war-coop-bb, after card 064 was accepted.
 
-Read `docs/STATE.md`, the card 063 Report ("Open gap") and the card 015 and 032 notes on `UBWCOOP_AUTODROPSHIP`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md`, the card 063 Report ("Open gap") and the card 015 and 032 notes on `UBWCOOP_AUTODROPSHIP`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

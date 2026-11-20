@@ -9,7 +9,7 @@ Read:
 - the card 089 and 090 Reviews;
 - the `tools/run_pair.sh` header (LANE, FAST).
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

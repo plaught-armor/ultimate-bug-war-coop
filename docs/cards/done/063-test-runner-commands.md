@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 21:40 to junior a3 (OOM-killed 21:45); resent 21:50 to d7 (lost in session restart 21:51, no work done); resent 21:53 to ultimate-bug-war-coop-bb. Card 064 (navigation and aim) builds on it.
 
-Read `mod/src/autoinput.h` and `.cpp` (card 014, 016 and 020 scripted input), `tools/run_pair.sh`, and one per-card driver, such as `~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/9414029c-e29b-4cdf-960f-1b9c0331717a/scratchpad/drive62.sh`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `mod/src/autoinput.h` and `.cpp` (card 014, 016 and 020 scripted input), `tools/run_pair.sh`, and one per-card driver, such as `/home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/9414029c-e29b-4cdf-960f-1b9c0331717a/scratchpad/drive62.sh`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Resume note (senior, 2026-11-04 21:50)
 

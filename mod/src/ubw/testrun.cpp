@@ -1122,6 +1122,7 @@ void c310_centre_row(void* world, void* pc, const cmdfile::Cmd& c) {
 // used by the scan.
 constexpr int32_t kB14Grid = 5;
 constexpr int32_t kB14Points = 1 + kB14Grid * kB14Grid; // the centre, then the face grid
+constexpr int32_t kB14Fallbacks = 2;        // card 510: the actor origin, then the root component's own bounds centre
 constexpr double kB14Frac[kB14Grid] = {-0.8, -0.4, 0.0, 0.4, 0.8}; // of the face's half extents, inset from the edges
 constexpr int32_t kB14WaitFrames = 2;       // ticks between a snap look and the focus read
 constexpr ULONGLONG kB14CapMs = 10000;      // the whole scan; at 60 fps it takes about 1 s
@@ -1132,7 +1133,7 @@ constexpr size_t kInteractorTraceType = 0xFD; // uint8, the trace type (TraceFor
 enum class B14Phase : uint8_t { Centroid, Final, Sweep, Back };
 
 struct B14Scan {
-    Vec3 pts[kB14Points];
+    Vec3 pts[kB14Points + kB14Fallbacks];
     int32_t n;
     int32_t k;            // the point being traced
     int32_t frames;       // ticks since the last snap look
@@ -1202,16 +1203,44 @@ void b14_settle(void* pc, const void* pawn, const Vec3& pt, const char* how, B14
 // is the look's actor is a hit. The view then turns once, to the centroid (and once more to the first hit point
 // when the interactor's focus misses there), and the focus read there is the gate as before.
 constexpr double kB16PastUu = 30.0;
+void b14_trace_point(const void* pawn, const void* actor, const Vec3& eye) {
+    const Vec3& pt = g_b14.pts[g_b14.k];
+    const double len = vec_dist(eye, pt);
+    const double f = len > 1.0 ? (len + kB16PastUu) / len : 1.0;
+    const Vec3 end{eye.x + (pt.x - eye.x) * f, eye.y + (pt.y - eye.y) * f, eye.z + (pt.z - eye.z) * f};
+    Vec3 at{};
+    const void* const hit = c264_trace(pawn, eye, end, &at);
+    b14_note(hit, hit != nullptr && hit == actor);
+}
+
 void b14_trace_points(const void* pawn, const void* actor, const Vec3& eye) {
     for (g_b14.k = 0; g_b14.k < g_b14.n; ++g_b14.k) {
-        const Vec3& pt = g_b14.pts[g_b14.k];
-        const double len = vec_dist(eye, pt);
-        const double f = len > 1.0 ? (len + kB16PastUu) / len : 1.0;
-        const Vec3 end{eye.x + (pt.x - eye.x) * f, eye.y + (pt.y - eye.y) * f, eye.z + (pt.z - eye.z) * f};
-        Vec3 at{};
-        const void* const hit = c264_trace(pawn, eye, end, &at);
-        b14_note(hit, hit != nullptr && hit == actor);
+        b14_trace_point(pawn, actor, eye);
     }
+}
+
+// Card 510 (c504b3/b4, FED_C2M1 RallyPoint_Marker, BP_BaseMech_C): the whole-actor bounds centre sat about 1850 uu off
+// the body, so all 26 points were past the 250 uu interactor range and none hit. When none hits, two more points are
+// traced the same way, appended after the grid: the actor origin (the root's ComponentToWorld translation), then the
+// root component's own Bounds origin. The first that hits ends it; its hit takes the centroid path. One row names the
+// fallback that hit (or none) and the root's class.
+constexpr size_t kComponentBoundsOrigin = 0x108; // USceneComponent::Bounds.Origin, doubles; BoxExtent +0x120 (CalcBoundingCylinder)
+const char* b14_fallback(const void* pawn, const void* actor, const Vec3& eye) {
+    const void* const root = read_ptr(actor, kActorRootComponent);
+    if (root == nullptr) {
+        return nullptr;
+    }
+    const Vec3 pts[kB14Fallbacks] = {read_vec3(root, kComponentTranslation), read_vec3(root, kComponentBoundsOrigin)};
+    const char* const names[kB14Fallbacks] = {"origin", "root bounds"};
+    for (int32_t i = 0; i < kB14Fallbacks; ++i) {
+        g_b14.k = g_b14.n;
+        g_b14.pts[g_b14.n++] = pts[i];
+        b14_trace_point(pawn, actor, eye);
+        if (g_b14.hits > 0) {
+            return names[i];
+        }
+    }
+    return nullptr;
 }
 
 // c423b138a VOID: the bounds centre of the turning C2M1 nest (BP_SatchelBuilding_Plasmabug_C) moved between runs, so
@@ -1270,12 +1299,20 @@ const char* b14_start(void* world, void* pc, const cmdfile::Cmd& c) {
               c.seq, g_b14.actor, centre.x, centre.y, centre.z, extent.x, extent.y, extent.z, eye.x, eye.y, eye.z,
               static_cast<int>(g_b14.n));
     b14_trace_points(pawn, actor, eye);
+    const char* fallback = nullptr;
+    if (g_b14.hits == 0) {
+        fallback = b14_fallback(pawn, actor, eye);
+        const void* const root = read_ptr(actor, kActorRootComponent);
+        log::line("cmd: %u aim scan: fallback %s hit, root %s", c.seq, fallback != nullptr ? fallback : "none",
+                  root != nullptr ? class_name(root).text : "null");
+    }
     if (g_b14.hits == 0) {
         b14_settle(pc, pawn, g_b14.pts[0], "centre, no hit", B14Phase::Final);
         return nullptr;
     }
     const double h = static_cast<double>(g_b14.hits);
-    b14_settle(pc, pawn, Vec3{g_b14.sum.x / h, g_b14.sum.y / h, g_b14.sum.z / h}, "centroid", B14Phase::Centroid);
+    b14_settle(pc, pawn, Vec3{g_b14.sum.x / h, g_b14.sum.y / h, g_b14.sum.z / h},
+               fallback != nullptr ? "fallback" : "centroid", B14Phase::Centroid);
     return nullptr;
 }
 
@@ -1784,6 +1821,10 @@ void c265_step(void* world, void* pc, const cmdfile::Cmd& c, ULONGLONG now) {
 constexpr int32_t kB16Dirs = 8;
 constexpr double kB16ActorMeshUu = 150.0; // the actor's navmesh point: within this (2D) of its root
 constexpr double kB16PathEndUu = 50.0;    // a path that ends this close to that point reaches it
+// Card 501 b267 (c502b266a line 761): the Brain Bug's bounds extent is 1548 x 1565 uu; at 900 uu five candidates moved
+// out free and a sixth was free, yet every path to the navmesh point under the boss ended short (the boss's own body
+// cuts that point off). A path whose end is inside the actor's 2D bounds extent (from its bounds centre) also reaches
+// it; when no candidate has a path, the free floored candidate with sight (then nearest the pawn) is taken.
 // Card 244 b211 (c244b210a cmds 192, 211): BP_SatchelItemPickup_C_1 (z 216) sits on a platform with no navmesh, and the
 // projection (half height kC64ProjectHalfZ 1200) found the floor 1058 uu under it, so the warp landed the client there.
 // An actor more than kB16AboveMeshUu over its navmesh point gets a down trace (kEccWorldStatic) from the old landing
@@ -1792,8 +1833,190 @@ constexpr double kB16PathEndUu = 50.0;    // a path that ends this close to that
 // landings and their old landing is in the air, so they keep the navmesh landing (no surface found).
 constexpr double kB16AboveMeshUu = 300.0;
 constexpr double kB16SupportUu = 300.0;
-bool b16_landing(void* world, void* pawn, const Vec3& at, const Vec3& from, const Vec3& old, double dist, uint32_t seq,
-                 Vec3* out) {
+// Card 501 (c245 line 724, BP_AI_BrainBug_C): the shortest-path landing was on a ledge that did not hold the pawn
+// (it fell 500-700 uu under the rim mesh, which then blocked the look). Each candidate needs a static floor
+// (kEccWorldStatic) within kB16FloorUu under its navmesh point, traced from kB16FloorUp over it; among those with a
+// path, one with a clear visibility trace from its eye point (landing z plus the pawn's eye height) to the actor's
+// bounds centre wins, the shortest path breaking ties.
+// Card 501 b264 (c502b263a line 761, c245b262a line 724): the landing (20542, -44447, 6738) had a floor and sight, but
+// the capsule there overlapped the rim mesh StaticMeshActor_56; the pawn was pushed 154 uu east off the ledge and fell
+// (MovementMode 3, z speed -1251), so the look hit the rim. A candidate where the engine's own encroachment test
+// (EncroachingBlockingGeometry, the pawn's collision at the lifted landing) reports blocking geometry is moved out.
+// Card 501 b266 (c502b265a line 761): at 900 uu all five Brain Bug candidates with a navmesh point encroached, every
+// adjustment pointing away from the boss (150 to 510 uu): the encroacher is the boss's own body, so b263's 154 uu east
+// push was the boss too, not StaticMeshActor_56. An encroaching candidate moves once along its adjustment plus
+// kB16OutUu, is projected onto the navmesh again (kB16OutMeshUu), and is taken when it has a floor and is free there.
+constexpr double kC75WarpAbove = 100.0; // the landing's lift over the point (c75_warp)
+constexpr double kB16FloorUp = 100.0;
+constexpr double kB16FloorUu = 150.0;
+constexpr double kB16OutUu = 50.0;      // past the engine's adjustment, so the capsule clears the body
+constexpr double kB16OutMeshUu = 100.0; // 2D extent of the moved point's navmesh projection
+// A static floor (kEccWorldStatic) within kB16FloorUu under a navmesh point, traced from kB16FloorUp over it.
+bool b16_floor(void* pawn, const Vec3& mesh) {
+    bool inside = false;
+    const Vec3 low{mesh.x, mesh.y, mesh.z - kB16FloorUu};
+    const Vec3 floor = trace_channel(pawn, Vec3{mesh.x, mesh.y, mesh.z + kB16FloorUp}, low, kEccWorldStatic, nullptr,
+                                     nullptr, &inside);
+    return !inside && floor.z > low.z + 1.0;
+}
+// The pawn's encroachment at a navmesh point lifted kC75WarpAbove: false when free; true with the adjustment.
+bool b16_encroach(void* world, void* pawn, const Vec3& mesh, Vec3* adjust) {
+    const Vec3 rot{};
+    Vec3 lifted{mesh.x, mesh.y, mesh.z + kC75WarpAbove};
+    *adjust = Vec3{};
+    return g_c46_encroaching != nullptr && g_c46_encroaching(world, pawn, &lifted, &rot, adjust);
+}
+// Card 501 b266: an encroaching navmesh point moved once along its 2D adjustment (plus kB16OutUu) and projected
+// again. True with *mesh moved when the new point has a floor and is free; false (mesh unchanged) otherwise.
+// Card 504: no row per candidate; the warp's one result row carries the counts.
+bool b16_move_out(void* world, void* pawn, const Vec3& adjust, Vec3* mesh) {
+    const double len = sqrt(adjust.x * adjust.x + adjust.y * adjust.y);
+    if (len < 1.0) {
+        return false;
+    }
+    const double k = (len + kB16OutUu) / len;
+    const Vec3 to{mesh->x + adjust.x * k, mesh->y + adjust.y * k, mesh->z};
+    Vec3 moved{};
+    Vec3 again{};
+    if (!c64_project(world, pawn, to, Vec3{kB16OutMeshUu, kB16OutMeshUu, kC64ProjectHalfZ}, moved) ||
+        !b16_floor(pawn, moved) || b16_encroach(world, pawn, moved, &again)) {
+        return false;
+    }
+    *mesh = moved;
+    return true;
+}
+
+// Card 504: the ranked landings of one warp, best first: line of sight to the actor's bounds centre, then a path
+// to the actor's navmesh point (its end within kB16PathEndUu), then the shorter path (without one: the shorter 2D
+// gap to the pawn). The warp tries them in this order until one holds (b504_step).
+struct B16Cand {
+    Vec3 mesh;
+    bool sight;
+    bool path;
+    bool outer; // on the body ring (a pawn's colliding reach), tried after every given-ring point
+    double key;
+};
+struct B16Ring {
+    B16Cand c[2 * kB16Dirs];
+    int32_t n;
+    Vec3 centre;  // the sight line's end
+    double ring;  // the outer ring radius: dist, or for a pawn max(dist, colliding bounds reach + kB16RingPadUu)
+    double given; // the asked dist; for a pawn with reach past it, the inner ring tried first
+    double reach; // a pawn's colliding bounds reach from its root (0 for any other actor)
+    bool body;    // the actor is a pawn: its colliding body sized the outer ring
+    bool two;     // body and the outer ring is past the given one: both rings ranked, given first
+    int32_t no_floor;
+    int32_t encroached;
+    int32_t moved_out;
+    int32_t no_path;
+};
+constexpr double kB16RingPadUu = 100.0;
+bool b16_better(const B16Cand& a, const B16Cand& b) {
+    if (a.outer != b.outer) {
+        return !a.outer;
+    }
+    if (a.sight != b.sight) {
+        return a.sight;
+    }
+    if (a.path != b.path) {
+        return a.path;
+    }
+    return a.key < b.key;
+}
+// Insertion into the ranked list; the caller adds at most 2 * kB16Dirs (one per direction and ring).
+void b16_rank(B16Ring* r, const B16Cand& add) {
+    int32_t i = r->n;
+    for (; i > 0 && b16_better(add, r->c[i - 1]); --i) {
+        r->c[i] = r->c[i - 1];
+    }
+    r->c[i] = add;
+    ++r->n;
+}
+
+// The ring row's label: "given", "body, reach R uu" or "body, reach R uu, given ring G uu first".
+struct B16Label {
+    char text[80];
+};
+B16Label b16_ring_label(const B16Ring& r) {
+    B16Label l{};
+    if (!r.body) {
+        snprintf(l.text, sizeof(l.text), "given");
+    } else if (r.two) {
+        snprintf(l.text, sizeof(l.text), "body, reach %.0f uu, given ring %.0f uu first", r.reach, r.given);
+    } else {
+        snprintf(l.text, sizeof(l.text), "body, reach %.0f uu", r.reach);
+    }
+    return l;
+}
+
+// One ring point: false (counted in *r) without a navmesh point, a static floor or a free spot; else true with
+// its rank fields.
+bool b16_candidate(void* world, void* pawn, const void* actor, const Vec3& cand, const Vec3& goal, const Vec3& from,
+                   double half, double eye_up, B16Ring* r, B16Cand* out) {
+    Vec3 mesh{};
+    if (!c64_project(world, pawn, cand, Vec3{half, half, kC64ProjectHalfZ}, mesh)) {
+        return false;
+    }
+    if (!b16_floor(pawn, mesh)) {
+        ++r->no_floor; // card 501: a ledge or a dynamic surface
+        return false;
+    }
+    Vec3 adjust{};
+    if (b16_encroach(world, pawn, mesh, &adjust)) {
+        ++r->encroached; // card 501 b264: the capsule there overlaps blocking geometry and would be pushed out
+        if (!b16_move_out(world, pawn, adjust, &mesh)) {
+            return false;
+        }
+        ++r->moved_out;
+    }
+    const void* seen = nullptr;
+    const Vec3 eye{mesh.x, mesh.y, mesh.z + kC75WarpAbove + eye_up};
+    const Vec3 hit = trace_channel(pawn, eye, r->centre, kEccVisibility, &seen);
+    out->mesh = mesh;
+    out->sight = seen == actor || (seen == nullptr && vec_dist(hit, r->centre) < 1.0);
+    const int32_t n = c64_query(pawn, pawn, mesh, goal);
+    out->path = n > 0 && vec_dist(g_c64.pts[n - 1], goal) <= kB16PathEndUu;
+    if (!out->path) {
+        ++r->no_path;
+        out->key = hypot(mesh.x - from.x, mesh.y - from.y);
+        return true;
+    }
+    double len = 0.0;
+    Vec3 prev = mesh;
+    for (int32_t i = 0; i < n; ++i) {
+        len += vec_dist(prev, g_c64.pts[i]);
+        prev = g_c64.pts[i];
+    }
+    out->key = len;
+    return true;
+}
+
+// True when the actor sits on a platform off the navmesh (card 244 b211): the old landing is kept.
+bool b16_platform(void* pawn, const Vec3& at, const Vec3& goal, const Vec3& old, uint32_t seq) {
+    if (at.z - goal.z <= kB16AboveMeshUu) {
+        return false;
+    }
+    const Vec3 down{old.x, old.y, at.z - kB16SupportUu};
+    bool inside = false;
+    const Vec3 floor = trace_channel(pawn, old, down, kEccWorldStatic, nullptr, nullptr, &inside);
+    const bool support = !inside && floor.z > down.z + 1.0;
+    log::line("cmd: %u warp: the actor's navmesh point (%.0f, %.0f, %.0f) is %.0f uu under it; surface under the old "
+              "landing %s (z %.0f)%s", seq, goal.x, goal.y, goal.z, at.z - goal.z,
+              inside ? "inside geometry" : support ? "found" : "none", floor.z,
+              support ? ": off the navmesh, on a platform; old landing" : "");
+    return support;
+}
+
+// Card 501 / 504: the ranked navmesh landings on a ring around the actor (kB16Dirs points, the first toward the
+// pawn). Card 504: the ring radius is max(dist, colliding bounds reach + kB16RingPadUu) for a pawn, so a big pawn's own body (the Brain
+// Bug's extent is 1548 x 1565 uu) does not cover the ring; b267's `inside` path test is gone. b278: when that body
+// ring is past dist, the dist ring's points rank first and the body ring's follow as the fallback (a pawn's colliding
+// reach can far exceed its body: BP_BaseMech_C read 3620 uu). False (the old landing)
+// with no main nav data, no navmesh point near the actor, a walk running (the path query shares its point buffer),
+// a platform actor or no candidate at all.
+bool b16_landing(void* world, void* pawn, const void* actor, const Vec3& at, const Vec3& from, const Vec3& old,
+                 double dist, uint32_t seq, B16Ring* r) {
+    *r = B16Ring{};
     if (c64_walking() || c64_adopt_main_nav(world, c64_nav_system(world), at) == nullptr) {
         return false;
     }
@@ -1802,54 +2025,183 @@ bool b16_landing(void* world, void* pawn, const Vec3& at, const Vec3& from, cons
         log::line("cmd: %u warp: no navmesh point within %.0f uu of the actor; old landing", seq, kB16ActorMeshUu);
         return false;
     }
-    if (at.z - goal.z > kB16AboveMeshUu) {
-        const Vec3 down{old.x, old.y, at.z - kB16SupportUu};
-        bool inside = false;
-        const Vec3 floor = trace_channel(pawn, old, down, kEccWorldStatic, nullptr, nullptr, &inside);
-        const bool support = !inside && floor.z > down.z + 1.0;
-        log::line("cmd: %u warp: the actor's navmesh point (%.0f, %.0f, %.0f) is %.0f uu under it; surface under the old "
-                  "landing %s (z %.0f)%s", seq, goal.x, goal.y, goal.z, at.z - goal.z,
-                  inside ? "inside geometry" : support ? "found" : "none", floor.z,
-                  support ? ": off the navmesh, on a platform; old landing" : "");
-        if (support) {
-            return false;
-        }
+    if (b16_platform(pawn, at, goal, old, seq)) {
+        return false;
     }
+    r->centre = at;
+    Vec3 extent{};
+    if (g_actor_bounds != nullptr) {
+        g_actor_bounds(actor, false, &r->centre, &extent, false);
+    }
+    // Only a pawn's body blocks the ring (b269: a presence volume's 2388 uu reach put the C4M2 Plaza warp 2488 uu out,
+    // outside the trigger it must stand in; a satchel pickup's ring went 150 -> 308 uu, out of use range). The reach is
+    // the colliding components' box from the actor's root (b270: BP_BaseMech_C's whole-actor reach gave a 2043 uu ring
+    // for a 300 uu seat warp; the host landed 1888 uu out and E did not seat it).
+    r->body = g_pawn_class != nullptr && is_a(actor, g_pawn_class());
+    double reach = 0.0;
+    if (r->body && g_actor_bounds != nullptr) {
+        Vec3 cc{};
+        Vec3 ce{};
+        g_actor_bounds(actor, true, &cc, &ce, false);
+        const double rx = fabs(cc.x - at.x) + ce.x;
+        const double ry = fabs(cc.y - at.y) + ce.y;
+        reach = rx > ry ? rx : ry;
+    }
+    r->ring = !r->body || dist > reach + kB16RingPadUu ? dist : reach + kB16RingPadUu;
+    r->given = dist;
+    r->reach = reach;
+    // c502b277a line 725: BP_BaseMech_C's colliding reach read 3620 uu, the 3720 uu ring landed the host 3735 uu out
+    // and E found no target. The given ring is ranked first; the body ring is the fallback when its points fail.
+    r->two = r->ring > dist;
+    const double eye_up = c264_eye(pawn).z - actor_location(pawn).z; // the pawn's eye over its root
     const double base = atan2(from.y - at.y, from.x - at.x);
-    const double half = dist * 0.5 > kB16ActorMeshUu ? dist * 0.5 : kB16ActorMeshUu;
-    double best = -1.0;
-    int32_t best_dir = -1;
-    for (int32_t d = 0; d < kB16Dirs; ++d) {
-        const double a = base + d * (6.283185307179586 / kB16Dirs); // 2 pi / kB16Dirs
-        const Vec3 cand{at.x + cos(a) * dist, at.y + sin(a) * dist, at.z};
-        Vec3 mesh{};
-        if (!c64_project(world, pawn, cand, Vec3{half, half, kC64ProjectHalfZ}, mesh)) {
-            continue;
-        }
-        const int32_t n = c64_query(pawn, pawn, mesh, goal);
-        if (n <= 0 || vec_dist(g_c64.pts[n - 1], goal) > kB16PathEndUu) {
-            continue;
-        }
-        double len = 0.0;
-        Vec3 prev = mesh;
-        for (int32_t i = 0; i < n; ++i) {
-            len += vec_dist(prev, g_c64.pts[i]);
-            prev = g_c64.pts[i];
-        }
-        if (best < 0.0 || len < best) {
-            best = len;
-            best_dir = d;
-            *out = mesh;
+    for (int32_t pass = r->two ? 0 : 1; pass < 2; ++pass) {
+        const double radius = pass == 0 ? dist : r->ring;
+        const double half = radius * 0.5 > kB16ActorMeshUu ? radius * 0.5 : kB16ActorMeshUu;
+        for (int32_t d = 0; d < kB16Dirs; ++d) {
+            const double a = base + d * (6.283185307179586 / kB16Dirs); // 2 pi / kB16Dirs
+            const Vec3 cand{at.x + cos(a) * radius, at.y + sin(a) * radius, at.z};
+            B16Cand one{};
+            if (b16_candidate(world, pawn, actor, cand, goal, from, half, eye_up, r, &one)) {
+                one.outer = r->two && pass == 1;
+                b16_rank(r, one);
+            }
         }
     }
     g_c64.npts = 0;
-    if (best_dir < 0) {
-        log::line("WARN cmd: %u warp: no navmesh point %.0f uu from the actor has a path to it; old landing", seq,
-                  dist);
+    if (r->n == 0) {
+        log::line("WARN cmd: %u warp: no free navmesh point %.0f uu from the actor (%d without a static floor, %d "
+                  "encroaching, %d moved out); old landing", seq, r->ring, r->no_floor, r->encroached, r->moved_out);
         return false;
     }
-    log::line("cmd: %u warp: navmesh landing (%.0f, %.0f, %.0f), direction %d of %d, path to the actor %.0f uu", seq,
-              out->x, out->y, out->z, best_dir + 1, kB16Dirs, best);
+    // c502b278b line 757 (cmd 337): the Brain Bug stood on a rise ~2170 uu over the ring's navmesh floor; all 16
+    // ranked points read sight no (terrain hit 385-871 uu short), b504_step held each for kB504HoldMs and the warp
+    // failed after 16 s. The old landing (cmd 339) stood with a clear line. A ring with no sighted point cannot pass
+    // b504_step's sight test, so it takes the old landing.
+    int32_t sighted = 0;
+    for (int32_t i = 0; i < r->n; ++i) {
+        sighted += r->c[i].sight ? 1 : 0;
+    }
+    if (sighted == 0) {
+        log::line("cmd: %u warp: none of %d ranked navmesh point(s) sees the actor, ring %.0f uu (%s); old landing",
+                  seq, r->n, r->ring, b16_ring_label(*r).text);
+        return false;
+    }
+    return true;
+}
+
+// Card 504: a warp that checks its own landing. After SetActorLocation the command stays started and each later
+// tick (b504_step) reads the pawn: MovementMode walking, z within kB504DzUu of the landing, and a visibility trace
+// from its eye that hits the actor (or ends at its bounds centre). All three from kB504SettleMs on: done. Not all
+// three by kB504HoldMs: the next ranked candidate (each once). One result row either way. A server-copy warp is
+// checked on the host's copy.
+constexpr ULONGLONG kB504SettleMs = 300;
+constexpr ULONGLONG kB504HoldMs = 1000;
+constexpr double kB504DzUu = 50.0;
+constexpr double kB504SightNearUu = 60.0; // a hit this close to the target centre counts as sight of it
+constexpr uint8_t kB504Walking = 1; // EMovementMode::MOVE_Walking
+constexpr int32_t kB504WhyChars = 1400; // c448b276a: 8 rows with the hit name
+struct B504Warp {
+    B16Ring ring;
+    int32_t idx;       // the candidate being held
+    ULONGLONG since;   // its SetActorLocation
+    Vec3 to;           // its landing: the navmesh point lifted kC75WarpAbove
+    Vec3 from;         // the pawn before the warp
+    const void* actor; // compared with the trace's hit actor, never read
+    uint8_t copy;      // cmdfile::Cmd::copy: 0 own pawn, else the server copy by role
+    uint32_t seq;
+    bool active;
+    int32_t why_len;
+    char why[kB504WhyChars]; // the failed candidates' reasons
+};
+B504Warp g_b504{};
+
+// The warped pawn this tick: the PC's own pawn, or its server copy by role (card 502). Null when gone.
+void* b504_pawn(void* pc, uint8_t copy) {
+    void* const own = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+    return copy != 0 && own != nullptr ? c29_server_copy_role(own, copy) : own;
+}
+
+// Puts the pawn at candidate g_b504.idx. False (reason kept) when SetActorLocation fails.
+bool b504_put(void* pawn, ULONGLONG now) {
+    B504Warp& w = g_b504;
+    const Vec3 mesh = w.ring.c[w.idx].mesh;
+    w.to = Vec3{mesh.x, mesh.y, mesh.z + kC75WarpAbove};
+    w.since = now;
+    if (g_set_actor_location(pawn, &w.to, false, nullptr, kTeleportPhysics)) {
+        return true;
+    }
+    const int n = snprintf(w.why + w.why_len, sizeof(w.why) - static_cast<size_t>(w.why_len),
+                           "%s%d (%.0f, %.0f, %.0f): SetActorLocation failed", w.why_len > 0 ? "; " : "", w.idx + 1,
+                           mesh.x, mesh.y, mesh.z);
+    w.why_len = n > 0 ? std::min(w.why_len + n, kB504WhyChars - 1) : w.why_len;
+    return false;
+}
+
+// Moves to the next candidate that SetActorLocation takes. False when none is left.
+bool b504_next(void* pawn, ULONGLONG now) {
+    B504Warp& w = g_b504;
+    for (++w.idx; w.idx < w.ring.n; ++w.idx) {
+        if (b504_put(pawn, now)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// One tick of a pending warp. True when it ended (*why null: a candidate held).
+bool b504_step(void* pc, ULONGLONG now, const char** why) {
+    B504Warp& w = g_b504;
+    void* const pawn = b504_pawn(pc, w.copy);
+    if (pawn == nullptr) {
+        log::line("cmd: %u warp: no candidate held (the pawn is gone after %d candidate(s))", w.seq, w.idx + 1);
+        w.active = false;
+        *why = "no candidate held (pawn gone)";
+        return true;
+    }
+    if (now < w.since + kB504SettleMs) {
+        return false;
+    }
+    const Vec3 at = actor_location(pawn);
+    const bool character = g_character_class != nullptr && is_a(pawn, g_character_class()); // a seat has no CMC
+    const auto* const cmc =
+        character ? static_cast<const uint8_t*>(read_ptr(pawn, kCharacterMovement)) : nullptr;
+    const int mode = cmc != nullptr ? static_cast<int>(cmc[kCmcMovementMode]) : -1;
+    const double dz = at.z - w.to.z;
+    const void* seen = nullptr;
+    const Vec3 hit = trace_channel(pawn, c264_eye(pawn), w.ring.centre, kEccVisibility, &seen);
+    // c448b276a line 59: 8 of 8 landings around a weapon pickup read sight no (its origin sits on the floor or rack
+    // under it). A hit within kB504SightNearUu of the centre is the target's own spot, seen.
+    const double hit_off = vec_dist(hit, w.ring.centre);
+    const bool sight = seen == w.actor || hit_off < (seen == nullptr ? 1.0 : kB504SightNearUu);
+    const bool standing = mode == kB504Walking && fabs(dz) <= kB504DzUu;
+    if (standing && sight) {
+        log::line("cmd: %u warp: landed at (%.0f, %.0f, %.0f) after %d candidate(s): standing, sight yes; %s from "
+                  "(%.0f, %.0f, %.0f), %s ring %.0f uu (%s), %d ranked (%d without a path, %d without a static floor, "
+                  "%d encroaching, %d moved out)%s%s", w.seq, at.x, at.y, at.z, w.idx + 1,
+                  w.copy == 2 ? "server copy 2" : w.copy != 0 ? "server copy" : "own pawn", w.from.x, w.from.y,
+                  w.from.z, w.ring.c[w.idx].outer ? "body" : "given",
+                  w.ring.c[w.idx].outer ? w.ring.ring : w.ring.given, b16_ring_label(w.ring).text, w.ring.n, w.ring.no_path, w.ring.no_floor, w.ring.encroached,
+                  w.ring.moved_out, w.why_len > 0 ? "; failed: " : "", w.why);
+        w.active = false;
+        *why = nullptr;
+        return true;
+    }
+    if (now < w.since + kB504HoldMs) {
+        return false;
+    }
+    const int n = snprintf(w.why + w.why_len, sizeof(w.why) - static_cast<size_t>(w.why_len),
+                           "%s%d (%.0f, %.0f, %.0f): mode %d, dz %.0f, sight %s (hit %s %.0f uu short)",
+                           w.why_len > 0 ? "; " : "", w.idx + 1, w.to.x, w.to.y, w.to.z, mode, dz, sight ? "yes" : "no",
+                           seen != nullptr ? class_name(seen).text : "nothing", hit_off);
+    w.why_len = n > 0 ? std::min(w.why_len + n, kB504WhyChars - 1) : w.why_len;
+    if (b504_next(pawn, now)) {
+        return false;
+    }
+    log::line("cmd: %u warp: no candidate held (%s); ring %.0f uu (%s), %d ranked", w.seq, w.why, w.ring.ring,
+              b16_ring_label(w.ring).text, w.ring.n);
+    w.active = false;
+    *why = "no candidate held";
     return true;
 }
 
@@ -1859,12 +2211,12 @@ bool b16_landing(void* world, void* pawn, const Vec3& at, const Vec3& from, cons
 // mechs on FED_C4M1 sit past a navmesh gap that a goto cannot cross. Card 123: `behind` puts it dist uu behind the
 // actor along the actor's forward axis instead (a turret's CanInteract wants the pawn facing the turret's forward).
 // Card 264: `front` is the same with the sign flipped, dist uu along the forward axis (a switch's face side). The row
-// logs the actor yaw and the landing point. Null when moved.
-constexpr double kC75WarpAbove = 100.0;
-const char* c75_warp(void* world, void* pc, const cmdfile::Cmd& c) {
-    void* const own = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
-    void* const pawn = c.copy != 0 && own != nullptr ? c29_server_copy_nth(own, c.copy - 1) : own; // card 209: 2
-    if (world == nullptr || pawn == nullptr) {
+// logs the actor yaw and the landing point (kC75WarpAbove). Null when moved. Card 504: a ring warp (an actor, dist
+// > 0, no behind/front) with a ranked landing sets g_b504.active and is checked on later ticks (b504_step).
+const char* c75_warp(void* world, void* pc, const cmdfile::Cmd& c, ULONGLONG now) {
+    g_b504.active = false;
+    void* const pawn = world != nullptr ? b504_pawn(pc, c.copy) : nullptr;
+    if (pawn == nullptr) {
         return c.copy == 2 ? "no second server copy (client2)" : c.copy != 0 ? "no server copy of the client's pawn"
                                                                              : "no local pawn";
     }
@@ -1883,20 +2235,34 @@ const char* c75_warp(void* world, void* pc, const cmdfile::Cmd& c) {
     Vec3 to = c.point ? at
                       : Vec3{at.x + (h > 1.0 ? dx / h : 1.0) * c.radius, at.y + (h > 1.0 ? dy / h : 0.0) * c.radius,
                              at.z + kC75WarpAbove};
-    Vec3 mesh{};
-    if (!c.point && root == nullptr && c.radius > 0.0 && b16_landing(world, pawn, at, from, to, c.radius, c.seq, &mesh)) {
-        to = Vec3{mesh.x, mesh.y, mesh.z + kC75WarpAbove}; // b16: a landing with a walk to the actor
+    B504Warp& w = g_b504;
+    if (!c.point && root == nullptr && c.radius > 0.0 &&
+        b16_landing(world, pawn, actor, at, from, to, c.radius, c.seq, &w.ring)) {
+        w.idx = 0;
+        w.from = from;
+        w.actor = actor;
+        w.copy = c.copy;
+        w.seq = c.seq;
+        w.why_len = 0;
+        w.why[0] = '\0';
+        w.active = b504_put(pawn, now) || b504_next(pawn, now);
+        if (w.active) {
+            return nullptr;
+        }
+        log::line("cmd: %u warp: no candidate held (%s); ring %.0f uu (%s), %d ranked", c.seq, w.why, w.ring.ring,
+              b16_ring_label(w.ring).text, w.ring.n);
+        return "no candidate held";
     }
     const bool moved = g_set_actor_location(pawn, &to, false, nullptr, kTeleportPhysics);
-    const Vec3 now = actor_location(pawn);
+    const Vec3 now_at = actor_location(pawn);
     char name[kChanNameMax + 1] = "the point";
     if (!c.point) {
         c50_name(actor, name, sizeof(name));
     }
     log::line("cmd: %u warp: %s %s (%.1f, %.1f, %.1f) -> (%.1f, %.1f, %.1f), %.0f uu from %s (yaw %.1f); "
               "SetActorLocation %d",
-              c.seq, c.copy == 2 ? "server copy 2" : c.copy != 0 ? "server copy" : "own pawn", object_name(pawn).text, from.x, from.y, from.z, now.x, now.y,
-              now.z, vec_dist(now, at), name, root != nullptr ? component_yaw(root) : 0.0, moved ? 1 : 0);
+              c.seq, c.copy == 2 ? "server copy 2" : c.copy != 0 ? "server copy" : "own pawn", object_name(pawn).text, from.x, from.y, from.z, now_at.x, now_at.y,
+              now_at.z, vec_dist(now_at, at), name, root != nullptr ? component_yaw(root) : 0.0, moved ? 1 : 0);
     return moved ? nullptr : "SetActorLocation failed";
 }
 
@@ -1940,9 +2306,8 @@ const char* c132_inventory(void* pc, uint32_t seq) {
 
 // Card 243 run A decision, test only: `ammo fill` gives the caller's own soldier pawn its equipped weapon's starting
 // ammunition through c21_grant_ammo, so the client's AmmoMirror carries the gain as in play. For a magazine type
-// (the Morita) that sets the magazine only and adds no reserve (run c243-c3m2-b5: "46 to 46"); objective scenarios
+// (the Morita) that sets the magazine only, so the reserve is then set to its max (below); objective scenarios
 // now clear by `clear <radius> kill` and need no fill. The row: the equipped primary ammunition tag and the reserve before and after. Null when done.
-constexpr int32_t kC243FillBelow = 60; // one Morita magazine, the driver's reserve floor (drive.py RESERVE_FLOOR)
 const char* c243_ammo_fill(void* pc, uint32_t seq) {
     void* const pawn = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
     void* const inventory = is_a(pawn, g_player_mi_class()) ? read_ptr(pawn, kMiWeaponInventory) : nullptr;
@@ -1956,13 +2321,23 @@ const char* c243_ammo_fill(void* pc, uint32_t seq) {
     if (g_c274_magazine_type != nullptr) {
         g_c274_magazine_type(&tag, weapon, 1);
     }
-    const int32_t before = c265_reserve(pawn);
-    if (before >= kC243FillBelow) { // "used before each clear when the reserve is under one magazine"
-        log::line("cmd: %u ammo fill: %s %d, not under %d, no fill", seq, fname_text(&tag).text, before, kC243FillBelow);
+    const int32_t before = c265_reserve(pawn); // c263i: every fill tops up (a fill only under 60 rounds let the
+                                               // reserve fall to 43 between fills, under the driver's floor)
+    c21_grant_ammo(pawn, inventory, cls);
+    // c263i (host "Morita 43 to 43", then 13 reserve-floor VOIDs): the grant fills a magazine type's magazine only, so
+    // the reserve is set to its max on the own pawn's AmmunitionInventory with SetAmmoCount (card 072's setter). The
+    // own pawn's count is the truth on both sides: on a client the next AmmoMirror frame carries it to the server
+    // copy, and SetAmmoCount is not AddAmmunitions, so card 384's add-back never sees it.
+    void* const ammo = read_ptr(pawn, kMiAmmoInventory);
+    const int32_t max = ammo != nullptr && g_c69_get_max != nullptr && tag != 0 ? g_c69_get_max(ammo, tag) : -1;
+    if (max <= 0 || g_c72_set_ammo == nullptr) {
+        log::line("WARN cmd: %u ammo fill: %s %d, reserve not set (%s)", seq, fname_text(&tag).text, before,
+                  ammo == nullptr ? "no ammunition inventory" : (tag == 0 ? "no equipped ammunition type"
+                                                                          : "no max or no SetAmmoCount"));
         return nullptr;
     }
-    c21_grant_ammo(pawn, inventory, cls);
-    log::line("cmd: %u ammo fill: %s %d to %d", seq, fname_text(&tag).text, before, c265_reserve(pawn));
+    g_c72_set_ammo(ammo, tag, max);
+    log::line("cmd: %u ammo fill: %s %d to %d (max %d)", seq, fname_text(&tag).text, before, c265_reserve(pawn), max);
     return nullptr;
 }
 
@@ -2222,14 +2597,20 @@ const char* c345_end_level(void* world) {
 
 // Card 109 test: `down host|client` (host only) puts roster slot 0 or 1 into card 043's Downed, the same entry a
 // lethal hit takes, so Downed behaviour can be proven without waiting for bugs to win. Card 209: `down client2` is
-// roster slot 2. Null when called.
+// the second client. Card 502 finding 2 (b263): a client is the server copy of the role it sent, found in the roster.
+// Null when called.
 const char* c109_down(void* world, const cmdfile::Cmd& c) {
     if (g_client_session || world == nullptr) {
         return "host only";
     }
     const C43Roster r = c43_roster(world);
-    const uint32_t slot = c.at[0] == 2.0 ? 2u : c.at[0] != 0.0 ? 1u : 0u;
-    void* const pawn = r.players > slot ? r.p[slot].pawn : nullptr;
+    const uint32_t role = c.at[0] == 2.0 ? 2u : c.at[0] != 0.0 ? 1u : 0u;
+    const void* const want = role != 0 ? c29_server_copy_role(world, role) : r.p[0].pawn;
+    uint32_t slot = static_cast<uint32_t>(kC43Max);
+    for (int32_t s = 0; s < kC43Max && want != nullptr; ++s) {
+        slot = r.p[s].pawn == want && slot == static_cast<uint32_t>(kC43Max) ? static_cast<uint32_t>(s) : slot;
+    }
+    void* const pawn = slot < static_cast<uint32_t>(kC43Max) ? r.p[slot].pawn : nullptr;
     if (r.players < 2 || pawn == nullptr || c43_is_down(pawn)) {
         return "no second player, no pawn in that slot, or already down";
     }
@@ -2269,9 +2650,6 @@ bool c64_set_cdo_bool(const wchar_t* path, const char* name) {
 // in the game instance's pause array. From a root: its "Widget Stack" elements, then their WB_* object properties
 // (two levels), each with its visibility; each class's own UFUNCTIONs and properties once per class pointer.
 // (c67a: a pointer kept across the map change was read after the front end's WB_Stack_C was freed.)
-constexpr size_t kStructChildren = 0x48;    // UStruct::Children (UField*: the UFunctions)
-constexpr size_t kUFieldNext = 0x28;        // UField::Next (UObjectBase is 0x28 bytes)
-
 constexpr size_t kFunctionNumParms = 0xB4;  // UFunction::NumParms (uint8), before ParmsSize at 0xB6
 
 constexpr int32_t kC67Cutscenes = 4;
@@ -2966,9 +3344,15 @@ bool c63_start(void* world, void* pc, ULONGLONG now) {
         g_c63.started = true;
         return false;
     }
-    case cmdfile::Op::Warp:
-        c63_finish(c75_warp(world, pc, c));
+    case cmdfile::Op::Warp: { // card 504: a ring warp checks its landing on later ticks (b504_step)
+        const char* const why = c75_warp(world, pc, c, now);
+        if (g_b504.active) {
+            g_c63.started = true;
+            return false;
+        }
+        c63_finish(why);
         return true;
+    }
     case cmdfile::Op::Kill:
         c63_finish(c98_kill(world, pc, c));
         return true;
@@ -3025,7 +3409,9 @@ bool c63_start(void* world, void* pc, ULONGLONG now) {
         return true;
     case cmdfile::Op::Charge: { // card 324: `host charge client ...` sets the server copy's slot (test only)
         void* const own = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
-        void* const pawn = c.copy == 0 ? own : !g_client_session && own != nullptr ? c29_server_copy_nth(own, 0) : nullptr;
+        void* const pawn = c.copy == 0                            ? own
+                           : !g_client_session && own != nullptr ? c29_server_copy_role(own, c.copy) // card 502
+                                                                 : nullptr;
         c63_finish(pawn != nullptr ? c106_set_charge(pawn, static_cast<int32_t>(c.at[0]), static_cast<int32_t>(c.at[1]),
                                                      c.at[2] != 0.0)
                    : c.copy != 0   ? "charge client is host only and needs the server copy of the client's pawn"
@@ -3172,6 +3558,13 @@ void c63_continue(void* world, void* pc, ULONGLONG now) {
         }
         return;
     }
+    if (c.op == cmdfile::Op::Warp) { // card 504
+        const char* why = nullptr;
+        if (b504_step(pc, now, &why)) {
+            c63_finish(why);
+        }
+        return;
+    }
     if (c.op == cmdfile::Op::Clear) { // card 265
         c265_step(world, pc, c, now);
         return;
@@ -3193,7 +3586,7 @@ void c63_continue(void* world, void* pc, ULONGLONG now) {
         return;
     }
     if (c.op == cmdfile::Op::ObjectiveGo) { // card 284 review 3: the settle
-        if (now >= g_c63.until) {
+        if (now >= g_c63.until || c284_go_still(world, pc, now, c.seq)) {
             c63_finish(c284_go_settle(world, pc, c.seq));
         }
         return;

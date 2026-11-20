@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 (senior). Code freeze: no source change, no rebuild, no deploy.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play build: `a4d3f58896432b28` (card 058).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play build: `a4d3f58896432b28` (card 058).
 
 ## Why
 

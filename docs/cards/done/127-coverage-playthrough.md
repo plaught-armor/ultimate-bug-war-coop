@@ -8,7 +8,7 @@ Read:
 - card 123 Report, item 4 (the 13 campaign maps and their sub-levels, the sweep table);
 - memory rules: test launches muted, windowed 640x360 side by side; builds and game pairs in the MemoryMax=12G scope.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: card 126's.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: card 126's.
 
 ## Why
 

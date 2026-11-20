@@ -9,7 +9,7 @@ Read:
 - the card 078 "Map changes";
 - the list of what is left in `hooks.cpp` from the card 088 Report.
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Do
 

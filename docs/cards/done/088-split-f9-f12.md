@@ -8,7 +8,7 @@ Read:
 - card 086 Part 0, whose rules apply here unchanged;
 - `docs/split-map.md` rows F9-F12, and the note under the `ubw/` table about card 066's journal.
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## The moves
 

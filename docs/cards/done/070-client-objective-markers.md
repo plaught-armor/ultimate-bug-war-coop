@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 04:02 to junior ultimate-bug-war-coop-bb, after card 072 was accepted.
 
-Read `docs/STATE.md` ("The client minimap shows no objective icons"), then the card 068 Report and the card 049 code in `mod/src/hooks.cpp` (`c49_after`, `c49_emit`, the client replay, `c49_snapshot_frames`). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("The client minimap shows no objective icons"), then the card 068 Report and the card 049 code in `mod/src/hooks.cpp` (`c49_after`, `c49_emit`, the client replay, `c49_snapshot_frames`). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

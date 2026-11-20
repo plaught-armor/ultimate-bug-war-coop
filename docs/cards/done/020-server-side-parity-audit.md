@@ -1,6 +1,6 @@
 # Card 020: The host gets everything it needs for the client's pawn (server-side parity audit)
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 021. Then read card 019's report and its senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card019f-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 021. Then read card 019's report and its senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card019f-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

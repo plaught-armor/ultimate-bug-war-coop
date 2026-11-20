@@ -1,6 +1,6 @@
 # Card 007: Host crash in the remote PlayerController's idle check (null PlayerInput)
 
-Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 006" entry. Card 004's report (`docs/cards/004-setplayer-guard-and-sweep.md`) shows the earlier remote-PC fix and the `tools/find_lp_derefs.py` sweep you will extend. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 006" entry. Card 004's report (`docs/cards/004-setplayer-guard-and-sweep.md`) shows the earlier remote-PC fix and the `tools/find_lp_derefs.py` sweep you will extend. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 Card 006 works: the client got into the map with input contexts added, and `StartEncounter` was skipped on the client 8 times, with no client crash. About 30 seconds after the join, the **host** crashed on its game thread (thread 360), reading `0x308` with `rcx == 0` at `UPlayerInput::IsPressed+0x35` (RVA 0x04313635).

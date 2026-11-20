@@ -1,6 +1,6 @@
 # Card 011: Client IA_Look never fires; the server corrects every client move
 
-Read `docs/STATE.md` first: the "Mod code rules" section and rows 008 to 011. Then read card 010 in full: the report and the senior review with its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and rows 008 to 011. Then read card 010 in full: the report and the senior review with its run results. The diagnostics you will extend are in `mod/src/hooks.cpp`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 Card 010's run (`logs/card010-client.log`, `rot[0..19]`) shows two separate faults on the client.

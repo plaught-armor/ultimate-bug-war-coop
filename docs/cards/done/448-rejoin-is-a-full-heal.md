@@ -1,7 +1,7 @@
 # 448: A rejoin is a full heal (Health and Armour are not kept)
 
 Found 2026-11-16 by static trace (senior), sibling of cards 440, 445, 446. Coded as a patch script
-(`~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/316f03d0-ef4a-41af-8d1d-90993a7b967c/scratchpad/c448_patch.py`, 5 edits, `--check` passes on the b146 tree); proof owed.
+(`/home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/316f03d0-ef4a-41af-8d1d-90993a7b967c/scratchpad/c448_patch.py`, 5 edits, `--check` passes on the b146 tree); proof owed.
 
 ## Defect
 

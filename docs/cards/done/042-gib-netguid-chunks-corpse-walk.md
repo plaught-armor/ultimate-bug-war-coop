@@ -2,7 +2,7 @@
 
 Status: done 2026-11-03.
 
-Read `docs/STATE.md` first ("Mod code rules", "Runtime facts"), then card 039 (the `ChanOp::Gib` signal, the client death burst, corpse collision) and card 041 (the `ChanOp::Anim` NetGUID route). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules", "Runtime facts"), then card 039 (the `ChanOp::Gib` signal, the client death burst, corpse collision) and card 041 (the `ChanOp::Anim` NetGUID route). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

@@ -8,7 +8,7 @@ Read:
 - card 024 (the client's fire is relayed to its server copy, which runs the full fire ability on the host);
 - `mod/src/ubw/grenades.cpp`, the card 074 FX log hooks (`SpawnSoundAtLocation`, `ExecuteGameplayCue`) as the pattern.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `7f93daf100d2ee0c` (card 098).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `7f93daf100d2ee0c` (card 098).
 
 ## Why
 

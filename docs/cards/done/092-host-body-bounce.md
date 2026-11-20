@@ -8,7 +8,7 @@ Read:
 - card 034 (feet on the ground, and the refit on frame size change, `g_fit_mesh`);
 - `ubw/remote_body.cpp`.
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

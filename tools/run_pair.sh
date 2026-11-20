@@ -69,7 +69,13 @@
 # so nothing is lost), then copies logs and reports new crash dumps.
 set -u -o pipefail
 
-REPO=$(cd "$(dirname "$0")/.." && pwd)
+REPO=/mnt/based_backup/Repos/ultimate-bug-war-coop
+# c504n1 (2026-11-19): DEPLOY=1 with LANE unset copied a stale build/dwmapi.dll over the lane 1 play build.
+# A deploy must name its lane.
+if [[ ${DEPLOY:-0} == 1 && -z ${LANE:-} ]]; then
+    echo "ABORT: DEPLOY=1 needs LANE=1 or LANE=2 set explicitly (lane 1 is the play build)" >&2
+    exit 2
+fi
 LANE=${LANE:-1}
 case $LANE in
     1) sfx=""; PORT=7777; WINY=40 ;;
@@ -260,6 +266,15 @@ if [[ -n $SCENARIO && -z $menu_gate_fail ]]; then
     drive_pid=$!
 fi
 
+# Card 252 step 2: GPU busy every 10 s with a wall clock stamp into logs/<tag>.gpu; stopped after the run loop.
+gpu_pid=""
+GPU_BUSY=/sys/class/drm/card1/device/gpu_busy_percent
+if [[ -r $GPU_BUSY ]]; then
+    (for ((g = 0; g < 100000; g++)); do printf '%s gpu_busy %s\n' "$(date +%T.%3N)" "$(<"$GPU_BUSY")"; sleep 10; done) \
+        >"$REPO/logs/$TAG.gpu" 2>&1 &
+    gpu_pid=$!
+fi
+
 # Liveness: every game's mod log must exist within 90 s of launch.
 start=$SECONDS
 reason=cap
@@ -304,6 +319,8 @@ for ((i = 0; i < loop_cap; i++)); do
     fi
     sleep 1
 done
+
+[[ -n $gpu_pid ]] && { kill "$gpu_pid" 2>/dev/null; wait "$gpu_pid" 2>/dev/null; }
 
 # The newest GE-Proton, the one umu-run picks with PROTONPATH=GE-Proton.
 WINESERVER=$(ls -d "$HOME"/.local/share/Steam/compatibilitytools.d/GE-Proton*-x86_64 2>/dev/null | sort -V | tail -1)/files/bin/wineserver

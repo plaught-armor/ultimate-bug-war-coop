@@ -1,6 +1,6 @@
 # Card 004: SetPlayer null-LocalPlayer guard, plus a static sweep for the same bug pattern
 
-Read `docs/STATE.md` first (the "Mod code rules" section and the card 003 result), then the report in `docs/cards/003-remote-pc-crash-guard.md`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first (the "Mod code rules" section and the card 003 result), then the report in `docs/cards/003-remote-pc-crash-guard.md`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 The card 003 guard works: on the host, `UpdateBindings` was skipped once and BeginPlay survived. The host then crashed one step later on the same join path: `UWorld::NotifyControlMessage` → `SpawnPlayActor` → `ASTPlayerController::SetPlayer+0x31`, `EXCEPTION_ACCESS_VIOLATION` reading 0x30.

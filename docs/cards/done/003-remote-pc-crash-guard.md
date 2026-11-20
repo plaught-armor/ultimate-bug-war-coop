@@ -1,6 +1,6 @@
 # Card 003: Guard the remote-PlayerController crash, plus a minidump symbolizer
 
-Read `docs/STATE.md` first (especially the two-instance test result), then the senior reviews at the end of cards 001 and 002. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first (especially the two-instance test result), then the senior reviews at the end of cards 001 and 002. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 In the card 002 runtime test the client connected to the listen host, and then the **host crashed**. When the server spawns a PlayerController for the remote client, `ASTPlayerController::BeginPlay` calls `GetAndApplyGameUserSettings`, which assumes the controller has a `ULocalPlayer`. A remote client's controller on the server has none. The result is `EXCEPTION_ACCESS_VIOLATION reading 0x148` inside `FSubsystemCollectionBase::GetSubsystemInternal`.

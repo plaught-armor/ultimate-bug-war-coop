@@ -97,6 +97,8 @@ inline constexpr size_t kComponentOwner = 0xA0;        // UActorComponent::Owner
 inline constexpr size_t kComponentRotation = 0x1E0;    // ComponentToWorld quat X,Y,Z,W (execK2_GetActorRotation)
 inline constexpr size_t kComponentTranslation = 0x200; // ComponentToWorld translation (execK2_GetActorLocation)
 inline constexpr size_t kBodyCollisionEnabled = 0x38F; // BodyInstance (+0x378).CollisionEnabled (GetCollisionEnabled)
+inline constexpr size_t kBodyObjectType = 0x38D; // BodyInstance.ObjectType, ECollisionChannel byte (GetCollisionObjectType)
+inline constexpr size_t kBodyResponses = 0x3E0;  // BodyInstance responses, one ECollisionResponse byte per channel (GetCollisionResponseToChannel)
 inline constexpr size_t kTransformTranslation = 0x20;  // FTransform<double>: quat +0, translation +0x20, scale +0x40
 
 // --- ACharacter, UCharacterMovementComponent -------------------------------------------------------------
@@ -107,6 +109,13 @@ inline constexpr size_t kTransformTranslation = 0x20;  // FTransform<double>: qu
 inline constexpr size_t kCharacterMovement = 0x330;
 inline constexpr size_t kCmcCharacterOwner = 0x198;    // UCharacterMovementComponent::SmoothClientPosition+0x27
 inline constexpr size_t kCmcSmoothingMode = 0x233;     // byte SmoothClientPosition+0x1E tests (NetworkSmoothingMode)
+// Card 524: UCharacterMovementComponent::ClientPredictionData (FNetworkPredictionData_Client_Character*, null until
+// made), and in it MeshTranslationOffset (FVector), which SmoothCorrection grows and SmoothClientPosition decays;
+// SmoothClientPosition_UpdateVisuals reads both +0x80 and the character's BaseTranslationOffset.
+inline constexpr size_t kCmcClientData = 0x7B0;
+inline constexpr size_t kClientMeshTranslationOffset = 0x80;
+inline constexpr size_t kCharacterBaseTranslation = 0x400; // ACharacter::BaseTranslationOffset (execGetBaseTranslationOffset)
+inline constexpr size_t kCompRelativeLocation = 0x158;     // USceneComponent::RelativeLocation (K2_SetRelativeLocation+0x37)
 inline constexpr size_t kMoveUpdatedComponent = 0xB8;  // UMovementComponent::UpdatedComponent (UpdateComponentVelocity)
 inline constexpr size_t kMoveVelocity = 0xD0;          // FVector Velocity (UpdateComponentVelocity)
 inline constexpr size_t kCmcMovementMode = 0x231;      // uint8 MovementMode (GetMaxSpeed switch)

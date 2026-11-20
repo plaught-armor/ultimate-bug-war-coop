@@ -292,7 +292,7 @@ void c43_interact_edge(void* interactor, bool pressed);
 bool c43_is_down(const void* pawn);
 const char* c43_life_text(const void* pawn);
 void c43_receive_use(void* pawn, uint32_t arg);
-void c43_logout(const void* pawn);
+void c43_logout(const void* pc, const void* pawn); // card 508: pc is the leaving one
 void c44_context(const void* context, int32_t priority);
 void c44_host_fire(const void* pawn, uint32_t arg);
 extern bool g_c44_pe;
@@ -1696,6 +1696,7 @@ void c491_level_watch(const void* sub);                   // client, every tick:
 void c475_map_end(void* old_world);                           // both: drops a replay cut by the map change
 int32_t c475_digest_total(const void* world);                 // the digest's Score: value, -1 when none
 void c475_step(void* engine);                                 // card 323: host total per change, client apply
+void c323_host_send(const void* world); // card 323/529, host: a changed total as "T" (also ahead of each digest B)
 void c459_after_reinit(const void* pawn);                    // client: card 020 re-init of the mech set (attributes.cpp)
 void c166_arm_map();                                          // per map, from c98_arm_map
 // Card 168 (marker_c166.cpp): UUserWidget::PlayAnimation. The handle struct returns through `ret` (RDX).
@@ -2167,6 +2168,10 @@ extern C29SelfFn g_orig_c447_pawn_leaving; // card 447: APlayerController::PawnL
 void detour_c447_pawn_leaving(void* pc);
 void* c29_server_copy(const void* own);
 void* c29_server_copy_nth(const void* own, int n);
+// Card 502 finding 2 (b263), host, test runs: the server copy whose client sent `role` (1 "client", 2 "client2"),
+// so a rejoined client keeps its role; PC order (c29_server_copy_nth) with a WARN when no PC has the role stored.
+void* c29_server_copy_role(const void* own, uint32_t role);
+void c502_receive_role(void* pc, uint32_t role); // host: ChanOp::Role
 constexpr int kC22MaxOwnFields = 64;    // ThirdPersonRenderer's own class properties
 constexpr size_t kC22LineChars = 1024;
 constexpr const char* kC22CompProps[] = {"SkeletalMeshAsset", "SkinnedAsset", "SkeletalMesh", "AnimClass",
@@ -2693,6 +2698,10 @@ extern GoreOverkillFn g_orig_gore_overkill;
 extern NpcVoidFn g_enable_corpse_box;
 extern GoreLocationFn g_gore_location;
 extern KinematicBonesFn g_kinematic_bones;
+// Card 524: USceneComponent::K2_SetRelativeLocation(FVector NewLocation, bool bSweep, FHitResult& SweepHitResult,
+// bool bTeleport). The FVector is passed by value, which the x64 ABI passes as a pointer to a copy.
+using SetRelativeLocationFn = void (*)(void* component, const void* location, bool sweep, void* hit, bool teleport);
+extern SetRelativeLocationFn g_set_relative_location;
 extern BodySimulatingFn g_body_simulating;
 extern SkeletalComFn g_skeletal_com;
 using CollisionTypeFn = uint8_t (*)(const void* component); // UPrimitiveComponent::GetCollisionObjectType
@@ -3081,6 +3090,7 @@ extern C31State g_c31;
 bool c31_line();
 void c31_weak_set(C31Weak& w, void* object);
 void* c31_weak_get(const C31Weak& w);
+bool c392_kept_npc(const void* actor); // card 528: an NPC carried out of the left map by seamless travel (client)
 // Card 368: the live actors of one class, for the steps that read the same few actors many times a second. The level
 // walk (c23_collect, every actor of the map) runs once per kC368WalkMs for the class and on a world change; the calls
 // between read the same actors through weak refs. An actor's first sighting can be up to one period late; a destroyed
@@ -3232,6 +3242,7 @@ struct C43Entry {
     ULONGLONG up_ms;    // revived; the entry leaves kC43StandUpMs later
     int32_t shown_secs; // the whole seconds last broadcast
     int32_t prio_state = -1; // card 294: the state of the last logged priority send (bleedout seconds repeat it)
+    uint64_t guid = 0;       // card 509, host: the pawn's NetGUID, stored at each transition while connections live
 };
 struct C43Hold {
     int32_t reviver_id;
@@ -3408,8 +3419,10 @@ int32_t c43_client_other_pawns(const void* world, void* out[kC43Max]);
 int32_t c43_client_id(const void* pawn); // client: a player pawn's entry id (its NetGUID), -1 when it has none
 // Card 209, client: a row whose pawn GUID does not resolve yet is held (last value wins per op and GUID) and applied
 // from the client tick once it does; the table is dropped at map change.
-enum class C209Op : uint8_t { BugForm, Warp, Count };
+enum class C209Op : uint8_t { BugForm, Warp, Resupply, Count }; // Resupply: card 502 finding 3, a card491 U row
 void c209_hold(C209Op op, uint64_t guid, uint32_t value);
+// Card 502 finding 3 (b263), client: a held card491 U row's level, applied once its pawn resolves (score_c475.cpp).
+void c491_level_apply(void* pawn, uint64_t guid, int32_t level);
 void c209_step(void* pc);
 void c209_arm_map();
 double c44_aim(void* pc, const Vec3& eye, const Vec3& target);
@@ -3610,6 +3623,7 @@ void c269_death_note(void* npc);
 bool c291_death_edge(void* npc, bool play); // card 291 (b187), client: edge time; true: the host's death row came first and was played
 void c269_state_host(void* npc, uint8_t new_state);
 void c207_shown_corpse(void* npc, const void* mesh); // card 207: pose_c132.cpp
+void c506_dead_note(void* npc, const char* path); // card 506: pose_c132.cpp, host: a 3D NPC dead by health
 using BaseStateChangedFn = void (*)(void* npc, uint8_t old_state, uint8_t new_state); // ESTBaseNPCState bytes
 extern BaseStateChangedFn g_orig_c269_state;
 void detour_c269_state(void* npc, uint8_t old_state, uint8_t new_state);
@@ -4347,6 +4361,108 @@ void detour_c103_select(void* component);
 bool detour_c103_set(void* component, void* actor);
 void* c103_enemy_pc(const void* ctx, unsigned long long rva);
 void c103_arm_map();
+// Card 532 (target_c532.cpp, always on): client target ticks stop; the host's primary target per NPC is sent
+// (ChanOp::NpcTarget) and returned by the client's GetPrimaryTarget.
+using C532TickFn = void (*)(void* component, float delta, int32_t tick_type, void* tick_function);
+using C532GetPrimaryFn = bool (*)(const void* component, uint8_t* out);
+using C532FindPrimaryFn = const void* (*)(const void* component);
+extern C532TickFn g_orig_c532_tick;
+extern C532GetPrimaryFn g_orig_c532_get_primary;
+extern C532FindPrimaryFn g_c532_find_primary;
+void detour_c532_tick(void* component, float delta, int32_t tick_type, void* tick_function);
+bool detour_c532_get_primary(const void* component, uint8_t* out);
+void c532_host_note(void* component);              // host, after SelectPrimaryTarget
+void c532_tick(ULONGLONG now);                     // both sides, c42_step
+void c532_receive(void* pc, const WireString* s);  // client: ChanOp::NpcTarget
+void c532_arm_map();                               // both sides, map arm (c99_arm_map)
+// Card 531 (perf_save_c531.cpp, performance mod family): per-thread cache of the actor's save component behind
+// USTSaveComponent::GetSaveId. On by default; UBWCOOP_C531_OFF=1 leaves the detour out.
+extern GetSaveIdFn g_orig_c531_save_id;
+extern StaticClassFn g_c531_static_class; // USTSaveComponent::StaticClass
+extern bool g_c531_on;
+uint32_t* detour_c531_save_id(uint32_t* out, const void* actor);
+void c531_tick(ULONGLONG now); // game thread, c42_step: totals every 60 s
+// Card 535 (floor_c535.cpp, performance mod family): client NavWalking NPC proxies get FindFloor's no-floor result
+// without the sweep. On by default; UBWCOOP_C535_OFF=1 leaves the detour out.
+using FindFloorFn = void (*)(const void* cmc, const void* location, void* out, bool can_use_cached,
+                             const void* downward);
+extern FindFloorFn g_orig_c535_find_floor;
+extern bool g_c535_on;
+void detour_c535_find_floor(const void* cmc, const void* location, void* out, bool can_use_cached,
+                            const void* downward);
+void c535_tick(ULONGLONG now); // game thread, c42_step: totals every 60 s
+// Card 536 (perf_component_c536.cpp, performance mod family): per-thread cache behind AActor::FindComponentByClass.
+// On by default; UBWCOOP_C536_OFF=1 leaves the detour out. The TSubclassOf argument is passed by pointer.
+using FindComponentByClassFn = void* (*)(const void* actor, void* const* cls);
+extern FindComponentByClassFn g_orig_c536_find;
+extern bool g_c536_on;
+void* detour_c536_find(const void* actor, void* const* cls);
+using OwnedComponentFn = void (*)(void* actor, void* component);
+using ResetOwnedComponentsFn = void (*)(void* actor);
+extern OwnedComponentFn g_orig_c537_add;
+extern OwnedComponentFn g_orig_c537_remove;
+extern ResetOwnedComponentsFn g_orig_c537_reset;
+void detour_c537_add(void* actor, void* component);
+void detour_c537_remove(void* actor, void* component);
+void detour_c537_reset(void* actor);
+void c536_tick(ULONGLONG now); // game thread, c42_step: totals and none callers every 60 s
+// Card 538 (perf_target_c538.cpp, performance mod family, diag): per-frame repeat counts behind
+// USTAttackComponent::DoesTargetMeetConditions. On by default; UBWCOOP_C538_OFF=1 leaves the detour out.
+using TargetConditionsFn = bool (*)(const void* self, const void* cond, void* target);
+extern TargetConditionsFn g_orig_c538_conditions;
+extern bool g_c538_on;
+extern bool g_c540_on; // card 540: same-frame result memo in the same detour; UBWCOOP_C540_OFF=1 turns it off
+bool detour_c538_conditions(const void* self, const void* cond, void* target);
+void c538_tick(ULONGLONG now); // game thread, c42_step: advances the frame, totals every 60 s
+// Card 539 (perf_move_c539.cpp, performance mod family, diag): client NPC proxy capsule sweep counts, on card 461's
+// MoveComponentImpl row. UBWCOOP_C539_OFF=1 turns the counts off.
+extern bool g_c539_on;
+extern bool g_gate_c461_c539;
+extern bool g_c542_on;
+extern bool g_c544_on; // card 544: dynamic tree padding (UBWCOOP_C544_OFF=1 turns it off)
+bool c539_move(void* comp, const void* delta, const void* rotation, bool sweep, void* hit, int32_t flags,
+               uint8_t teleport);
+void c539_tick(ULONGLONG now); // game thread, c42_step: totals every 60 s
+void c544_tick(void* engine);   // game thread, c42_step: card 544 dynamic tree padding, once per process
+// Card 534 (query_c534.cpp, diag with UBWCOOP_C132_FX=1): game-thread cost of the world collision queries by caller
+// or by owner class. Entry order matches kC534Entry in the source and the hook rows.
+constexpr int32_t kC534Entries = 13;
+using C534Fn = bool (*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t,
+                        uintptr_t);
+extern C534Fn g_orig_c534[kC534Entries];
+template <int K>
+bool detour_c534(uintptr_t a0, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6,
+                 uintptr_t a7, uintptr_t a8);
+void c534_tick(ULONGLONG now); // game thread, c42_step
+// Card 545 (query_bp_c545.cpp, diag with UBWCOOP_C132_FX=1): the native UKismetSystemLibrary
+// CapsuleTraceSingleForObjects (entry 0) and SphereOverlapComponents (entry 1), keyed by return address.
+constexpr int32_t kC545Entries = 2;
+using C545CapsuleFn = bool (*)(const void* context, const void* start, const void* end, float radius,
+                               float half_height, const void* types, bool complex, const void* ignore, int32_t draw,
+                               void* hit, bool ignore_self, const void* color, const void* hit_color, float draw_time);
+using C545SphereFn = bool (*)(const void* context, const void* position, float radius, const void* types,
+                              const void* class_filter, const void* ignore, void* out);
+extern C545CapsuleFn g_orig_c545_capsule;
+extern C545SphereFn g_orig_c545_sphere;
+bool detour_c545_capsule(const void* context, const void* start, const void* end, float radius, float half_height,
+                         const void* types, bool complex, const void* ignore, int32_t draw, void* hit, bool ignore_self,
+                         const void* color, const void* hit_color, float draw_time);
+bool detour_c545_sphere(const void* context, const void* position, float radius, const void* types,
+                        const void* class_filter, const void* ignore, void* out);
+void c545_tick(ULONGLONG now); // game thread, c42_step
+// Card 548 (perf_overlap_c548.cpp, diag with UBWCOOP_C132_FX=1): virtual UpdateOverlapsImpl(const TArrayView<const
+// FOverlapInfo>* pending, bool notify, const TArrayView<const FOverlapInfo>* at_end) of UPrimitiveComponent (entry 0),
+// USkinnedMeshComponent (1) and USkeletalMeshComponent (2), rows per player-owned component. Entry 1 shares its
+// address with USceneComponent::UpdateOverlapsImpl (identical code folding, RVA 0x3afef70), so it times scene
+// components such as the camera too.
+constexpr int32_t kC548Entries = 3;
+using C548ImplFn = bool (*)(void* comp, const void* pending, bool notify, const void* at_end);
+extern C548ImplFn g_orig_c548_impl[kC548Entries];
+bool detour_c548_prim(void* comp, const void* pending, bool notify, const void* at_end);
+bool detour_c548_skinned(void* comp, const void* pending, bool notify, const void* at_end);
+bool detour_c548_skeletal(void* comp, const void* pending, bool notify, const void* at_end);
+void c548_tick(ULONGLONG now); // game thread, c42_step
+
 // Card 111: wave budget and ticket limits scaled by player count (bug_scale.cpp).
 using C111FactorFn = int32_t (*)(const void* wave, void* const* data, int32_t budget);
 using C111CreateFn = void (*)(void* manager, uint8_t type, int32_t limit, float rate);
@@ -4519,6 +4635,7 @@ extern ImpartFn g_orig_c137_impart_mesh;
 void detour_c137_impart_base(void* part, const Vec3* a, const Vec3* b, const Vec3* c);
 void detour_c137_impart_mesh(void* part, const Vec3* a, const Vec3* b, const Vec3* c);
 void c137_receive_gib(void* pc, const WireString* s); // client: ChanOp::GibPart
+void c137_receive_gib_pose(void* pc, const WireString* s); // client, card 519: ChanOp::GibPose
 void c137_gib_tick(ULONGLONG now);                    // every tick, both sides (from c42_step)
 void c137_gib_dump(const char* why);
 void* c42_spawn_exact(void* pc, void* data_cls, const Vec3& loc, float f, const Vec3& a, const Vec3& b,
@@ -4835,6 +4952,7 @@ struct C50Copy {
     char ammo[kChanTextMax + 1]; // card 072: the client's last AmmoMirror text for this pawn; re-applied each poll
     char charge[kC104ChargeText]; // card 104: the last TacCharge text sent for this copy
     char row[96]; // card 327: the last player row logged for this copy's slot
+    uint32_t role; // card 502 finding 2: the client's test role (1 "client", 2 "client2"); 0 none sent
 };
 // Card 230: a c95_wire_target name ("parent/component" for a child actor, each part at most kChanNameMax). Every
 // buffer that holds or parses one is kC95TargetMax + 1; kChanNameMax stays 64.
@@ -4960,8 +5078,12 @@ void c95_host_door_state(void* door, uint8_t state, int buffer); // host: journa
 // --- Card 161: BP_Door_Base doors host owned (door_c161.cpp) ---
 extern bool g_c161_pe;                             // a door is tracked: detour_process_event calls c161_pe
 bool c161_pe(const void* object, const void* function); // true: the client refuses this call on a door
+// Card 507: void ProcessLocalScriptFunction(UObject* Context, FFrame& Stack, void* Result), every script function body
+using LocalScriptFn = void (*)(void* context, void* stack, void* result);
+extern LocalScriptFn g_orig_c507_local_script;
+void detour_c507_local_script(void* context, void* stack, void* result); // client: refuses the BP VM's own door calls
 void c161_step(void* engine);
-bool c161_receive(const char* name, char op, const char* text); // client: a DoorOp no ASTDoor took; true when taken
+bool c161_receive(const void* world, const char* name, char op, const char* text); // client: a DoorOp no ASTDoor took; true when taken
 const char* c161_cmd(const char* name, uint8_t op); // host test command `door open|close` on a BP door
 void c288_presence_fired(const void* pawn); // card 288, host: a player presence fires now (before its original)
 void c288_trigger_at(Vec3 at, bool objective); // card 288, host: a player-trigger close starts now, `at` on the inner
@@ -5029,6 +5151,8 @@ struct C95Fanout {
 C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool priority = false);
 int32_t c95_ponged_count(const void* world); // host: remote PCs past their first Pong this map
 bool c95_send_one(void* pc, ChanOp op, const char* text); // card 132: one PC
+// Card 519: a blob frame of n bytes to c95_send_all's set (paced, never priority).
+C95Fanout c95_send_blob_all(const void* world, ChanOp op, const uint8_t* bytes, int32_t n);
 void* c95_find_nearest(const void* world, const char* name, const Vec3& at);
 const void* c95_child_cac(const void* actor);
 const void* c95_anchor(const void* actor);
@@ -5248,6 +5372,7 @@ struct C126Pick {
 const uint8_t* c126_find(const void* world, uint64_t id);   // the objective with FName id, or null
 void* c126_actor(const uint8_t* o);                         // ObjectiveActors[0], or null
 const void* c126_active_parent(const SparseView& v);        // the open top-level objective whose steps alone show markers, else the lowest slot
+const uint8_t* c126_root(const uint8_t* o);                     // the open top-level objective above o (o for a root), or null
 // The active step under the active parent (or under an open sub of it: count containers' steps, card 284 5a), marker
 // on or (keep) the one worked on; the last slot wins. need_actor false: steps with no ObjectiveActors count too.
 bool c126_pick(const void* world, uint64_t current, bool keep, bool need_actor, const Vec3& from, C126Pick& out);
@@ -5270,8 +5395,9 @@ void c64_set_yaw(void* pc, double yaw, double pitch);       // testrun.cpp: the 
 const char* c284_now(void* world, void* pc, uint32_t seq);
 const char* c284_next(void* world, void* pc, uint32_t seq); // b238 `objective next`: the next doable step becomes current
 bool c284_expect_step(void* world, void* pc, const char* id_text, bool timed_out, uint32_t seq, const char** why);
-const char* c284_go_start(void* world, void* pc, uint8_t who, uint32_t seq); // who 0 host, 1 client, 2 client2, 3 all
+const char* c284_go_start(void* world, void* pc, uint8_t copy, uint32_t seq); // copy: who (0 host, 1 client, 2 client2, 3 all) plus cmdfile::kGoHome
 const char* c284_go_settle(void* world, void* pc, uint32_t seq);             // after the settle (the go's c.ms)
+bool c284_go_still(void* world, void* pc, uint64_t now, uint32_t seq);     // card 513: every tick of the settle
 bool c284_wait_step(void* world, void* pc, const char* id_text, bool timed_out, const char** why); // true: ended
 // --- Card 065 step 1: which level triggers fire on which machine (log only, UBWCOOP_C65_LOG=1) ---
 // UADLevelTriggerComponent::Trigger itself is a shared empty `ret` (never hooked); the two reaction subclasses
@@ -5352,6 +5478,25 @@ void c330_tick_end();                                     // ubw_post_tick end: 
 void c330_collect(const void* ret, uint64_t actors, int64_t ticks); // c23_collect: its caller, actors walked, QPC ticks
 void c330_recv(wchar_t op, int64_t ticks);                // c252_ledger_recv: one received frame's handler time
 void c330_map_end(const void* old_world);                 // LoadMap enter: per-step rows, collect by caller
+void c527_spawn(const void* cls, const void* spawned, int64_t ticks); // card 527: one SpawnActor call's QPC ticks (FX flag)
+// score_c475.cpp: one struct value at `at` as "{member=value,...}" (number members only); chars written.
+int c491_struct_text(const void* st, const uint8_t* at, char* out, size_t cap);
+// Card 527 item 2 (frame_c330.cpp, FX flag only): NPC tick time per kind, a window row and a map row.
+constexpr int32_t kC527TickActor = 0;    // ASTNonPlayableCharacterBase::Tick
+constexpr int32_t kC527TickMovement = 1; // UCharacterMovementComponent::TickComponent, NPC owner (detour_cmc_tick)
+constexpr int32_t kC527TickMesh = 2;     // USkeletalMeshComponent::TickComponent, NPC owner
+constexpr int32_t kC527TickSprite = 3;   // UADSpriteAnimatorComponent::TickComponent, NPC owner
+constexpr int32_t kC527TickKinds = 4;
+using C527ActorTickFn = void (*)(void* actor, float delta);
+extern C527ActorTickFn g_orig_c527_actor_tick;
+extern CmcTickFn g_orig_c527_mesh_tick;
+extern CmcTickFn g_orig_c527_sprite_tick;
+void detour_c527_actor_tick(void* npc, float delta);
+void detour_c527_mesh_tick(void* comp, float delta, int32_t tick_type, void* tick_function);
+void detour_c527_sprite_tick(void* comp, float delta, int32_t tick_type, void* tick_function);
+// Times one component tick for `kind` when its owner is an NPC (FX flag), else just calls `orig`.
+void c527_component_tick(int32_t kind, CmcTickFn orig, void* comp, float delta, int32_t tick_type,
+                         void* tick_function);
 void c330_pe(uint64_t tsc); // detour_process_event: one call's mod time (time stamp counter ticks, the original excluded)
 void c303_press(const char* what);                        // client: a mount or leave request sent (static string)
 void c303_possession(const char* event, const void* pawn); // client: OnRep_Pawn, ClientRestart, Ack, SetPawn
@@ -5617,6 +5762,7 @@ void c132_proj_launch(const void* init_data, const double* transform, const void
                       const void* ra);
 void c132_proj_round(uint32_t round);
 void c132_proj_map();
+void c136_discard_component(void* comp); // card 526: client discard of a host-sent component (fx_c136.cpp)
 bool c132_proj_unown(const void* init_data); // card 286: a released own launch leaves the own count
 void c132_fx_probe(const char* what, const char* asset, const Vec3* at, const void* actor, const void* ra);
 void detour_c74_spawned(void* ability, void* projectile);
@@ -5730,6 +5876,7 @@ inline constexpr uint8_t kC136FlagStopWithParent = 0x20; // SpawnSoundAttached b
 inline constexpr uint8_t kC136FlagReset = 0x40;          // Activate bReset (played the same on the client)
 inline constexpr uint8_t kC136FlagPlayerSource = 0x80;   // card 304: a sound of the sender's own player pawn or its weapon
 inline constexpr size_t kNiagaraAsset = 0x520; // UNiagaraComponent::Asset (GetFXSystemAsset 0x01722800)
+inline constexpr size_t kNiagaraPoolingMethod = 0x650; // UNiagaraComponent::PoolingMethod (ReleaseToPool: cmpb $0x2)
 uint32_t c136_fx_enter(const C136Call& c);
 void c136_fx_leave(C136Point point, uint32_t id, const void* made);
 bool c136_setvar_install(uint8_t* base, const IMAGE_NT_HEADERS64* nt); // UBWCOOP_C136_LOG=1 only

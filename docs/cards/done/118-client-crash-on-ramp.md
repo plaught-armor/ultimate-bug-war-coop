@@ -9,7 +9,7 @@ Read:
 - the playtest logs: host `logs/playtest-host-20261106-ramp.log` (copied from the game folder's `UBWCoop-menu.log`)
   and client `logs/playtest-client-20261106-ramp.log`.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `4ff26b46c39033ac` (card 117).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `4ff26b46c39033ac` (card 117).
 
 ## Why
 

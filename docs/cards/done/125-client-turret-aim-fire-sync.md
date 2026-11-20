@@ -10,7 +10,7 @@ Read:
   `ADProjectile` visuals through the card 074 path) — the turret is the same problem;
 - card 098 Report (world sync mechanism, one mechanism per class of state).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: card 124's.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: card 124's.
 
 ## Why
 

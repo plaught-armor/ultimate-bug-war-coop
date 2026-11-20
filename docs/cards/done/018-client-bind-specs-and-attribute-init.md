@@ -1,6 +1,6 @@
 # Card 018: Client mouse look works on foot (required this card); then bind the replicated ability specs to their input tags
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 018. Then read card 017's report and its senior review, including both corrections. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card017{b,c}-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 016 to 018. Then read card 017's report and its senior review, including both corrections. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card017{b,c}-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 **Priority.** Client mouse look has taken cards 009 to 017. This card is done only when a client run shows the camera turning from simulated mouse movement (SendInput) on foot. Do part A first and finish it before you start part B. If part B is not finished, report it as open; part A is not optional.
 

@@ -386,7 +386,7 @@ Directory: `prefix/drive_c/users/steamuser/AppData/Local/StarshipTroopers_UBW/Sa
 | SO2 check | — | host-…-c243-plant-so2-check | warrior bug on the host, ACTIVATE 446.56 m | fail (check) |
 | fail 628 | — | host-/client-…-fail-line628 | host: console under attack; client: green-lit panel beside the real switch | fail |
 
-Shot list (36 files, including the 2 from the stopped launch): `~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r3-shots.txt`.
+Shot list (36 files, including the 2 from the stopped launch): `/home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r3-shots.txt`.
 
 ## Run 4 preparation (junior, 2026-11-13) — senior order: stand data, look gate, aim fixes
 
@@ -553,7 +553,7 @@ and lands each presence / marker name warp once (300/400 and 40/60) to get its h
 | BP_SecretPickup_C_2 | host | p5h42 | point -35744 -23095 1201 |
 | BP_SecretPickup_C_2 | client | p5c35 | point -35806 -23043 1201 |
 
-Full list of the 91 probe stands: ~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r5/p5-sites.tsv. Scenario: ~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r5/c243-p5.txt (429 steps).
+Full list of the 91 probe stands: /home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r5/p5-sites.tsv. Scenario: /home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/6d801d14-53c9-4cec-bc27-ada000576173/scratchpad/r5/c243-p5.txt (429 steps).
 
 ## Run 5 ammo count (junior, 2026-11-13, static, no launch)
 

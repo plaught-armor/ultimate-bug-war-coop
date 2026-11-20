@@ -55,3 +55,48 @@ No static cause to fix. The step 1b split is built (`mod ms:` in the frame windo
 c244b207b (63 min of C4M1 with C132_FX and C136_LOG on) 0 of 374 client windows were under 500 frames; the mod's
 own time per 10 s window was `other` median 273 ms, max 457 ms (under 5 percent). The heavy case (C2M1 plasma
 area, C3M2 PowerPlant) is not reached on C4M1. Stays open for a FED_C2M1 or FED_C3M2 run with the split.
+
+## Step 2 spec (2026-11-19, senior, from `c263b`; diagnostic only, next lane 2 build)
+
+`c263b` (FED_C3M2) gives the deciding row: client windows of 161 to 275 frames per 10 s, with the mod's split at 3 to
+5 percent. The time is in the game or the GPU (card 263 table). Step 2 counts what the engine holds, on both sides.
+
+- Behind `UBWCOOP_C132_FX=1`, once per 30 s `card330` window: one pass over GUObjectArray (the loop of
+  `objects_of_class`, `mod/src/ue/reflect.cpp:310`). Count the live objects in total and, by exact class pointer,
+  NiagaraComponent, ParticleSystemComponent, AudioComponent, DecalComponent, SkeletalMeshComponent,
+  StaticMeshComponent and ProjectileMovementComponent. Resolve each class once per map with `find_class`.
+- One row per side: `card252: <side> t=<ms> census: objects <n>; NiagaraComponent <a>, ... ; scan <x> ms`. The
+  scan time is printed so its own cost can be seen; it must not run in the play build.
+- Deciding rows: the class whose client count grows with the frame time while the host's stays flat is step 3. If
+  no count grows and GPU busy is high on the client's frames, the cost is drawn on the GPU (the client renders FX
+  or decals that the host culls): step 3 is then a render-side comparison.
+- `tools/run_pair.sh`: sample `/sys/class/drm/card1/device/gpu_busy_percent` every 10 s into `logs/<tag>.gpu` with
+  a wall clock stamp. This is a harness change; make it between runs.
+
+## c263L (4-player load, 150 bugs, b309, senior dig 2026-11-19)
+
+Frame windows after the spawn: host 208 to 256 frames per 10 s, client 239 to 513. The mod's share was 6 to 8
+percent on the host and 9 to 16 percent on the client, so most of the time is the game. Map totals from the card 330
+step rows, largest first:
+
+- Host: `c293_step` 2220 ms (225 us per tick, 558 calls over 1 ms), `c132_ext_step` 556, `c151_flush_step` 412,
+  `c140_pace_step` 363, `c21_parity_step` 303.
+- Client: `client_significance_step` 2846 ms (279 us per tick), `c293_step` 1496, `c37_step` 856 (max 31 ms, 54
+  calls over 1 ms), `c132_pose_step` 623.
+
+Notes:
+
+- `client_significance_step` is the game's own UpdateSignificanceManager, the work the host's game mode does every
+  frame. It stays.
+- Fix in source: `c293_step` (card 293's closed diagnostic) traced every minimap marker on every tick while any
+  suspect was listed, which at 150 bugs was nearly always. Between the 1 Hz samples it now samples only the listed
+  suspects. Backup `build/audit_npc.cpp.pre293`.
+  - Prediction: host `c293_step` under 300 ms per map at the same load.
+  - The dwell leave rows keep tick resolution.
+- Open: the `c37_step` client spikes of up to 31 ms. Read the step before any change.
+- c263L312 (b312, FED_C3M2): host `c293_step` 1030 ms per map (was 2220). The under-300 prediction fails. Between
+  the 1 Hz samples, each listed marker still pays `c293_dwell_find` (a weak-pointer assign plus a 64-entry scan), and
+  the 1 Hz sample traces every marker. Card 293 is closed, so the step now runs only with the audit flag
+  (`g_c37.audit`, from `UBWCOOP_ENEMYAUDIT`) in `hooks_ubw.cpp`. Not in a build yet. Prediction: no `c293_step` row
+  without the audit flag.
+- Client `c37_step` re-measured in c247b311a: 31 to 138 ms per 30 s, max call 4.2 ms (STATE.md). No card.

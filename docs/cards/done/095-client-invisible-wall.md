@@ -8,7 +8,7 @@ Read:
 - card 056 (PickupGone relay of a placed, non-replicated actor's change by actor name);
 - card 042 (Gib relay), for the relay shape.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `718ad12a93ca2896` (card 094).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `718ad12a93ca2896` (card 094).
 
 ## Why
 

@@ -9,7 +9,7 @@ Read:
 - card 100 Report (`c100_skip_local`, client-local objective gate);
 - `docs/STATE.md`, the sync rule (one mechanism per class).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `c5a6e7f5bc589024` (card 101).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `c5a6e7f5bc589024` (card 101).
 
 ## Why
 

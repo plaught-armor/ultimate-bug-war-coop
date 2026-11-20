@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 05:44 to junior ultimate-bug-war-coop-bb, after card 073 was accepted. Line numbers refreshed 2026-11-05 04:50. Card 071 ammo pickups and the grenade pickups taken by the client's copy are covered too: the host calls `DisablePickup` on them (`logs/c72c-host.log`).
 
-Read `docs/STATE.md` and the card 050 Report and Senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` and the card 050 Report and Senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

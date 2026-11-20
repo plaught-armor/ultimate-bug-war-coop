@@ -177,8 +177,12 @@ struct DecalClient {
     bool applying;   // the relay's own spawn is running: not suppressed
     // map totals
     uint32_t received, applied, released, suppressed, ignored, dups, no_mat, no_target, at_fallback, nulls;
-    uint32_t expired, no_decal, gone_early, fifo_early, full, bad, rounds, round_warn;
-    uint32_t local_evicted, cap_grown; // c132 pool release redirect: own decals released for a host copy, cap + 1
+    uint32_t expired, no_decal, gone_early, full, bad, rounds, round_warn;
+    // c263L336 follow-up (user rule): the client pool is plain FIFO, oldest first, host copies included; the cap
+    // never grows. A copy the FIFO takes moves here (its host id) so the host's later E row is expected, not a WARN.
+    uint32_t evicted[kDecalMax];
+    int32_t evicted_n;
+    uint32_t copies_evicted, evicted_released, evicted_lost; // FIFO took a copy; its E row came; ring full, oldest lost
     int32_t cap_set;                   // the test cap written this map, 0 none
     uint32_t lines;
     uint32_t placed_lines; // copies attached to a placed actor (hb41 review note 7: the crate decal proof)
@@ -673,8 +677,6 @@ void* client_manager(const void* context) {
     return gi != nullptr ? read_ptr(gi, kGameInstanceDecals) : nullptr;
 }
 
-void client_before(void* manager);
-
 int32_t client_copy(uint32_t id) {
     for (int32_t i = 0; i < g_dc.copy_n; ++i) {
         if (g_dc.copy[i].id == id) {
@@ -709,7 +711,30 @@ void client_scan(void* manager, const char* when) {
     }
 }
 
-// Client: the FIFO release the next spawn makes, when the pool is at its cap: a tracked copy there goes early.
+// Client: the evicted list holds host ids whose copy the client's FIFO took; the oldest goes when it is full.
+void client_evicted_add(uint32_t id) {
+    if (g_dc.evicted_n >= kDecalMax) {
+        memmove(&g_dc.evicted[0], &g_dc.evicted[1], static_cast<size_t>(kDecalMax - 1) * sizeof(uint32_t));
+        --g_dc.evicted_n;
+        ++g_dc.evicted_lost;
+    }
+    g_dc.evicted[g_dc.evicted_n++] = id;
+}
+
+// Client: true (and the id leaves the list) when the host's E row names a copy the client's FIFO already took.
+bool client_evicted_take(uint32_t id) {
+    for (int32_t i = 0; i < g_dc.evicted_n; ++i) {
+        if (g_dc.evicted[i] == id) {
+            memmove(&g_dc.evicted[i], &g_dc.evicted[i + 1], static_cast<size_t>(g_dc.evicted_n - i - 1) * sizeof(uint32_t));
+            --g_dc.evicted_n;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Client, before any decal spawn: the pool's FIFO (exe+0x5120C60) releases active[0] when the active count is at the
+// cap, whatever its age and whether it is a host copy or the client's own. A copy there moves to the evicted list.
 void client_fifo_check(void* manager) {
     const void* const pool = decal_pool(manager);
     const int32_t cap = pool != nullptr ? read_i32(pool, kPoolCap) : -1;
@@ -720,9 +745,8 @@ void client_fifo_check(void* manager) {
     }
     for (int32_t i = 0; i < g_dc.copy_n; ++i) {
         if (g_dc.copy[i].decal == data[0]) {
-            ++g_dc.fifo_early;
-            log::line("WARN card132: client decal pool at its cap %d: host decal %u released by the client's FIFO, "
-                      "not by a host row", cap, g_dc.copy[i].id);
+            ++g_dc.copies_evicted;
+            client_evicted_add(g_dc.copy[i].id);
             client_drop(i);
             return;
         }
@@ -854,7 +878,6 @@ bool client_place(void* pc, const ClientD& d, ULONGLONG held_ms) {
         return false;
     }
     client_scan(manager, "before a spawn");
-    client_before(manager); // own decals go first, so the FIFO check below finds room
     client_fifo_check(manager);
     bool no_target = false;
     void* const decal = client_spawn(pc, manager, material, d.r, age_s, no_target);
@@ -993,6 +1016,10 @@ void client_apply_e(void* pc, const char* row) {
         return;
     }
     const int32_t i = client_copy(id);
+    if (i < 0 && client_evicted_take(id)) {
+        ++g_dc.evicted_released; // the client's FIFO took this copy first
+        return;
+    }
     if (i >= 0 && g_dc.copy[i].decal == nullptr) {
         ++g_dc.held_released; // card 142: the host released it before its target copy arrived
         client_drop(i);
@@ -1024,7 +1051,8 @@ void client_apply_r(void* pc, const char* row) {
     client_scan(manager, "round");
     ++g_dc.rounds;
     const int32_t held = client_held_count();
-    const bool warn = g_dc.ready && live != g_dc.copy_n; // a held row is live on the host and pending here
+    // A held row is live on the host and pending here; an evicted copy is live on the host until its E row.
+    const bool warn = g_dc.ready && live != g_dc.copy_n + g_dc.evicted_n;
     g_dc.round_warn += warn ? 1u : 0u;
     log::line("%scard132: client decal round %u: host live %d, client live %d; pool active host %d, client %d; "
               "E applied %u (released %u, no decal %u), D/E before the replay %u%s; held %u: pending %d, applied "
@@ -1105,43 +1133,6 @@ void decal_test_cap(void* manager, int32_t& cap_set) {
     *reinterpret_cast<int32_t*>(static_cast<uint8_t*>(pool) + kPoolCap) = cap_set;
 }
 
-bool client_is_copy(const void* decal) {
-    for (int32_t i = 0; i < g_dc.copy_n; ++i) {
-        if (g_dc.copy[i].decal == decal) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Client, before any decal spawn: the pool's FIFO (exe+0x5120C60) releases active[0] when the active count is at the
-// cap. The client's pool also holds its own non-gore decals, so its FIFO would reach a host gore copy the host has
-// not released. Then the oldest own decal is released instead (RemoveDecal on an active decal, so the pool stays
-// consistent), and with none, the cap grows by one (WARN). Host copies leave only on E rows.
-void client_before(void* manager) {
-    void* const pool = decal_pool(manager);
-    const int32_t cap = pool != nullptr ? read_i32(pool, kPoolCap) : -1;
-    const int32_t num = decal_pool_num(pool);
-    void* const* const data = pool != nullptr ? static_cast<void* const*>(read_ptr(pool, kPoolActive)) : nullptr;
-    if (data == nullptr || num <= 0 || num < cap || !client_is_copy(data[0])) {
-        return;
-    }
-    for (int32_t i = 1; i < num && i < kPoolScan; ++i) {
-        if (!client_is_copy(data[i])) {
-            ++g_dc.local_evicted;
-            g_decal_remove(manager, data[i]);
-            return;
-        }
-    }
-    ++g_dc.cap_grown;
-    *reinterpret_cast<int32_t*>(static_cast<uint8_t*>(pool) + kPoolCap) = cap + 1;
-    // Senior note 8: under the UBWCOOP_DECAL_CAP test cap the growth is expected (the host's live set is larger than
-    // the lowered cap), so it is marked test-induced and is not a WARN; with the game's own cap it is.
-    log::line("%scard132: client decal pool at its cap %d with only host copies: cap grown to %d%s",
-              g_c132_decal_cap != 0 ? "" : "WARN ", cap, cap + 1,
-              g_c132_decal_cap != 0 ? " (test-induced: UBWCOOP_DECAL_CAP lowered the cap)" : "");
-}
-
 } // namespace
 
 // Client: its own gore decal spawns are suppressed; the host's rows bring them (c132_receive_decal).
@@ -1154,14 +1145,14 @@ bool c132_decal_suppress(const void* material) {
 }
 
 // Before any decal spawn. Host: E rows for tracked decals gone since, then for the one the FIFO releases next.
-// Client: client_before. Both: the UBWCOOP_DECAL_CAP test cap.
+// Client: client_fifo_check (plain FIFO, the cap never grows). Both: the UBWCOOP_DECAL_CAP test cap.
 void c132_decal_before(void* manager) {
     if (manager == nullptr) {
         return;
     }
     decal_test_cap(manager, g_client_session ? g_dc.cap_set : g_dh.cap_set);
     if (g_client_session) {
-        client_before(manager);
+        client_fifo_check(manager);
         return;
     }
     host_scan(manager);
@@ -1363,20 +1354,20 @@ void c132_decal_map_end() {
         host_totals("map"); // b12 item 5: also with 0 spawned, so every map end has a host row
     }
     if (g_dc.received != 0 || g_dc.suppressed != 0) {
-        const uint32_t bad = g_dc.no_decal + g_dc.gone_early + g_dc.fifo_early + g_dc.nulls + g_dc.no_mat +
-                             g_dc.no_target + g_dc.full + g_dc.bad + g_dc.round_warn + g_dc.held_dropped +
-                             g_dc.held_failed;
+        const uint32_t bad = g_dc.no_decal + g_dc.gone_early + g_dc.nulls + g_dc.no_mat + g_dc.no_target +
+                             g_dc.full + g_dc.bad + g_dc.round_warn + g_dc.held_dropped + g_dc.held_failed +
+                             g_dc.evicted_lost;
         log::line("%scard132: client decal map totals: %u rows, %u spawned, %u released, %u own gore decals "
                   "suppressed, %u ignored before the replay, %u duplicates, %u expired on arrival, %u world-position "
-                  "fallbacks; %u releases with no decal, %u gone early, %u FIFO early, %u null, %u without material or "
+                  "fallbacks; %u releases with no decal, %u gone early, %u null, %u without material or "
                   "manager, %u without target, %u past the table, %u bad rows, %u round mismatches of %u; "
-                  "%d live; pool release redirect: %u own decals released for a host copy, cap grown %u "
-                  "times, test cap %d; held %u (applied late %u, dropped %u, released while held %u, failed %u, %d still held)",
+                  "%d live; FIFO took %u host copies (E rows after %u, %d pending, %u lost from the full list), "
+                  "test cap %d; held %u (applied late %u, dropped %u, released while held %u, failed %u, %d still held)",
                   bad != 0 ? "WARN " : "", g_dc.received, g_dc.applied, g_dc.released,
                   g_dc.suppressed, g_dc.ignored, g_dc.dups, g_dc.expired, g_dc.at_fallback, g_dc.no_decal,
-                  g_dc.gone_early, g_dc.fifo_early, g_dc.nulls, g_dc.no_mat, g_dc.no_target, g_dc.full, g_dc.bad,
-                  g_dc.round_warn, g_dc.rounds, g_dc.copy_n,
-                  g_dc.local_evicted, g_dc.cap_grown, g_dc.cap_set, g_dc.held, g_dc.late, g_dc.held_dropped,
+                  g_dc.gone_early, g_dc.nulls, g_dc.no_mat, g_dc.no_target, g_dc.full, g_dc.bad,
+                  g_dc.round_warn, g_dc.rounds, g_dc.copy_n, g_dc.copies_evicted, g_dc.evicted_released,
+                  g_dc.evicted_n, g_dc.evicted_lost, g_dc.cap_set, g_dc.held, g_dc.late, g_dc.held_dropped,
                   g_dc.held_released, g_dc.held_failed, client_held_count());
     }
     g_dh = DecalHost{};

@@ -17,9 +17,9 @@
 #      tools/run_pair.sh c448b186a 720
 # Expected wall: about 7 min.
 voidsoft
-void unless host dll e138228037a8dede
-void unless client dll e138228037a8dede
-void unless client2 dll e138228037a8dede
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
+void unless client2 dll 4c265abd554c8232
 host wait state map=FED_C1M1 pawn=host-own timeout=240 void
 client wait state map=FED_C1M1 pawn=client-own timeout=180
 client2 wait state map=FED_C1M1 pawn=client-own timeout=180
@@ -34,33 +34,8 @@ try client2 wait log "card135: client t=\d+ IntroStart \(FED_C1M1" timeout=30
 try client2 ui continue
 host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
 client wait log "card156: client t=\d+ back to Up \(map load\) \+5 s" timeout=20
-# Card 285 (b183 order): the landed player transport dropship's client check row, rotation under 2 degrees at rest,
-# and a client shot of it (level on the pad). Try: a miss here does not stop card 448.
-try client wait log "card159: client t=\d+ dropship BP_PlayerTransportDropship\S* check: state 1/1 .*rotation [01]\.\d deg off \(at rest" timeout=30
-try client look actor BP_PlayerTransportDropship_VerySlow_C 0 bounds
-sleep 0.5
-client shot c285-c-landed-ship
-# Card 449 (troop dropship takeoff decided per side), docs/cards/449-*.md predictions: troop ship 3 begins its descent
-# about 29 s after the hold and takes off about 10 s later (c448b148a host rows). The client copy logs "landed copy
-# leaves its takeoff to the host"; the client's trooper is then warped onto the ship (10 uu front: the ship's location
-# +100 z) for the host's "takeoff held" row and a shot, warped back to where it stood (the warp row's old location),
-# and shot again after the host's launch edge (the ship climbing). All try: a miss here does not stop card 448.
-host mark
-client mark
-try host wait log "dropship: host/standalone ExecuteBeginDescentBehaviour\(\S+ BP_ProceduralDropshipTroops_C," since-mark timeout=60
-try client wait log "card449: client t=\d+ dropship \S+: landed copy leaves its takeoff to the host" since-mark timeout=30
-host mark
-host warp client BP_ProceduralDropshipTroops_C 10 front
-try host wait log "card449: host(/standalone)? t=\d+ dropship \S+: a client's trooper stands on it: takeoff held" since-mark timeout=3
-client shot c449-on-landed-ship
-try host wait log "cmd: \d+ warp: server copy \S+ \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\) -> " since-mark timeout=5
-host mark
-try host warp client point {g1} {g2} {g3}
-try host wait log "card342: host t=\d+ dropship BP_ProceduralDropshipTroops_C_\d+ launch edge: spline distance 0," since-mark timeout=40
-client look actor BP_ProceduralDropshipTroops_C 0 bounds
-sleep 0.5
-client shot c449-ship-climbing
-try client wait log "card449: client t=\d+ dropship \S+: host took off, StartAction run on the landed copy" timeout=10
+# Cards 285 and 449 dropship blocks removed 2026-11-19: they wait for landed-ship rows that only come with FAST=1
+# (c448); under FAST=0 the ships are still in flight and the five try waits idled 163 s (c502c1b283b).
 # Card 451 part 2 (b231; after the card 449 block: at line 26 its wait moved the 449 marks past the descent): a relayed trooper bark on the client and a shot with its secondary subtitle. Try: a
 # miss here does not stop card 448.
 try client wait log "card451: client t=\d+ bark started .* \(relay\)" timeout=30
@@ -241,6 +216,11 @@ client goto actor BP_WeaponPickup_LaserMorita_C_0 130 timeout=60
 client look actor BP_WeaponPickup_LaserMorita_C_0 0 bounds focus=BP_WeaponPickup_LaserMorita_C_0
 client shot c495-client-sees-pickup
 client key E
+# Card 507: the client's own level script calls Open Door through the BP VM at its pickup; the b282 gate refuses it. Aim proof that
+# the client's door stays shut before the host's 3 of 3 (client2 has not taken the laser yet).
+try client wait log "card507: client t=\d+ door BP_Door_Sliding_Large_C_1 BP VM Open Door: refused" since-mark timeout=5
+client look actor BP_Door_Sliding_Large_C_1 0 bounds
+client shot c507-client-door-shut
 # Card 502: client take held (2 of 3), client2 releases the base (3 of 3).
 host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_LaserMorita_C_0 \(take\): taken by 2 of 3 living players" since-mark timeout=10
 host warp client BP_WeaponPickup_LaserMorita_C_0 600
@@ -270,6 +250,11 @@ host down client
 try client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
 host mark
 client mark
+client2 mark
 client disconnect
 try host wait log "card448: host t=\d+ controller \d+ leaves on \S+ \(Downed\): kept Health -1\.0" since-mark timeout=30
+# Card 508: the downed leaver's entry goes Up on client2 (the only other remote PC). Card 509: with the guid stored
+# at the Down transition, nonzero (the b282 lookup at leave time read 0x0).
+try host wait log "card508: host t=\d+ leaver pawn id \d+ \(slot \d\) was Downed: guid 0x[1-9a-f][0-9a-f]*, Up sent to 1 of 1" since-mark timeout=10
+try client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot \d\) Downed -> Up" since-mark timeout=10
 try client wait log "reconnected \(" since-mark timeout=120

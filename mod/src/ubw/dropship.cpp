@@ -2162,7 +2162,8 @@ void c461_base_text(const void* pawn, char* buf, size_t cap) {
 bool detour_c461_move(void* comp, const void* delta, const void* rotation, bool sweep, void* hit, int32_t flags,
                       uint8_t teleport) {
     if (!g_c461_armed) {
-        return g_orig_c461_move(comp, delta, rotation, sweep, hit, flags, teleport);
+        return (g_c539_on || g_c542_on) ? c539_move(comp, delta, rotation, sweep, hit, flags, teleport)
+                         : g_orig_c461_move(comp, delta, rotation, sweep, hit, flags, teleport);
     }
     const int32_t s = c461_slot_of_root(comp);
     if (s < 0) {

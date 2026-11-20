@@ -1,6 +1,6 @@
 # Card 009: Client mouse is not captured (visible cursor, drag-to-look)
 
-Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 008" entry. Then read the report in card 008, which built the diagnostic logging this card reuses. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section and the "Result after card 008" entry. Then read the report in card 008, which built the diagnostic logging this card reuses. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 Card 008 works: WASD moves the client. The mouse does not. On the client the cursor is visible, and the camera turns only while a mouse button is held. On the host, the mouse works normally.

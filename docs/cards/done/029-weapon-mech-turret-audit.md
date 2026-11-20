@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 027 and 028. Then read `docs/design/coop-channel-lobby-downed.md` section 4, and card 027's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`. This card only logs; it changes no behaviour.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 027 and 028. Then read `docs/design/coop-channel-lobby-downed.md` section 4, and card 027's report and senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. This card only logs; it changes no behaviour.
 
 ## Why
 

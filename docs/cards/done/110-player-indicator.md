@@ -8,7 +8,7 @@ Read:
 - card 070 Report (`ASTLevelObjectiveMarker`, `CreateASTLevelObjectiveMarker` 0x05150E20, `ShowOnMinimap`,
   world markers such as RANGE and COURSE).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `c11271d7bda28b18` (card 109). The marker shows through walls, as the objective world markers do (senior default; the user may change it after the playtest).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `c11271d7bda28b18` (card 109). The marker shows through walls, as the objective world markers do (senior default; the user may change it after the playtest).
 
 ## Why
 

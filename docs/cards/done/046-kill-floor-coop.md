@@ -2,7 +2,7 @@
 
 Status: done 2026-11-04.
 
-Read `docs/STATE.md` first (known issue "Kill floor bypasses downed"), then `docs/design/coop-channel-lobby-downed.md` section 3 ("Kill floor" and the paragraph after it), and cards 043 and 044. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first (known issue "Kill floor bypasses downed"), then `docs/design/coop-channel-lobby-downed.md` section 3 ("Kill floor" and the paragraph after it), and cards 043 and 044. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

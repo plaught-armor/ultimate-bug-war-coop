@@ -1,6 +1,6 @@
 # Card 001: Toolchain, dwmapi proxy DLL skeleton, PDB RVA tool
 
-Read `docs/STATE.md` first. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Already done (do not redo)
 - MSVC CRT and Windows SDK are splatted to `toolchain/xwin/{crt,sdk}`; the user accepted the license. Do not rerun xwin.

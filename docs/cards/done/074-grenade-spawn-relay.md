@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 05:58 to junior ultimate-bug-war-coop-bb, after card 056 was accepted.
 
-Read `docs/STATE.md` ("Grenades: fixed by card 073"), the card 073 Report ("Open") and Senior review, and the card 039 Report for the `ChanOp::Gib` relay shape. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Grenades: fixed by card 073"), the card 073 Report ("Open") and Senior review, and the card 039 Report for the `ChanOp::Gib` relay shape. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 
@@ -73,7 +73,7 @@ Done. The host relays each grenade spawn and explosion to every client. The clie
 | c74q | c74-respawn | Respawn result below. rc 0/0, WARN 0, no dumps |
 | c74r | c74-grenades, log off (build before the null-asset fix) | rc 0/0, WARN 0, all frames and effects |
 | c74t | c74-solo, SOLO=1 | GrenadeSpawn "sent to 0 of 0 clients", no GrenadeExplode frame. Host explosions and fire show. WARN 1 is the usual "autodropship: 1 PlayerController(s)" line. rc 0 (c74s failed only because the solo scenario was run without AUTODROPSHIP) |
-| c74u | c74-grenades, log off, final build (DEPLOY=1) | Config line "UBWCOOP_C74_LOG unset -- card 074 grenade spawn log off". 3 GrenadeExplode frames, with FX and the incendiary damage zone on the client. logsum: ERROR/FATAL 0, WARN 0 on both; rc 0/0; no new crash dumps. Shots: ~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/50a11dc8-a0b2-4c6f-af73-8cd1b2a1b3e9/scratchpad/c74u.png |
+| c74u | c74-grenades, log off, final build (DEPLOY=1) | Config line "UBWCOOP_C74_LOG unset -- card 074 grenade spawn log off". 3 GrenadeExplode frames, with FX and the incendiary damage zone on the client. logsum: ERROR/FATAL 0, WARN 0 on both; rc 0/0; no new crash dumps. Shots: /home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/50a11dc8-a0b2-4c6f-af73-8cd1b2a1b3e9/scratchpad/c74u.png |
 
 **Respawn (c74q).** Setup: UBWCOOP_C43_TEST=1 with the new UBWCOOP_C43_START_MS=60000. The client picks up the frag/incendiary set, then the card 043 test downs it, bleeds it out and revives it from Out with the same pawn.
 

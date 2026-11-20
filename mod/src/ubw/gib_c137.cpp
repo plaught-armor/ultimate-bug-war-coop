@@ -45,6 +45,7 @@ namespace {
 
 constexpr int32_t kGibRows = 256;
 constexpr ULONGLONG kGibSampleMs = 200;
+constexpr ULONGLONG kGibFlushMs = 30; // card 519 step b: the host sends its pending gib frames at most this often
 constexpr ULONGLONG kGibMaxMs = 10000;   // a part still moving after this rests where it is
 constexpr ULONGLONG kGibStickyMaxMs = 3 * kGibMaxMs; // card 273: a sticky part not at rest by then rests where it is
 constexpr ULONGLONG kGibCheckMs = 1000;
@@ -103,6 +104,12 @@ constexpr double kGibBucketTop[kGibBuckets] = {2, 5, 10, 20, 40, 80, 150, 1e30};
 
 enum GibState : uint8_t { kFree, kFlight, kCheck };
 
+// Card 519: a GibPose row's tag byte. M a sample; L a sample sent right after its part's late S row (the card 201
+// run 2 late_pose history); R0, R1 the rest row with the host's no-ground flag 0 or 1 (card 273); G taken back.
+enum GibTag : uint8_t { kGibTagNone, kGibTagM, kGibTagL, kGibTagR0, kGibTagR1, kGibTagG, kGibTags };
+// A row: tag 1, id zigzag varint (at most 5), 3 location zigzag varints of whole uu (at most 10 each), rotation 3.
+constexpr int32_t kGibPoseRowMax = 1 + 5 + 30 + 3;
+
 struct HostGib {
     C31Weak part;
     uint32_t id;
@@ -116,6 +123,7 @@ struct HostGib {
     bool pending;      // a sample was deferred by the budget and no newer row has gone out yet
     bool spawn_unsent; // its current id's S row waits in g_gib_spawn; no M row goes before it
     int32_t spawn_slot; // card 201: that S row's g_gib_spawn slot while spawn_unsent
+    uint32_t s_seq;     // card 519 step b: the text frame its S row went into (GibHost::text_seq + 1 at the time)
 };
 struct GibRest {
     uint32_t id;
@@ -178,6 +186,17 @@ struct GibHost {
     int32_t npaths, frame_npaths, frame_charged, pack_pcs;
     uint32_t pack_resets, pack_pc_resets, pack_send_resets, pack_rollbacks, pack_commits, pack_untracked;
     uint64_t trueup_bytes;
+    // Card 519: the pending GibPose blob frame (M, R and G rows in binary, gib_pose_put); its id and location deltas
+    // run from the frame's previous row (0 at the frame's start); its rows by tag, bytes and frames sent.
+    uint8_t pose[kChanBlobBytes];
+    int32_t pose_used;
+    uint32_t pose_last_id;
+    int64_t pose_last[3];
+    uint32_t pose_rows[kGibTags];
+    uint64_t pose_bytes;
+    uint32_t pose_frames, pose_partial;
+    ULONGLONG flush_ms; // card 519 step b: when gib_host_tick last sent the pending frames
+    uint32_t text_seq;  // card 519 step b: text frames ended (sent or not); the pending one is text_seq + 1
 };
 struct GibClient {
     ClientGib row[kGibClientRows];
@@ -238,7 +257,21 @@ void gib_frame_check() {
     }
 }
 
-// Host: the pending frame goes out (to every ponged client), then starts empty.
+// Card 519: the pending GibPose frame goes out to every ponged client, then starts empty (deltas from 0 again).
+void gib_pose_flush() {
+    if (g_gh.pose_used > 0 && g_gh.world != nullptr) {
+        const C95Fanout f = c95_send_blob_all(g_gh.world, ChanOp::GibPose, g_gh.pose, g_gh.pose_used);
+        ++g_gh.pose_frames;
+        g_gh.pose_partial += f.sent < f.to ? 1u : 0u;
+    }
+    g_gh.pose_used = 0;
+    g_gh.pose_last_id = 0;
+    g_gh.pose_last[0] = g_gh.pose_last[1] = g_gh.pose_last[2] = 0;
+}
+
+// Host: the pending frame goes out (to every ponged client), then starts empty. Card 519: the text frame (S rows)
+// goes before the GibPose frame, so a part's S row always reaches the client before its M, R or G rows (one FIFO
+// pace queue per PC, card 519 ordering note).
 void gib_flush() {
     if (g_gh.used > 0 && g_gh.world != nullptr) {
         gib_frame_check();
@@ -252,11 +285,13 @@ void gib_flush() {
         g_gh.pack = g_gh.frame_pack;
         g_gh.npaths = g_gh.frame_npaths;
     }
+    g_gh.text_seq += g_gh.used > 0 ? 1u : 0u;
     g_gh.used = 0;
     g_gh.out[0] = '\0';
     g_gh.frame_pack = g_gh.pack;
     g_gh.frame_npaths = g_gh.npaths;
     g_gh.frame_charged = 0;
+    gib_pose_flush();
 }
 
 // A row's budget cost: its packed size against the mirror (card 201: a ref for a class path whose def every ponged
@@ -319,6 +354,71 @@ void gib_append(const char* row) {
     g_gh.used += len;
 }
 
+// Card 519: GibPose bytes.
+int32_t gib_put_varint(uint8_t* o, uint64_t v) {
+    int32_t n = 0;
+    for (; n < 10 && v >= 0x80u; ++n, v >>= 7) {
+        o[n] = static_cast<uint8_t>(v | 0x80u);
+    }
+    o[n] = static_cast<uint8_t>(v);
+    return n + 1;
+}
+int32_t gib_put_zigzag(uint8_t* o, int64_t v) {
+    return gib_put_varint(o, (static_cast<uint64_t>(v) << 1) ^ static_cast<uint64_t>(v >> 63));
+}
+// One angle in 360/256 degree steps (1.4 degrees: under the kGibTurnDeg gate); NaN as 0.
+uint8_t gib_angle_byte(double deg) {
+    double d = deg == deg ? fmod(deg, 360.0) : 0.0;
+    d = d < 0 ? d + 360.0 : d;
+    return static_cast<uint8_t>(llround(d * 256.0 / 360.0) & 0xFF);
+}
+// Whole uu, clamped to the varint's comfortable range; NaN as 0.
+int64_t gib_whole_uu(double v) {
+    const double c = v == v ? (v < -1e9 ? -1e9 : (v > 1e9 ? 1e9 : v)) : 0.0;
+    return llround(c);
+}
+
+// Card 519: a GibPose row into out (kGibPoseRowMax bytes) against the pending frame's deltas, as it would be written
+// now; a row that would not fit the frame is written as the first row of the next one. commit: the frame takes it
+// (flushing first when full) and its deltas move on. Returns its byte count.
+int32_t gib_pose_put(uint8_t tag, uint32_t id, const Vec3& at, const Vec3& rot, bool commit) {
+    const bool fresh = g_gh.pose_used + kGibPoseRowMax > kChanBlobBytes;
+    if (fresh && commit) {
+        gib_flush(); // the text frame first, then this frame (order), both empty after
+    }
+    const uint32_t last_id = fresh ? 0 : g_gh.pose_last_id;
+    const int64_t zero[3] = {0, 0, 0};
+    const int64_t* const last = fresh ? zero : g_gh.pose_last;
+    uint8_t row[kGibPoseRowMax];
+    int32_t n = 0;
+    row[n++] = tag;
+    n += gib_put_zigzag(row + n, static_cast<int64_t>(id) - static_cast<int64_t>(last_id));
+    const int64_t p[3] = {gib_whole_uu(at.x), gib_whole_uu(at.y), gib_whole_uu(at.z)};
+    if (tag != kGibTagG) {
+        for (int32_t k = 0; k < 3; ++k) {
+            n += gib_put_zigzag(row + n, p[k] - last[k]);
+        }
+        row[n++] = gib_angle_byte(rot.x);
+        row[n++] = gib_angle_byte(rot.y);
+        row[n++] = gib_angle_byte(rot.z);
+    }
+    if (!commit) {
+        return n;
+    }
+    memcpy(g_gh.pose + g_gh.pose_used, row, static_cast<size_t>(n));
+    g_gh.pose_used += n;
+    g_gh.pose_last_id = id;
+    if (tag != kGibTagG) {
+        g_gh.pose_last[0] = p[0];
+        g_gh.pose_last[1] = p[1];
+        g_gh.pose_last[2] = p[2];
+    }
+    g_gh.budget -= n;
+    g_gh.pose_bytes += static_cast<uint64_t>(n);
+    ++g_gh.pose_rows[tag < kGibTags ? tag : 0];
+    return n;
+}
+
 Vec3 gib_rotation(const void* part) {
     const void* const root = read_ptr(part, kActorRootComponent);
     return root != nullptr ? read_vec3(root, kRelativeRotation) : Vec3{};
@@ -354,13 +454,12 @@ void gib_sticky_hold(void* part) {
 }
 
 // An M row, only when it fits this window's budget (false: nothing sent).
-bool gib_send_pose(HostGib& r, char kind, const Vec3& at, const Vec3& rot) {
-    char row[96];
-    gib_pose_text(row, sizeof(row), kind, r.id, at, rot);
-    if (gib_cost(row) > g_gh.budget) {
+// Card 519: a GibPose M row.
+bool gib_send_pose(HostGib& r, const Vec3& at, const Vec3& rot) {
+    if (gib_pose_put(kGibTagM, r.id, at, rot, false) > g_gh.budget) {
         return false;
     }
-    gib_append(row);
+    gib_pose_put(kGibTagM, r.id, at, rot, true);
     r.sent_at = at;
     r.sent_rot = rot;
     if (r.pending) { // the deferred sample is replaced by this newer row, never sent late with its older pose
@@ -392,6 +491,7 @@ void gib_spawn_pop(ULONGLONG now) {
     HostGib& r = g_gh.row[q.row[at]];
     if (r.live && r.id == q.id[at]) { // card 201: always (a relaunch overwrites its slot, a gone part cancels it)
         r.spawn_unsent = false;
+        r.s_seq = g_gh.text_seq + 1; // after gib_append, which may have ended the frame before this row
         r.next_ms = now + kGibSampleMs;
     }
     ++g_gh.spawns;
@@ -415,19 +515,16 @@ bool gib_spawn_try(ULONGLONG now) {
     HostGib& r = g_gh.row[q.row[at]];
     const bool late = now - q.born[at] > kGibLateMs;
     void* const part = late && r.live && r.id == q.id[at] ? c31_weak_get(r.part) : nullptr;
-    char pose[96] = {};
     const Vec3 at_now = part != nullptr ? actor_location(part) : Vec3{};
     const Vec3 rot_now = part != nullptr ? gib_rotation(part) : Vec3{};
-    if (part != nullptr) {
-        gib_pose_text(pose, sizeof(pose), 'M', r.id, at_now, rot_now);
-    }
-    if (gib_cost(q.text[at]) + (pose[0] != '\0' ? gib_cost(pose) : 0) > g_gh.budget) {
+    const int32_t pose_cost = part != nullptr ? gib_pose_put(kGibTagL, r.id, at_now, rot_now, false) : 0;
+    if (gib_cost(q.text[at]) + pose_cost > g_gh.budget) {
         return false; // S rows first: no R or M row overtakes a waiting spawn
     }
     gib_spawn_pop(now);
     g_gh.spawn_late += late ? 1u : 0u;
-    if (pose[0] != '\0') {
-        gib_append(pose);
+    if (part != nullptr) { // card 519: the L row, sent in the GibPose frame after this flush's S frame
+        gib_pose_put(kGibTagL, r.id, at_now, rot_now, true);
         r.sent_at = at_now;
         r.sent_rot = rot_now;
     }
@@ -443,16 +540,11 @@ void gib_send_waiting(ULONGLONG now) {
     }
     for (int32_t k = 0; k < kGibRestQ && g_gh.rest_count != 0; ++k) {
         const GibRest& q = g_gh.rest[g_gh.rest_head];
-        char row[96];
-        if (q.kind == 'G') {
-            snprintf(row, sizeof(row), "G %u;", q.id);
-        } else {
-            gib_pose_text(row, sizeof(row), 'R', q.id, q.at, q.rot, q.no_ground ? 1 : 0);
-        }
-        if (gib_cost(row) > g_gh.budget) {
+        const uint8_t tag = q.kind == 'G' ? kGibTagG : (q.no_ground ? kGibTagR1 : kGibTagR0); // card 519
+        if (gib_pose_put(tag, q.id, q.at, q.rot, false) > g_gh.budget) {
             return;
         }
-        gib_append(row);
+        gib_pose_put(tag, q.id, q.at, q.rot, true);
         g_gh.rest_head = (g_gh.rest_head + 1) % kGibRestQ;
         --g_gh.rest_count;
     }
@@ -754,7 +846,7 @@ void gib_host_sample(HostGib& r, ULONGLONG now) {
     if (vec_dist(at, r.sent_at) < kGibMoveUu && gib_turn(rot, r.sent_rot) < kGibTurnDeg) {
         return;
     }
-    if (!gib_send_pose(r, 'M', at, rot)) {
+    if (!gib_send_pose(r, at, rot)) {
         ++g_gh.deferred;
         r.pending = true;
         return;
@@ -814,7 +906,13 @@ void gib_host_tick(ULONGLONG now) {
         }
     }
     g_gh.start = (g_gh.start + 1) % kGibRows;
-    gib_flush();
+    // Card 519 step b (c263e: 5267 GibPose frames, about 14.6 B of chan framing each): the pending frames go out at
+    // most every kGibFlushMs, as card 518 does for Fx. GetTickCount64 steps by about 15.6 ms, so a row waits under
+    // 47 ms (latency target 100 ms). A full frame still goes at once (gib_append, gib_pose_put).
+    if (now - g_gh.flush_ms >= kGibFlushMs) {
+        gib_flush();
+        g_gh.flush_ms = now;
+    }
 }
 
 // Client: the mapped part of host id `id` (a flight row), or null.
@@ -945,15 +1043,8 @@ void gib_unmapped(char kind, uint32_t id, ClientGib* r) {
 
 // Client, card 148: a 'G' row. The host's part was taken back before it rested, so the piece's root is hidden (the
 // host's own taken-back state; the pool's next spawn shows it) and the row ends. It is not put to sleep in the air.
-void gib_client_gone(const char* row) {
-    uint32_t id = 0;
-    if (sscanf_s(row, "G %u", &id) != 1) {
-        ++g_gc.bad_rows;
-        if (note_event_cap(g_gc.lines, kGibLines, "card137 gib lines")) {
-            log::line("WARN card148: client gib row not parsed (bad rows %u): %.80s", g_gc.bad_rows, row);
-        }
-        return;
-    }
+// Card 519: a G row's apply (text or GibPose).
+void gib_client_gone_id(uint32_t id) {
     ClientGib* const r = gib_client_find(id);
     void* const part = r != nullptr ? c31_weak_get(r->part) : nullptr;
     void* const root = part != nullptr ? read_ptr(part, kActorRootComponent) : nullptr;
@@ -964,6 +1055,18 @@ void gib_client_gone(const char* row) {
     g_orig_c132_set_hidden(root, true, 0); // EVisibilityPropagation::NoPropagation, as the dropship's hide
     r->state = kFree;
     ++g_gc.gone;
+}
+
+void gib_client_gone(const char* row) {
+    uint32_t id = 0;
+    if (sscanf_s(row, "G %u", &id) != 1) {
+        ++g_gc.bad_rows;
+        if (note_event_cap(g_gc.lines, kGibLines, "card137 gib lines")) {
+            log::line("WARN card148: client gib row not parsed (bad rows %u): %.80s", g_gc.bad_rows, row);
+        }
+        return;
+    }
+    gib_client_gone_id(id);
 }
 
 // Client, card 279 step 1: an R row whose part lay over 10 uu from the rest point before the snap: what the snap
@@ -1062,6 +1165,8 @@ void gib_c279_hold(ClientGib& r, ULONGLONG now) {
     }
 }
 
+void gib_client_apply(char kind, uint32_t id, const Vec3& at, double* rot, int flag, bool late);
+
 // Client: a sample ('M') or the rest row ('R'): teleport to the host's pose; the rest row also sleeps the body.
 // after_s: the host id of the S row just before this row in the frame (0 none).
 void gib_client_pose(const char* row, uint32_t after_s) {
@@ -1079,6 +1184,11 @@ void gib_client_pose(const char* row, uint32_t after_s) {
         }
         return;
     }
+    gib_client_apply(kind, id, at, rot, flag, id == after_s);
+}
+
+// Card 519: an M or R row's apply (text or GibPose). late: the row came right after its part's S row (card 201 run 2).
+void gib_client_apply(char kind, uint32_t id, const Vec3& at, double* rot, int flag, bool late) {
     ClientGib* const r = gib_client_find(id);
     void* const part = r != nullptr ? c31_weak_get(r->part) : nullptr;
     void* const root = part != nullptr ? read_ptr(part, kActorRootComponent) : nullptr;
@@ -1092,7 +1202,7 @@ void gib_client_pose(const char* row, uint32_t after_s) {
         gib_bucket(d);
         g_gc.flight_worst = d > g_gc.flight_worst ? d : g_gc.flight_worst;
         ++g_gc.samples;
-        r->late_pose = r->late_pose || (r->m_rows == 0 && id == after_s);
+        r->late_pose = r->late_pose || (r->m_rows == 0 && late);
         ++r->m_rows;
         r->last_m_ms = now;
     }
@@ -1248,6 +1358,94 @@ void c137_receive_gib(void* pc, const WireString* s) {
     }
 }
 
+namespace {
+
+// Card 519: GibPose reads; false at the frame's end or a varint over 10 bytes.
+bool gib_get_varint(const uint8_t* b, int32_t n, int32_t& at, uint64_t& v) {
+    v = 0;
+    for (int32_t k = 0; k < 10 && at < n; ++k) {
+        const uint8_t c = b[at++];
+        v |= static_cast<uint64_t>(c & 0x7Fu) << (7 * k);
+        if ((c & 0x80u) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+bool gib_get_zigzag(const uint8_t* b, int32_t n, int32_t& at, int64_t& v) {
+    uint64_t u = 0;
+    if (!gib_get_varint(b, n, at, u)) {
+        return false;
+    }
+    v = static_cast<int64_t>(u >> 1) ^ -static_cast<int64_t>(u & 1u);
+    return true;
+}
+
+// One GibPose row at bytes[at], applied; false: a malformed row (the rest of the frame is dropped).
+bool gib_pose_row(const uint8_t* b, int32_t n, int32_t& at, uint32_t& last_id, int64_t* last) {
+    const uint8_t tag = b[at++];
+    int64_t did = 0;
+    if (tag == kGibTagNone || tag >= kGibTags || !gib_get_zigzag(b, n, at, did)) {
+        return false;
+    }
+    const uint32_t id = static_cast<uint32_t>(static_cast<int64_t>(last_id) + did);
+    last_id = id;
+    if (tag == kGibTagG) {
+        gib_client_gone_id(id);
+        return true;
+    }
+    int64_t p[3] = {};
+    for (int32_t k = 0; k < 3; ++k) {
+        if (!gib_get_zigzag(b, n, at, p[k])) {
+            return false;
+        }
+        p[k] += last[k];
+        last[k] = p[k];
+    }
+    if (at + 3 > n) {
+        return false;
+    }
+    double rot[3];
+    for (double& v : rot) {
+        v = static_cast<double>(b[at++]) * 360.0 / 256.0;
+        v = v > 180.0 ? v - 360.0 : v;
+    }
+    const Vec3 pos{static_cast<double>(p[0]), static_cast<double>(p[1]), static_cast<double>(p[2])};
+    const bool rest = tag == kGibTagR0 || tag == kGibTagR1;
+    gib_client_apply(rest ? 'R' : 'M', id, pos, rot, tag == kGibTagR1 ? 1 : 0, tag == kGibTagL);
+    return true;
+}
+
+} // namespace
+
+// Client, card 519: ChanOp::GibPose, binary M, L, R and G rows (gib_pose_put).
+void c137_receive_gib_pose(void* pc, const WireString* s) {
+    (void)pc;
+    static uint8_t bytes[kChanBlobBytes]; // game thread only
+    const int32_t n = ue::chan::chan_blob(s, bytes, kChanBlobBytes);
+    if (n <= 0) {
+        ++g_gc.empty;
+        if (note_event_cap(g_gc.lines, kGibLines, "card137 gib lines")) {
+            log::line("WARN card519: client GibPose frame with no bytes (%u so far)", g_gc.empty);
+        }
+        return;
+    }
+    uint32_t last_id = 0;
+    int64_t last[3] = {0, 0, 0};
+    int32_t at = 0;
+    for (int32_t k = 0; k < kChanBlobBytes && at < n; ++k) {
+        const int32_t row_at = at;
+        if (!gib_pose_row(bytes, n, at, last_id, last)) {
+            ++g_gc.bad_rows;
+            if (note_event_cap(g_gc.lines, kGibLines, "card137 gib lines")) {
+                log::line("WARN card519: client GibPose bad row at byte %d of %d (tag %u, bad rows %u): rest of frame "
+                          "dropped", row_at, n, static_cast<unsigned>(bytes[row_at]), g_gc.bad_rows);
+            }
+            return;
+        }
+    }
+}
+
 void c137_gib_tick(ULONGLONG now) {
     if (g_client_session) {
         gib_client_tick(now);
@@ -1271,6 +1469,12 @@ void gib_host_dump(const char* why) {
               "unsent %u; R unsent (live) %u, overflow %u", why, g_gh.spawns, g_gh.samples, g_gh.rests,
               g_gh.reused, g_gh.frames, static_cast<unsigned long long>(g_gh.bytes), g_gh.deferred,
               g_gh.replaced, pending, live, g_gh.overflow);
+    const uint32_t* const pr = g_gh.pose_rows;
+    log::line("card519: host gib pose rows (%s): M %u, L %u, R %u (no ground %u), G %u; %llu bytes in %u frames "
+              "(partial fanout %u); never sent (pending at the dump, card 519 step b): %d text, %d pose bytes", why,
+              pr[kGibTagM], pr[kGibTagL], pr[kGibTagR0] + pr[kGibTagR1], pr[kGibTagR1], pr[kGibTagG],
+              static_cast<unsigned long long>(g_gh.pose_bytes), g_gh.pose_frames, g_gh.pose_partial, g_gh.used,
+              g_gh.pose_used);
     log::line("card148: host gib rest rows (%s): %u still, %u at the %llu ms bound, %u gone, %u at a pool relaunch; "
               "%u with no ground below", why, g_gh.rest_still, g_gh.rest_max,
               static_cast<unsigned long long>(kGibMaxMs), g_gh.rest_gone, g_gh.rest_relaunch, g_gh.rest_above);
@@ -1386,7 +1590,10 @@ void c137_gib_join_replay(void* pc) {
     int32_t no_class = 0;
     for (int32_t i = 0; i < kGibRows; ++i) {
         const HostGib& r = g_gh.row[i];
-        void* const part = r.id != 0 && !r.spawn_unsent ? c31_weak_get(r.part) : nullptr;
+        // Card 519 step b: an S row still in the pending text frame reaches the joiner with that frame (the joiner
+        // is ponged before this replay, card 139), so the replay would send it twice.
+        const bool s_pending = g_gh.used > 0 && r.s_seq == g_gh.text_seq + 1;
+        void* const part = r.id != 0 && !r.spawn_unsent && !s_pending ? c31_weak_get(r.part) : nullptr;
         const auto* const root = part != nullptr ? static_cast<const uint8_t*>(read_ptr(part, kActorRootComponent))
                                                  : nullptr;
         if (root == nullptr || (root[kCompHiddenByte] & kCompHiddenBit) != 0) {

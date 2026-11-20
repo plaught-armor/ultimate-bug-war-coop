@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 00:08 to junior ultimate-bug-war-coop-bb, after card 067 was accepted.
 
-Read `docs/STATE.md` first, then the card 058 "Findings for the user" and the card 063 and 064 Reports. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first, then the card 058 "Findings for the user" and the card 063 and 064 Reports. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

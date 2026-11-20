@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 14:41 to junior ultimate-bug-war-coop-bb, after card 080 was accepted. Drafted 2026-11-05 (senior). Use the card 080 names (`fname_cached`, `prop_*`, `find_class`).
 
-Read the card 079 Report ("Design 4" and "Edge to know") and its Senior review, and the card 043 and card 050/054 code: `detour_interact` (~5596), `c43_interact_edge` (~16398), `c43_is_down` (~15927), `c43_refuse_tag`, `c50_relay_use` (~22163) and `c43_kill_host` (~16315). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 079 Report ("Design 4" and "Edge to know") and its Senior review, and the card 043 and card 050/054 code: `detour_interact` (~5596), `c43_interact_edge` (~16398), `c43_is_down` (~15927), `c43_refuse_tag`, `c50_relay_use` (~22163) and `c43_kill_host` (~16315). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

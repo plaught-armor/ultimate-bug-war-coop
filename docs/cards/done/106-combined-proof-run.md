@@ -8,7 +8,7 @@ Read:
 - `tools/scenarios/c101-measure.txt`, `c103-proof.txt`, `c105-proof.txt` (routes to reuse);
 - `tools/drive.py` (`wait log`, `wait state`, `warp`, `goto`, `look`, `key`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL: `533e5cd2cd04a851` (card 103). No code change
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL: `533e5cd2cd04a851` (card 103). No code change
 unless a check fails (then stop, report, and the senior cards the fix).
 
 ## Why

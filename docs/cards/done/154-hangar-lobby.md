@@ -11,7 +11,7 @@ docs/playtest-2026-11-08.md.
 Playtest 2026-11-08, client log `UBWCoop-menu-20261108-191343.log`: at the mission end the client showed
 WB_TrooperLevelEnd (t=258655012). 4 s later the host's game sent "Host closed the connection." (reason 5
 FailureReceived, t=258659046) and the client went back to its own 3D_Frontend. Its follow tries to
-203.0.113.10:47000 then timed out (t=258701195, 258726613): the host was in the hangar and not listening.
+38.175.72.240:47000 then timed out (t=258701195, 258726613): the host was in the hangar and not listening.
 
 The cause is by design today. `c52_host_browse` (mod/src/ubw/lobby_ui.cpp:1351) leaves a Browse to the menu map
 (`kC52MenuMap` "3D_Frontend") alone, and `c45_host_browse` (mod/src/ubw/restart.cpp:42) adds `listen` only for a

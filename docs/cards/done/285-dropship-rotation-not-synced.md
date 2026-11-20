@@ -1,7 +1,7 @@
 # Card 285: client dropship keeps its flight tilt after the host's landing (rotation not in the dropship frame)
 
 Source: playtest 2026-11-13 18:32, user as client, play build `5e2ce00acad8efa3`. Screenshot
-`~/Pictures/Screenshots/Screenshot_20261113_183206.png`: the player transport dropship sits on the pad
+`/home/king/Pictures/Screenshots/Screenshot_20261113_183206.png`: the player transport dropship sits on the pad
 nose down and rolled, with the host's name tag inside it. Log:
 `game/StarshipTroopers_UBW/Binaries/Win64/UBWCoop-menu-20261113-183002.log`.
 

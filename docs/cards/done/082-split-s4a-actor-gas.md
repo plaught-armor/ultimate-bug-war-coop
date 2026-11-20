@@ -4,7 +4,7 @@ Status: sent 2026-11-05 15:01 to junior ultimate-bug-war-coop-bb, after card 081
 
 This is the first half of S4 in `docs/split-map.md` ("Move order"). S4 lists four files. This card moves `ue/actor` and `ue/gas`; card 083 moves `ue/input` and `ue/widget`.
 
-Read `docs/split-map.md` ("Proposed files" rows `ue/actor.cpp` and `ue/gas.cpp`, every "Section map" row that cuts names to them, "Engine typedefs and constants left in a block", "Renames"), the card 080 Report and Senior review, and `mod/src/ue/reflect.h`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/split-map.md` ("Proposed files" rows `ue/actor.cpp` and `ue/gas.cpp`, every "Section map" row that cuts names to them, "Engine typedefs and constants left in a block", "Renames"), the card 080 Report and Senior review, and `mod/src/ue/reflect.h`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

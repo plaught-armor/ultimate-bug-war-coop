@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 020 and 021. Then read card 021: the step 3 addenda (the `GetTargetLocation` and `ApplyDynamicZeroThresholdAdjustment` leads, with their fix sketches), your report, and the senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card021l-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 020 and 021. Then read card 021: the step 3 addenda (the `GetTargetLocation` and `ApplyDynamicZeroThresholdAdjustment` leads, with their fix sketches), your report, and the senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card021l-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

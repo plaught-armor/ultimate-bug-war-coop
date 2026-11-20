@@ -11,7 +11,7 @@ Read:
 - card 123 Report, Runs section (c123a client `goto: end (stuck)` on FED_C2M1 terrain; c123b drive rc 1, the final
   `client shot` timed out behind a long client goto).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `4d058f899b394c59` (card 122), or card 123's.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `4d058f899b394c59` (card 122), or card 123's.
 
 ## Why
 

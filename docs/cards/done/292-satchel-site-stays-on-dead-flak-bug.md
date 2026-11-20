@@ -1,7 +1,7 @@
 # 292 Satchel placement site stays on a dead flak bug (client)
 
 Playtest 2026-11-13 18:53 (user plays as client, FED_C2M1): "satchel bug dead but i can still see the place to
-place the satchel". Screenshot `~/Pictures/Screenshots/Screenshot_20261113_185339.png`: dead flak bug, the
+place the satchel". Screenshot `/home/king/Pictures/Screenshots/Screenshot_20261113_185339.png`: dead flak bug, the
 red placement box still drawn on it, prompt "INSUFFICIENT SATCHEL CHARGES".
 
 ## Trace (client log `UBWCoop-menu-20261113-184603.log`)

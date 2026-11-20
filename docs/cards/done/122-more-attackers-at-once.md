@@ -8,7 +8,7 @@ Read:
   per-window table; no ticket cap binds, AI pacing sets attackers at once);
 - card 111 and card 113 Reports (`mod/src/ubw/bug_scale.cpp`: `c111_players`, the factor, the session count).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `f47d4dba55177c72` (card 121).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `f47d4dba55177c72` (card 121).
 
 ## Why
 

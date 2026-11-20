@@ -97,6 +97,9 @@ constexpr C132OpInfo kC132Ops[] = {
     {"Stamina", C132KeyKind::None, true}, // card 490 the host infinite stamina setting: a session option, not world state
     {"CombatLevel", C132KeyKind::None, true}, // card 321 the host's combat level (music): the latest value wins, no world state
     {"Bark", C132KeyKind::None, true}, // card 451 a trooper bark's subtitle start or finish: an event, no world state
+    {"Role", C132KeyKind::None, true}, // card 502 a client's run role (client, client2): its own PC's tag, not world state
+    {"GibPose", C132KeyKind::None, true}, // card 519 gib part M, R, G rows in binary: events, like GibPart
+    {"NpcTarget", C132KeyKind::None, true}, // card 532 NPC primary target rows in binary: many NPCs per frame, no one key
 };
 static_assert(sizeof(kC132Ops) / sizeof(kC132Ops[0]) == kChanOpCount);
 

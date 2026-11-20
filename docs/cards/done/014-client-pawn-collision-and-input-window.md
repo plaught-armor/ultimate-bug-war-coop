@@ -1,6 +1,6 @@
 # Card 014: Re-enable collision on the client's own pawn; find what clears it; catch client input in the rows
 
-Read `docs/STATE.md` first: the "Mod code rules" section and rows 011 to 014. Then read card 013 in full, including the report's decision tables and the senior review at the end. The diagnostics you will extend are in `mod/src/hooks.cpp` (card 013's block around `kActorCollisionFlags`, and the `rot`/`srv` row code from about line 2160). Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card013-{host,client}.log`.
+Read `docs/STATE.md` first: the "Mod code rules" section and rows 011 to 014. Then read card 013 in full, including the report's decision tables and the senior review at the end. The diagnostics you will extend are in `mod/src/hooks.cpp` (card 013's block around `kActorCollisionFlags`, and the `rot`/`srv` row code from about line 2160). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card013-{host,client}.log`.
 
 ## Why
 

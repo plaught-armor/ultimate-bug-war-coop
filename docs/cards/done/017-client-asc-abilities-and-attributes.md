@@ -1,6 +1,6 @@
 # Card 017: The client pawn's ability system component has no abilities and default attributes: find where replication or client-side init breaks
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 015 to 017. Then read card 016's report and its senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card016{a,b,c}-{host,client}.log`. Symbols: `tools/symbols.txt`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 015 to 017. Then read card 016's report and its senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Run logs: `logs/card016{a,b,c}-{host,client}.log`. Symbols: `tools/symbols.txt`.
 
 ## Why
 

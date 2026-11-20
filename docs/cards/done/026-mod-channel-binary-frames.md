@@ -2,7 +2,7 @@
 
 Status: done 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 024. Then read `docs/design/coop-channel-lobby-downed.md` section 1 (rewritten 2026-11-03: friends-only trust, binary frames, send on change only) card 024's senior review, and the senior reviews of cards 028 and 033 (sprite body, hidden first-person meshes). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 024. Then read `docs/design/coop-channel-lobby-downed.md` section 1 (rewritten 2026-11-03: friends-only trust, binary frames, send on change only) card 024's senior review, and the senior reviews of cards 028 and 033 (sprite body, hidden first-person meshes). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

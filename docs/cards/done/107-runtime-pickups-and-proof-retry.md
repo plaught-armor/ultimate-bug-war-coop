@@ -7,7 +7,7 @@ Read:
 - card 106 Report (rows for mantle, pod pickup, drops);
 - card 105 Report (`c105_relayed_class`, `c105_bp_spawn`, 'P'/'D' rows, journal).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `1623a6ff252f3e69` (card 106: 533e5 plus the
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `1623a6ff252f3e69` (card 106: 533e5 plus the
 `warp ... point` and `charge` test commands).
 
 ## Why

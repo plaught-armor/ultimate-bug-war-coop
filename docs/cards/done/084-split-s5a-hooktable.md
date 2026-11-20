@@ -9,7 +9,7 @@ S5 in `docs/split-map.md` has two parts that need different preconditions, so it
 - **S5a (this card)** moves the generic machinery: PE checks, symbol resolution, MinHook install, and the install gate, all working over spans. The tables stay in `hooks.cpp`.
 - **S5b (later)** splits the tables (`kHooksUe`/`kHooksUbw`, `kCallsUe`/`kCallsUbw`), adds `InstallSet` and `ubw::init`, and moves `read_card_flags` and `set_hook_gates`. It needs the F cards to export the globals that `read_card_flags` writes (S2 "Map changes" in card 078), so it waits for them.
 
-Read the card 080, 082 and 083 Reviews, the S5 row and the `prologue`, `hookspec` and `installer` rows of `docs/split-map.md`, and `hooks.cpp` lines 1-125 and ~27410-28135. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 080, 082 and 083 Reviews, the S5 row and the `prologue`, `hookspec` and `installer` rows of `docs/split-map.md`, and `hooks.cpp` lines 1-125 and ~27410-28135. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

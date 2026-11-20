@@ -11,7 +11,7 @@ Read:
 - cards 049 (objective mirror and replay), 058 (the TacSupport range completed with the host taking the items), 024
   (client fire relay), 050/057 (client ability and input relay).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `34eeb14d48563d99` (card 102).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `34eeb14d48563d99` (card 102).
 
 ## Why
 

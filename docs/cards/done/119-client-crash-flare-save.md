@@ -8,7 +8,7 @@ Read:
 - card 074 Report (asset path field, `grenades.cpp:800`);
 - card 048 Report (checkpoint save and load on the client, `USTSaveComponent`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `f0a52e0573cfefb1` (card 118).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `f0a52e0573cfefb1` (card 118).
 
 ## Why
 

@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 11:52 to junior ultimate-bug-war-coop-bb, after card 075 was accepted. Drafted 2026-11-04 (senior), refreshed 2026-11-05. Cards 060, 047 and 056 are done.
 
-Read `docs/STATE.md` (the "(planned)" split row and "Architecture (planned)"), `mod/CMakeLists.txt`, and the top of `mod/src/hooks.cpp` (globals and `HookSpec`). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` (the "(planned)" split row and "Architecture (planned)"), `mod/CMakeLists.txt`, and the top of `mod/src/hooks.cpp` (globals and `HookSpec`). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

@@ -8,7 +8,7 @@ Read:
 - card 044 Report (the refused Fire/Walk and ignored Fire 1 checks);
 - `docs/design/coop-channel-lobby-downed.md` line 64 (the old design: block fire while downed).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `a4fdd1e0a051c984` (card 108).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `a4fdd1e0a051c984` (card 108).
 
 ## Why
 

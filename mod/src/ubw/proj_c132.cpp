@@ -346,15 +346,74 @@ C136Call c136_attached_flags(C136Call c, uint64_t location, uint64_t destroy, ui
 // NS_Compute_DamageAndRadius, exe+0x4BBA724 sets a variable on the result). On the client a blocked attached spawn
 // runs the original with its bAutoActivate slot cleared: the caller gets a real, never activated component (it dies
 // with its parent; a later Activate of it is blocked as point 6), and the host's row plays the visible effect.
+//
+// Card 526: a never activated auto-destroy component never finishes, so it stays until its parent goes. A parent that
+// lives the whole map and fires often piles them up (c263L312 client: 4704 of 6807 NiagaraComponents were
+// BP_AI_Trooper_Morita_C's NS_FX_Enemy_Morita_MuzzleFlash4, host 2351 in all). The client keeps one quiet component
+// per (parent component, socket, asset): a new one discards the older one (c136_discard_component).
+constexpr int32_t kC526Quiet = 64;
+struct C526Quiet {
+    const void* attach[kC526Quiet]; // compared as keys only, never read
+    uint64_t socket[kC526Quiet];
+    const void* asset[kC526Quiet];
+    C31Weak comp[kC526Quiet];
+    int32_t n;
+    int32_t next;       // the slot a full table takes over (round robin)
+    uint32_t made;      // quiet components this map
+    uint32_t discarded; // older quiet components of the same key discarded
+    uint32_t replaced;  // slots taken over while full (that slot's component is left to its parent)
+};
+C526Quiet g_c526{};
+
+int32_t c526_slot(const C136Call& c) {
+    C526Quiet& q = g_c526;
+    for (int32_t i = 0; i < q.n; ++i) {
+        if (q.attach[i] == c.attach && q.socket[i] == c.socket && q.asset[i] == c.asset) {
+            return i;
+        }
+    }
+    if (q.n < kC526Quiet) {
+        return q.n++;
+    }
+    const int32_t slot = q.next;
+    q.next = (q.next + 1) % kC526Quiet;
+    ++q.replaced;
+    q.comp[slot] = C31Weak{}; // its component is another key's: left to its parent
+    return slot;
+}
+
+// The client, after a blocked attached spawn's original: discard the key's older quiet component, keep this one.
+void c526_quiet(const C136Call& c, void* made) {
+    if (made == nullptr || !g_client_session) {
+        return;
+    }
+    C526Quiet& q = g_c526;
+    ++q.made;
+    const int32_t slot = c526_slot(c);
+    void* const old = c31_weak_get(q.comp[slot]); // null once destroyed (with its parent) or collected
+    if (old != nullptr && old != made) {
+        c136_discard_component(old);
+        ++q.discarded;
+    }
+    q.attach[slot] = c.attach;
+    q.socket[slot] = c.socket;
+    q.asset[slot] = c.asset;
+    c31_weak_set(q.comp[slot], made);
+}
+
 #define C136_PASS_INACTIVE(h, call, activate)                                                                         \
     do {                                                                                                             \
         const C136Call c136 = (call);                                                                                \
         const uint32_t id = c136_fx_enter(c136);                                                                     \
-        if (c136_blocked()) {                                                                                        \
+        const bool quiet = c136_blocked();                                                                           \
+        if (quiet) {                                                                                                 \
             (activate) = 0;                                                                                          \
         }                                                                                                            \
         void* const made = C132_PASS_CALL(h);                                                                        \
         c136_fx_leave(c136.point, id, made);                                                                         \
+        if (quiet) {                                                                                                 \
+            c526_quiet(c136, made);                                                                                  \
+        }                                                                                                            \
         return made;                                                                                                 \
     } while (false)
 
@@ -378,6 +437,9 @@ void* detour_c132_niagara_attached_params(C132_PASS_ARGS) {
         params[kFxParamsAutoActivate] = activate;
     }
     c136_fx_leave(c136.point, id, made);
+    if (quiet) {
+        c526_quiet(c136, made);
+    }
     return made;
 }
 void* detour_c132_niagara_attached(C132_PASS_ARGS) {
@@ -583,6 +645,13 @@ void c132_proj_round(uint32_t round) {
 
 // Both sides, at map load (c132_arm_map).
 void c132_proj_map() {
+    C526Quiet& q = g_c526;
+    if (q.made != 0) {
+        log::line("card526: %s previous map quiet attached spawns: %u made, %u older of the same key discarded, "
+                  "%u table slots taken over (table of %d)",
+                  side_text(), q.made, q.discarded, q.replaced, kC526Quiet);
+    }
+    q = C526Quiet{};
     g_c132_audit.n = 0;
     g_c132_audit.lines = 0;
     C132Proj& p = g_c132p;

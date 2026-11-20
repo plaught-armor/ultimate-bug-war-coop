@@ -182,12 +182,14 @@ void c133_client_wait(void* site, void* iface, const char* name) {
     const float fuse = read_f32(site, kC133SiteFuse);
     const ULONGLONG due = GetTickCount64() + static_cast<ULONGLONG>((hold + fuse) * 1000.0f) + kC133GraceMs;
     const int32_t id = building != nullptr ? object_index(building) : -1;
-    log::line("%scard133: client site %s (building %s): interaction time %.1f s, fuse %.1f s, charge placed %d; host "
-              "explode expected within %.1f s",
-              building != nullptr ? "" : "WARN ", name, building != nullptr ? object_name(building).text : "none bound",
-              hold, fuse, static_cast<int>(static_cast<const uint8_t*>(site)[kC133SitePlaced]), static_cast<double>(due - GetTickCount64()) / 1000.0);
-    if (building != nullptr && c133_applied_has(id)) {
-        return; // the host's row came first
+    // Senior 2026-11-19: a site with no building bound (BP_SatchelPlacementSite_WithSwitch_C) has no explode to
+    // wait for; its switch fuse (card 418) is the explode. No WARN and no wait.
+    log::line("card133: client site %s (building %s): interaction time %.1f s, fuse %.1f s, charge placed %d; %s", name,
+              building != nullptr ? object_name(building).text : "none bound", hold, fuse,
+              static_cast<int>(static_cast<const uint8_t*>(site)[kC133SitePlaced]),
+              building != nullptr ? "host explode expected" : "no building, not watched (the switch fuse explodes)");
+    if (building == nullptr || c133_applied_has(id)) {
+        return; // no building, or the host's row came first
     }
     if (g_c133.waits >= kC133Pending) {
         log::line("WARN card133: client site %s: wait list full (%u), not watched", name, kC133Pending);

@@ -8,7 +8,7 @@ Read:
 - `docs/STATE.md` line 34 (mission start and `TransitionToLevel` 0x05109340, `TransitionToNextLevel` 0x05109550,
   `RestartCurrentLevel` 0x050FFC30, `OpenLevel` 0x050FA520).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `822338c0bb9e6704` (card 112).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `822338c0bb9e6704` (card 112).
 
 ## Why
 

@@ -1,6 +1,6 @@
 # Card 002: Auto-travel (host listen / client connect) from env vars, plus travel logging
 
-Read `docs/STATE.md` first, then the senior review at the end of `docs/cards/001-toolchain-proxy-dll.md`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first, then the senior review at the end of `docs/cards/001-toolchain-proxy-dll.md`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 Milestone 1 needs two game instances in the same map. The game ignores the map URL on the command line and always boots to the main menu, so our DLL has to start the travel itself. Each instance is told what to do through environment variables, which pass through umu-run/Proton into the Windows process. Both instances run from the same exe directory, so per-instance settings cannot live in a shared file next to the exe.

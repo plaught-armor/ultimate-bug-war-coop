@@ -96,3 +96,40 @@ from, so the heavy case is not shown. Stays open for a FED_C3M2 soak with a full
 
 Skipped in b208: no plain static cause beyond the sweep fix already built. Its proof still needs a FED_C3M2 full
 fight; C4M1 run c244b207b had 0 of 374 client windows under 500 frames (see card 252).
+
+## Run `c263b` (2026-11-19, b288 `cc587891d7bf7846`, senior read): collapse reproduced, mod time ruled out
+
+Scenario `tools/scenarios/c263-c3m2-plant.txt`, `UBWCOOP_C132_FX=1`, `UBWCOOP_C136_LOG` off. Host holds 589 to 601
+frames per 10 s for the whole fight. The client falls steadily from client t=12532084 (12 natural fight rounds, then
+6 lift rounds from about t=12620000):
+
+| client t | frames per 10 s | mean ms | over 50 ms | fallback live | window peak | mod ms (sum of the split) |
+|---|---|---|---|---|---|---|
+| 12522065 | 592 | 16.9 | 1 | 37 | 50 | 821 |
+| 12542086 | 437 | 22.9 | 2 | 47 | 48 | 708 |
+| 12562135 | 275 | 36.5 | 4 | 26 | 51 | 386 |
+| 12602189 | 222 | 45.1 | 69 | 41 | 49 | 484 |
+| 12622259 | 179 | 56.2 | 117 | 81 | 81 | 552 |
+| 12682424 | 161 | 62.4 | 127 | 41 | 60 | 423 |
+| 12702488 | 166 | 60.5 | 119 | 28 | 44 | 317 |
+
+- The card 252 step 1b rule decides: in every window under 400 frames, the mod's split is 3 to 5 percent of the
+  window. The time is in the game or the GPU, not in mod code. The util table stays at 26 to 81 entries (no cap,
+  untracked 0), so the b161 sweep fix holds and is not the cause.
+- The drop starts before the lift block and before corpses grow (card132 pose rows: 5 corpses at round 4 and 5,
+  19 at round 10). Client actors walked by the digest grow only from 28083 to 28507. Projectile copies per digest
+  round stay flat (AIMoritaRound 426 to 554, then 432). So the growth is not actors; candidates are components
+  (Niagara, audio, decals) or GPU work.
+- Not ruled out: another session's GPU job. No GPU busy samples were logged during the run. The host held its cap,
+  so a shared GPU would have to hit the client alone.
+- The 30 s window threshold "client windows of at least 500 frames" fails: 30 s windows fall to 531 frames, and the
+  10 s windows to 161.
+
+Next: card 252 step 2 (the live object census), built into the next lane 2 batch. It is read in the next FED_C3M2
+run, with a GPU busy sample every 10 s in the run log.
+
+Scenario note (harness): in the 12 natural rounds the client's `look actor BP_AI_WarriorBug_C 50` failed with "no
+such actor". The host's look found the nearest warrior 15606 uu away (host cmd 42: from -18716 -6070 1766 to -33846
+-2438 577), likely past the client's net cull distance. So neither side fought at close range before the lift. The
+next C3M2 fight run must place both players at the warriors (the lift-style `spawn bug` near the players, or a
+warp to the nearest warrior), or it does not show the close fight.

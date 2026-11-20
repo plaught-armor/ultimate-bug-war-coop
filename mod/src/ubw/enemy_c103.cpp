@@ -143,6 +143,7 @@ void detour_c103_select(void* component) {
     const float base = g_client_session ? -1.0f : c122_pref_scale(component); // card 122: always installed (host)
     g_orig_c103_select(component);
     c122_pref_restore(component, base);
+    c532_host_note(component); // card 532: host target to clients (returns at once on the client)
     if (!g_c103_log) {
         return;
     }

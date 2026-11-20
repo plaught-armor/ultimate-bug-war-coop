@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04 22:25 to junior ultimate-bug-war-coop-bb, after card 063 was accepted.
 
-Read the card 063 Report, and the card 059 Addendum (the 150 m walk that keys could not do). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 063 Report, and the card 059 Addendum (the 150 m walk that keys could not do). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Runner API from card 063 (as built)
 

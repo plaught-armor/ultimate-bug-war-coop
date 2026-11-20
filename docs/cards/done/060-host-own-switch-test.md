@@ -10,7 +10,7 @@ The user plays build `a4d3f58896432b28` at 8 pm. `tools/playtest.sh` deploys `bu
 - Build and test your change as usual. When the card is done, or by **19:30** at the latest even if it is not done, copy that file back to both `build/dwmapi.dll` and the game's `dwmapi.dll`. Then check that both hash to `a4d3f58896432b28` and put the two hashes in the Report.
 - The new flag is off by default. Even so, the new code does not ship tonight: it goes into the first build after the playtest.
 
-Read the card 057 Report and Senior review, the card 059 Addendum (card059d), and `docs/PLAYTEST.md` (the host-switch watch item). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 057 Report and Senior review, the card 059 Addendum (card059d), and `docs/PLAYTEST.md` (the host-switch watch item). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

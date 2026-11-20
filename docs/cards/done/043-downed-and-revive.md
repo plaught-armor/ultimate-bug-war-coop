@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04.
 
-Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", milestone 3a "Player death flow"), then `docs/design/coop-channel-lobby-downed.md` section 3 (the design, decided by the user), card 030 (player death audit), card 028 (remote sprite body) and card 024 (fire relay). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", milestone 3a "Player death flow"), then `docs/design/coop-channel-lobby-downed.md` section 3 (the design, decided by the user), card 030 (player death audit), card 028 (remote sprite body) and card 024 (fire relay). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

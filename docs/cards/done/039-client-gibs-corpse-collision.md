@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-03.
 
-Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", the milestone-3 known issue), then card 038's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", the milestone-3 known issue), then card 038's report and senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

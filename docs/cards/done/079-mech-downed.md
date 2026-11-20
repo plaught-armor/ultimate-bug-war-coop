@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 13:36 to junior ultimate-bug-war-coop-bb, after card 078 was accepted. Drafted 2026-11-05 (senior).
 
-Read the card 076 Report ("Findings for the senior" 1 and 2), the card 043 Report and code (`c43_death` ~16442, `c43_enter_down`, `c43_health_pre` / `c43_health_post`, `c43_entries_step`), and the card 075 `EnterMech` and `MechEnter` code. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 076 Report ("Findings for the senior" 1 and 2), the card 043 Report and code (`c43_death` ~16442, `c43_enter_down`, `c43_health_pre` / `c43_health_post`, `c43_entries_step`), and the card 075 `EnterMech` and `MechEnter` code. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

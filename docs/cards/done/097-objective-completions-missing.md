@@ -8,7 +8,7 @@ Read:
 - card 049 (objective mirror: host detours on `USTObjectiveUtilityLibrary` Add/Complete calls, journal, client replay);
 - card 095 Report (the capture-the-flag entrance, `objective complete` test command).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `6f8dc8e67527f37e` (card 096).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `6f8dc8e67527f37e` (card 096).
 
 ## Why
 

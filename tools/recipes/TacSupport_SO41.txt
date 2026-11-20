@@ -1,0 +1,5 @@
+# TacSupport_SO41: c335-range-load.txt lines 252-255, written by tools/gen_recipes.py. Do not edit.
+host clear 1500 kill
+client goto actor BP_ResupplyRack_Level0_C 100
+client wait goto timeout=30
+host objective wait TacSupport_SO41 30

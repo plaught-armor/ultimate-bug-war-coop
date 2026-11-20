@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 07:56 to junior ultimate-bug-war-coop-bb, after card 074 was accepted. Ready since 2026-11-04 (senior, revised: classification done, gate table below), refreshed 2026-11-05 (see "Refresh"). Not a playtest blocker.
 
-Read `docs/STATE.md` first ("Mod code rules"). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules"). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

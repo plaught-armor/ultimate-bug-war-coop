@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 03:27 to junior ultimate-bug-war-coop-bb, after card 069 was accepted. Sent ahead of card 070: a client with no reserve runs dry in the first fight.
 
-Read `docs/STATE.md` ("Ammo is not synced") and the card 069 Report and Senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Ammo is not synced") and the card 069 Report and Senior review. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

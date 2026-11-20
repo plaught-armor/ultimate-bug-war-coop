@@ -179,6 +179,14 @@ inline constexpr Symbol UCharacterMovementComponent_ServerCheckClientError = {"U
 inline constexpr Symbol UCharacterMovementComponent_ServerMove_PerformMovement = {"UCharacterMovementComponent_ServerMove_PerformMovement", 0x03A4F0B0u};
 // ?TickComponent@UCharacterMovementComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
 inline constexpr Symbol UCharacterMovementComponent_TickComponent = {"UCharacterMovementComponent_TickComponent", 0x03A59FC0u};
+// ?Tick@ASTNonPlayableCharacterBase@@UEAAXM@Z
+inline constexpr Symbol ASTNonPlayableCharacterBase_Tick = {"ASTNonPlayableCharacterBase_Tick", 0x051AABF0u};
+// ?UpdateFromNPC@FSTBugProceduralAnimationData@@QEAAXAEBVASTNonPlayableCharacterBase@@M@Z
+inline constexpr Symbol FSTBugProceduralAnimationData_UpdateFromNPC = {"FSTBugProceduralAnimationData_UpdateFromNPC", 0x0510ADB0u};
+// ?TickComponent@USkeletalMeshComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+inline constexpr Symbol USkeletalMeshComponent_TickComponent = {"USkeletalMeshComponent_TickComponent", 0x03AFAC10u};
+// ?TickComponent@UADSpriteAnimatorComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+inline constexpr Symbol UADSpriteAnimatorComponent_TickComponent = {"UADSpriteAnimatorComponent_TickComponent", 0x04A24F40u};
 // ?Internal_AddMovementInput@APawn@@QEAAXU?$TVector@N@Math@UE@@_N@Z
 inline constexpr Symbol APawn_Internal_AddMovementInput = {"APawn_Internal_AddMovementInput", 0x03F67150u};
 // ?StaticClass@ACharacter@@SAPEAVUClass@@XZ
@@ -205,6 +213,8 @@ inline constexpr Symbol AActor_execSetActorEnableCollision = {"AActor_execSetAct
 inline constexpr Symbol UPrimitiveComponent_SetCollisionEnabled = {"UPrimitiveComponent_SetCollisionEnabled", 0x040A6F50u};
 // ?SetCollisionProfileName@UPrimitiveComponent@@UEAAXVFName@@_N@Z
 inline constexpr Symbol UPrimitiveComponent_SetCollisionProfileName = {"UPrimitiveComponent_SetCollisionProfileName", 0x040A72E0u};
+// ?SetCollisionResponseToChannel@UPrimitiveComponent@@UEAAXW4ECollisionChannel@@W4ECollisionResponse@@@Z
+inline constexpr Symbol UPrimitiveComponent_SetCollisionResponseToChannel = {"UPrimitiveComponent_SetCollisionResponseToChannel", 0x040A73F0u};
 // ?EnterDropship@ASTPlayerTransportDropship@@AEAAXXZ
 inline constexpr Symbol ASTPlayerTransportDropship_EnterDropship = {"ASTPlayerTransportDropship_EnterDropship", 0x051C56C0u};
 // ?DescendToLandCompleted@ASTPlayerTransportDropship@@MEAAXXZ
@@ -581,6 +591,8 @@ inline constexpr Symbol UADHealthUtilityLibrary_DealDamageTags = {"UADHealthUtil
 inline constexpr Symbol USTDebugSaveTracker_SetAutoSaveEnabled = {"USTDebugSaveTracker_SetAutoSaveEnabled", 0x0521B160u};
 // ?ProcessEvent@UObject@@UEAAXPEAVUFunction@@PEAX@Z
 inline constexpr Symbol UObject_ProcessEvent = {"UObject_ProcessEvent", 0x0154F590u};
+// ?ProcessLocalScriptFunction@@YAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+inline constexpr Symbol ProcessLocalScriptFunction = {"ProcessLocalScriptFunction", 0x0154FA80u};
 // ??0FStaticConstructObjectParameters@@QEAA@PEBVUClass@@@Z
 inline constexpr Symbol FStaticConstructObjectParameters_ctor = {"FStaticConstructObjectParameters_ctor", 0x015683A0u};
 // ?StaticConstructObject_Internal@@YAPEAVUObject@@AEBUFStaticConstructObjectParameters@@@Z
@@ -749,6 +761,8 @@ inline constexpr Symbol ASTNonPlayableCharacterBase_IsNPC2D = {"ASTNonPlayableCh
 inline constexpr Symbol FBodyInstanceCore_ShouldInstanceSimulatingPhysics = {"FBodyInstanceCore_ShouldInstanceSimulatingPhysics", 0x020CD1B0u};
 // ?UpdateKinematicBonesToAnim@USkeletalMeshComponent@@QEAAXAEBV?$TArray@U?$TTransform@N@Math@UE@@V?$TSizedDefaultAllocator@$0CA@@@@@W4ETeleportType@@_NW4EAllowKinematicDeferral@@@Z
 inline constexpr Symbol USkeletalMeshComponent_UpdateKinematicBonesToAnim = {"USkeletalMeshComponent_UpdateKinematicBonesToAnim", 0x04019C30u};
+// ?K2_SetRelativeLocation@USceneComponent@@QEAAXU?$TVector@N@Math@UE@@_NAEAUFHitResult@@1@Z
+inline constexpr Symbol USceneComponent_K2_SetRelativeLocation = {"USceneComponent_K2_SetRelativeLocation", 0x03AE8FD0u};
 // ?GetSkeletalCenterOfMass@USkeletalMeshComponent@@QEBA?AU?$TVector@N@Math@UE@@XZ
 inline constexpr Symbol USkeletalMeshComponent_GetSkeletalCenterOfMass = {"USkeletalMeshComponent_GetSkeletalCenterOfMass", 0x0418F070u};
 // ?GetUnrealWorldTransform@FBodyInstance@@QEBA?AU?$TTransform@N@Math@UE@@_N0@Z
@@ -921,6 +935,20 @@ inline constexpr Symbol ASTCharacter_ActorFullyLoaded = {"ASTCharacter_ActorFull
 inline constexpr Symbol USTSaveComponent_LoadOwnerVariables_Pawn = {"USTSaveComponent_LoadOwnerVariables_Pawn", 0x0520B820u};
 // ?GetSaveId@USTSaveComponent@@SA?AUFGuid@@PEBVAActor@@@Z
 inline constexpr Symbol USTSaveComponent_GetSaveId = {"USTSaveComponent_GetSaveId", 0x051FE7F0u};
+// ?StaticClass@USTSaveComponent@@SAPEAVUClass@@XZ
+inline constexpr Symbol USTSaveComponent_StaticClass = {"USTSaveComponent_StaticClass", 0x0508FF60u};
+// ?FindComponentByClass@AActor@@UEBAPEAVUActorComponent@@V?$TSubclassOf@VUActorComponent@@@@@Z
+inline constexpr Symbol AActor_FindComponentByClass = {"AActor_FindComponentByClass", 0x037E0A00u};
+// ?AddOwnedComponent@AActor@@QEAAXPEAVUActorComponent@@@Z
+inline constexpr Symbol AActor_AddOwnedComponent = {"AActor_AddOwnedComponent", 0x037D7590u};
+// ?RemoveOwnedComponent@AActor@@QEAAXPEAVUActorComponent@@@Z
+inline constexpr Symbol AActor_RemoveOwnedComponent = {"AActor_RemoveOwnedComponent", 0x037F09B0u};
+// ?ResetOwnedComponents@AActor@@QEAAXXZ
+inline constexpr Symbol AActor_ResetOwnedComponents = {"AActor_ResetOwnedComponents", 0x037F1230u};
+// ?DoesTargetMeetConditions@USTAttackComponent@@EEBA_NAEBUFSTAttackTargetConditions@@PEAVAActor@@@Z
+inline constexpr Symbol USTAttackComponent_DoesTargetMeetConditions = {"USTAttackComponent_DoesTargetMeetConditions", 0x051866A0u};
+// ?FindFloor@UCharacterMovementComponent@@UEBAXAEBU?$TVector@N@Math@UE@@AEAUFFindFloorResult@@_NPEBUFHitResult@@@Z
+inline constexpr Symbol UCharacterMovementComponent_FindFloor = {"UCharacterMovementComponent_FindFloor", 0x03A2B2A0u};
 // ?PrepareForSave@USTSaveComponent@@QEAAXXZ
 inline constexpr Symbol USTSaveComponent_PrepareForSave = {"USTSaveComponent_PrepareForSave", 0x05212370u};
 // ?execCompleteDeath@ASTPlayerCharacter@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
@@ -1387,6 +1415,12 @@ inline constexpr Symbol UADTargetComponent_SelectPrimaryTarget = {"UADTargetComp
 inline constexpr Symbol UADTargetComponent_SetPrimaryTarget = {"UADTargetComponent_SetPrimaryTarget", 0x051A6360u};
 // ?FindTargetData@UADTargetComponent@@QEBAPEBUFADTargetData@@PEBVAActor@@@Z
 inline constexpr Symbol UADTargetComponent_FindTargetData = {"UADTargetComponent_FindTargetData", 0x05189F50u};
+// ?TickComponent@UADTargetComponent@@UEAAXMW4ELevelTick@@PEAUFActorComponentTickFunction@@@Z
+inline constexpr Symbol UADTargetComponent_TickComponent = {"UADTargetComponent_TickComponent", 0x051AC040u};
+// ?GetPrimaryTarget@UADTargetComponent@@QEBA_NAEAUFADTargetData@@@Z
+inline constexpr Symbol UADTargetComponent_GetPrimaryTarget = {"UADTargetComponent_GetPrimaryTarget", 0x0518F310u};
+// ?FindPrimaryTargetData@UADTargetComponent@@IEAAPEAUFADTargetData@@XZ
+inline constexpr Symbol UADTargetComponent_FindPrimaryTargetData = {"UADTargetComponent_FindPrimaryTargetData", 0x05189290u};
 // ?FactorDifficultyIntoWaveBudget@USTEncounterWaveBase@@QEBAHAEBU?$TObjectPtr@VUSTPreMadeEncounterWaveData@@@@H@Z
 inline constexpr Symbol USTEncounterWaveBase_FactorDifficultyIntoWaveBudget = {"USTEncounterWaveBase_FactorDifficultyIntoWaveBudget", 0x0511E8A0u};
 // ?CreateTicketContainer@ASTTicketManager@@AEAAXW4ESTTicketType@@HM@Z
@@ -1855,5 +1889,39 @@ inline constexpr Symbol GUObjectArray = {"GUObjectArray", 0x0926F190u};
 inline constexpr Symbol ASTWeapon_ShowWeapon = {"ASTWeapon_ShowWeapon", 0x0524DE00u};
 // ?StaticClass@ASTWeapon@@SAPEAVUClass@@XZ
 inline constexpr Symbol ASTWeapon_StaticClass = {"ASTWeapon_StaticClass", 0x050B1860u};
+// ?SweepSingleByChannel@UWorld@@QEBA_NAEAUFHitResult@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_SweepSingleByChannel = {"UWorld_SweepSingleByChannel", 0x03A592A0u};
+// ?SweepMultiByChannel@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_SweepMultiByChannel = {"UWorld_SweepMultiByChannel", 0x03A58AE0u};
+// ?SweepTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@0AEBU?$TQuat@N@34@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_SweepTestByChannel = {"UWorld_SweepTestByChannel", 0x03A59940u};
+// ?SweepSingleByObjectType@UWorld@@QEBA_NAEAUFHitResult@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+inline constexpr Symbol UWorld_SweepSingleByObjectType = {"UWorld_SweepSingleByObjectType", 0x03A59470u};
+// ?SweepMultiByObjectType@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+inline constexpr Symbol UWorld_SweepMultiByObjectType = {"UWorld_SweepMultiByObjectType", 0x03A58CB0u};
+// ?LineTraceMultiByChannel@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@1W4ECollisionChannel@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_LineTraceMultiByChannel = {"UWorld_LineTraceMultiByChannel", 0x03A368F0u};
+// ?LineTraceTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@0W4ECollisionChannel@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_LineTraceTestByChannel = {"UWorld_LineTraceTestByChannel", 0x03A36C10u};
+// ?OverlapAnyTestByChannel@UWorld@@QEBA_NAEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@34@W4ECollisionChannel@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@AEBUFCollisionResponseParams@@@Z
+inline constexpr Symbol UWorld_OverlapAnyTestByChannel = {"UWorld_OverlapAnyTestByChannel", 0x03A3AB90u};
+// ?OverlapMultiByObjectType@UWorld@@QEBA_NAEAV?$TArray@UFOverlapResult@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@45@AEBUFCollisionObjectQueryParams@@AEBUFCollisionShape@@AEBUFCollisionQueryParams@@@Z
+inline constexpr Symbol UWorld_OverlapMultiByObjectType = {"UWorld_OverlapMultiByObjectType", 0x03A3AD30u};
+// ?ComponentSweepMulti@UWorld@@QEBA_NAEAV?$TArray@UFHitResult@@V?$TSizedDefaultAllocator@$0CA@@@@@PEAVUPrimitiveComponent@@AEBU?$TVector@N@Math@UE@@2AEBU?$TQuat@N@56@AEBUFComponentQueryParams@@@Z
+inline constexpr Symbol UWorld_ComponentSweepMulti = {"UWorld_ComponentSweepMulti", 0x03A248C0u};
+// ?ComponentOverlapMulti@UWorld@@QEBA_NAEAV?$TArray@UFOverlapResult@@V?$TSizedDefaultAllocator@$0CA@@@@@PEBVUPrimitiveComponent@@AEBU?$TVector@N@Math@UE@@AEBU?$TQuat@N@56@AEBUFComponentQueryParams@@AEBUFCollisionObjectQueryParams@@@Z
+inline constexpr Symbol UWorld_ComponentOverlapMulti = {"UWorld_ComponentOverlapMulti", 0x03A230F0u};
+// ?UpdateOverlaps@USceneComponent@@QEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+inline constexpr Symbol USceneComponent_UpdateOverlaps = {"USceneComponent_UpdateOverlaps", 0x03AFEEF0u};
+// ?CapsuleTraceSingleForObjects@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@1MMAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@3UFLinearColor@@7M@Z
+inline constexpr Symbol UKismetSystemLibrary_CapsuleTraceSingleForObjects = {"UKismetSystemLibrary_CapsuleTraceSingleForObjects", 0x03D22BF0u};
+// ?SphereOverlapComponents@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@MAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@PEAVUClass@@AEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@AEAV?$TArray@PEAVUPrimitiveComponent@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+inline constexpr Symbol UKismetSystemLibrary_SphereOverlapComponents = {"UKismetSystemLibrary_SphereOverlapComponents", 0x03D40560u};
+// ?UpdateOverlapsImpl@UPrimitiveComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+inline constexpr Symbol UPrimitiveComponent_UpdateOverlapsImpl = {"UPrimitiveComponent_UpdateOverlapsImpl", 0x03AADFA0u};
+// ?UpdateOverlapsImpl@USkinnedMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+inline constexpr Symbol USkinnedMeshComponent_UpdateOverlapsImpl = {"USkinnedMeshComponent_UpdateOverlapsImpl", 0x03AFEF70u};
+// ?UpdateOverlapsImpl@USkeletalMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+inline constexpr Symbol USkeletalMeshComponent_UpdateOverlapsImpl = {"USkeletalMeshComponent_UpdateOverlapsImpl", 0x0419AEF0u};
 
 } // namespace ubw::offsets

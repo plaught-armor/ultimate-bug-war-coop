@@ -9,7 +9,7 @@ Read:
   missing-file and bad-file rules);
 - `mod/src/ubw/bug_scale.cpp` (`FactorDifficultyIntoWaveBudget` 0x0511E8A0 hook, card 111).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `71a9079ca720c324` (card 113).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `71a9079ca720c324` (card 113).
 
 ## Why
 

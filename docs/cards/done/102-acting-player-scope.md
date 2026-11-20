@@ -9,7 +9,7 @@ Read:
 - card 054 (interaction relay; `UADInteractorComponent::Interact` is already detoured, `g_orig_interact`);
 - card 024 (the client's shots run as the server copy's fire ability on the host).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `708552b525f39f4b` (card 099).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `708552b525f39f4b` (card 099).
 
 ## Why
 

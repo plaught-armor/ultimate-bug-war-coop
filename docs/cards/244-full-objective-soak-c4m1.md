@@ -79,7 +79,7 @@ Not started. Starts after the 2026-11-13 playtest, in card order, one map at a t
 
 ## Step 1 result (junior, b205, 2026-11-17): triggers from FED_C4M1_Scripting
 
-Source: kis.py listing of `FED_C4M1_Scripting.umap` (ubergraph `ExecuteUbergraph_FED_C4M1_Scripting`). Offsets
+Source: tools/kismet/kis.py listing of `FED_C4M1_Scripting.umap` (ubergraph `ExecuteUbergraph_FED_C4M1_Scripting`). Offsets
 are ubergraph entry points; the calls are read linearly from the entry, so a row is a candidate until the discovery
 run confirms it. Calls: AddObjective (imp850), AddSubObjective (imp851), AddCountSub (imp849, count arg),
 AddCountSub2 (imp848, Stadium_SO4 count 2), CompleteSub (imp854), CompleteObjective (imp853), counter step (imp855).

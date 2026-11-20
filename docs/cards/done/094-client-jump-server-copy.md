@@ -8,7 +8,7 @@ Read:
 - card 024 (client fire relay: the `InternalServerTryActivateAbility` detour and its `card024: host server-copy` lines);
 - card 021 (`client request handle N: activated/failed`).
 
-Repo root: `/path/to/ultimate-bug-war-coop`.
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

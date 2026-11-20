@@ -8,7 +8,7 @@ Read:
 - card 098 Report (`ChanOp::WorldOp`, journal, `c95_find_nearest`);
 - card 101, Why (the mantle also plays an ability animation on the server copy).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `e9e29f08f4ebb6e8` (card 100). That hash
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `e9e29f08f4ebb6e8` (card 100). That hash
 was not run; the first run of this card is its smoke test (rc 0, ERROR/FATAL 0, no dump), say so in the Report.
 
 ## Why

@@ -8,7 +8,7 @@ Read:
 - card 113 "Not run" (grace-end drop after 45 s);
 - card 114 Report (the ammo and healing getters were never called).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114; cards 115 and 116 built no play change).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `17a60609748a4770` (card 114; cards 115 and 116 built no play change).
 
 ## Why
 

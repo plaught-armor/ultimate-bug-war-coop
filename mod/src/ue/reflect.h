@@ -56,6 +56,8 @@ inline constexpr size_t kObjectOuter = 0x20;          // UObjectBase::OuterPriva
 inline constexpr size_t kVtProcessEvent = 0x260;
 inline constexpr size_t kStructSuper = 0x40;          // UStruct::SuperStruct
 inline constexpr size_t kStructChildProperties = 0x50;
+inline constexpr size_t kStructChildren = 0x48;       // UStruct::Children (UField*: the UFunctions; card 067)
+inline constexpr size_t kUFieldNext = 0x28;           // UField::Next (UObjectBase is 0x28 bytes)
 inline constexpr size_t kClassDefaultObject = 0x110;  // UClass::ClassDefaultObject (UClass::GetDefaultObject +0x6, +0x1C)
 inline constexpr size_t kFunctionParmsSize = 0xB6;    // UFunction::ParmsSize (uint16; Func at +0xD8 per Invoke+0x73)
 inline constexpr size_t kFrameNode = 0x10;            // FFrame::Node (Object +0x18 and Code +0x20 per execSetActorEnableCollision)
@@ -183,6 +185,11 @@ void* find_class(const wchar_t* path);
 // GUObjectArray walk: diagnostics only, a few calls per map.
 // subclasses: also objects whose class derives from cls (is_a); class default objects are never listed.
 int32_t objects_of_class(const void* cls, const void** out, int32_t cap, bool subclasses = false);
+
+// Card 252 step 2: one GUObjectArray walk counting the live objects (class default objects included, gone items not)
+// and, per entry of `classes` (exact class pointer, null entries never match), the objects of that class into
+// `counts`. Returns the live object count. A full walk: diagnostics only, once per 30 s window behind UBWCOOP_C132_FX.
+int32_t objects_census(const void* const* classes, int32_t n_classes, int32_t* counts);
 
 // --- Property walker ------------------------------------------------------------------------------------
 

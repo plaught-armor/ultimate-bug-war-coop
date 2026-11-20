@@ -10,7 +10,7 @@ Read:
 - cards 056 (PickupGone relay), 042 (Gib relay), 054 (placed actors, roles local 0 remote 3 on the client), 095
   (CollisionOp relay and journal).
 
-Repo root: `/path/to/ultimate-bug-war-coop`. Play DLL base: `b86475badfbc9520` (card 097).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. Play DLL base: `b86475badfbc9520` (card 097).
 
 ## Why
 

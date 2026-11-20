@@ -25,6 +25,8 @@
 namespace ubw::hooks {
 
 bool g_c161_pe = false; // a door is tracked: detour_process_event calls c161_pe
+bool g_c507_vm = false; // client, a door is tracked: detour_c507_local_script compares door functions
+LocalScriptFn g_orig_c507_local_script = nullptr;
 
 namespace {
 
@@ -39,6 +41,9 @@ constexpr uint8_t kC161NoHost = 0xFF;      // client: no host state received for
 constexpr uint32_t kC161OwnLines = 40;
 constexpr ULONGLONG kC270HoldMs = 500;     // client: a montage-settled DoorState waits this long for the host's row
 constexpr uint32_t kC270HoldLines = 40;    // hold lines per map
+constexpr int32_t kC507Fns = 16;          // distinct door UFunctions the BP VM gate compares (one door class: 6)
+constexpr uint32_t kC507Lines = 40;        // first-seen BP VM refusal lines per map
+constexpr ULONGLONG kC507RateMs = 60000;   // the BP VM gate's call counts are logged this often
 constexpr int kC161BufferMax = 5;          // ECollisionEnabled: NoCollision .. QueryAndProbe     // client-only DoorState change lines per map
 constexpr wchar_t kC161Class[] = L"/Game/Blueprints/EnvironmentElements/Doors/Parents/BP_Door_Base.BP_Door_Base_C";
 
@@ -67,6 +72,7 @@ struct C161Door {
     uint8_t sent;  // host: the last DoorState sent, or the map's own at tracking
     uint8_t host;  // client: the host's last DoorState (kC161NoHost before the first)
     int host_buffer; // client: the host's last PawnBuffer CollisionEnabled, -1 when not given
+    bool host_row;   // client (card 507): a host row came; false while host / host_buffer are the map's own baseline
     ULONGLONG hold_ms; // client (card 270): a montage-settled DoorState is held until then; 0 when none held
     ULONGLONG c288_since; // host (card 288): a player-trigger close held since then; 0 when none held
     ULONGLONG c288_check; // host (card 288): the next re-check of a held close
@@ -87,7 +93,14 @@ struct C161State {
     ULONGLONG scan_due;
     C161PeSeen seen[kC161PeSeen];
     int32_t seen_n;
-    uint32_t state_lines, pe_lines, refused, applied, missed, sends, full, own, own_lines, hold_lines;
+    uint32_t state_lines, pe_lines, refused, applied, missed, sends, full, own, own_lines, hold_lines, baseline_lines;
+    // Card 507, client: the BP VM gate (detour_c507_local_script). vm_fn holds every tracked door's fn[] once.
+    void* vm_fn[kC507Fns];
+    int32_t vm_fn_n;
+    uint32_t vm_fn_full; // door functions not gated: vm_fn was full
+    C161PeSeen vm_seen[kC507Lines];
+    uint32_t vm_lines, vm_calls, vm_hits, vm_refused, vm_refused_map;
+    ULONGLONG vm_rate_at; // the next count line; 0 before the first
     bool calling; // c161_call is running a door function
 };
 
@@ -136,6 +149,26 @@ bool c161_known(const void* actor) {
     return false;
 }
 
+// Card 507, client: the door's functions into the BP VM gate's compare set, each UFunction once (a door class shares
+// them). A full set leaves a function ungated: one WARN per map.
+void c507_vm_add(const C161Door& d) {
+    for (int32_t f = 0; g_client_session && f < kC161RefusedN; ++f) {
+        bool have = d.fn[f] == nullptr;
+        for (int32_t i = 0; i < g_c161.vm_fn_n && !have; ++i) {
+            have = g_c161.vm_fn[i] == d.fn[f];
+        }
+        if (have) {
+            continue;
+        }
+        if (g_c161.vm_fn_n < kC507Fns) {
+            g_c161.vm_fn[g_c161.vm_fn_n++] = d.fn[f];
+        } else if (g_c161.vm_fn_full++ == 0) {
+            log::line("WARN card507: client door %s function %s: BP VM gate set full (%d), not gated", d.name,
+                      object_name(d.fn[f]).text, kC507Fns);
+        }
+    }
+}
+
 // One placed, non-replicated door into the table: its name, functions, PawnBuffer and current state.
 void c161_add(void* actor) {
     if (g_c161.n >= kC161Doors) {
@@ -154,11 +187,18 @@ void c161_add(void* actor) {
         d.fn[f] = fname_cached(g_c161_fname[f], kC161Refused[f]) != 0 ? g_find_function(actor, g_c161_fname[f])
                                                                        : nullptr;
     }
+    c507_vm_add(d);
     d.pawn_buffer = c95_component(actor, "PawnBuffer");
     d.state = static_cast<const uint8_t*>(actor)[g_c161.state_at];
     d.sent = d.state;
     d.host = kC161NoHost;
     d.host_buffer = -1;
+    if (g_client_session) {
+        // Card 507: the host sends only changes, and a door it has not touched is in the map's own state, so that
+        // state is the host's until its first row. Our own level script's open is then set back (c161_poll).
+        d.host = d.state;
+        d.host_buffer = c161_buffer(d);
+    }
     ++g_c161.n;
     const Vec3 at = actor_location(actor);
     const C161Coll c = c161_coll(actor);
@@ -194,6 +234,7 @@ void c161_scan(const void* world) {
         }
     }
     g_c161_pe = g_c161.n > 0;
+    g_c507_vm = g_client_session && g_c161.vm_fn_n > 0;
 }
 
 bool c161_open_half(uint8_t state) {
@@ -225,10 +266,23 @@ void c161_write(C161Door& d, uint8_t* a) {
     }
 }
 
+// Card 507, client: a DoorState change before any host row for the door, set back to the map's own baseline.
+void c507_baseline_line(const C161Door& d, uint8_t state) {
+    if (g_c161.baseline_lines >= kC161OwnLines) {
+        return;
+    }
+    ++g_c161.baseline_lines;
+    log::line("card507: client t=%llu door %s client-only DoorState %u -> %u before any host row, set back to the "
+              "baseline %u (PawnBuffer %d, set back to %d)", static_cast<unsigned long long>(GetTickCount64()),
+              d.name, d.state, state, d.host, c161_buffer(d), d.host_buffer);
+}
+
 // Client: a DoorState change our own Blueprint made, not the host's: set back to the host's, counted and logged.
 void c161_own(C161Door& d, uint8_t* a, uint8_t state) {
     ++g_c161.own;
-    if (g_c161.own_lines < kC161OwnLines) {
+    if (!d.host_row) {
+        c507_baseline_line(d, state);
+    } else if (g_c161.own_lines < kC161OwnLines) {
         ++g_c161.own_lines;
         log::line("WARN card161: client t=%llu door %s client-only DoorState %u -> %u, set back to the host's %u "
                   "(PawnBuffer %d, host %d)", static_cast<unsigned long long>(GetTickCount64()), d.name, d.state,
@@ -567,6 +621,78 @@ bool c161_pe(const void* object, const void* function) {
     return refuse;
 }
 
+namespace {
+
+// Card 507, client: a BP VM call of `node` on `context` hit the compare set. True refuses it: the door's own trigger
+// function, not the mod's c161_call. First (door, function) pair logs once.
+bool c507_vm_refuse(const void* context, const void* node) {
+    ++g_c161.vm_hits;
+    if (g_c161.calling) {
+        return false;
+    }
+    const C161Door* d = nullptr;
+    for (int32_t i = 0; i < g_c161.n && d == nullptr; ++i) {
+        d = g_c161.d[i].actor == context ? &g_c161.d[i] : nullptr;
+    }
+    bool refuse = false;
+    for (int32_t f = 0; d != nullptr && f < kC161RefusedN && !refuse; ++f) {
+        refuse = d->fn[f] == node;
+    }
+    if (!refuse) {
+        return false;
+    }
+    ++g_c161.vm_refused;
+    ++g_c161.vm_refused_map;
+    bool seen = false;
+    for (uint32_t i = 0; i < g_c161.vm_lines && !seen; ++i) {
+        seen = g_c161.vm_seen[i].door == context && g_c161.vm_seen[i].fn == node;
+    }
+    if (!seen && g_c161.vm_lines < kC507Lines) {
+        g_c161.vm_seen[g_c161.vm_lines++] = C161PeSeen{context, node};
+        log::line("card507: client t=%llu door %s BP VM %s: refused", static_cast<unsigned long long>(GetTickCount64()),
+                  d->name, object_name(node).text);
+    }
+    return true;
+}
+
+// Card 507, client: the BP VM gate's cost, one line a minute while armed.
+void c507_vm_rate(ULONGLONG now) {
+    if (!g_c507_vm || now < g_c161.vm_rate_at) {
+        return;
+    }
+    if (g_c161.vm_rate_at != 0) {
+        log::line("card507: client t=%llu BP VM gate, last %llu ms: %u script function calls, %u door function calls, "
+                  "%u refused",
+                  static_cast<unsigned long long>(now), static_cast<unsigned long long>(kC507RateMs), g_c161.vm_calls,
+                  g_c161.vm_hits, g_c161.vm_refused);
+    }
+    g_c161.vm_calls = 0;
+    g_c161.vm_hits = 0;
+    g_c161.vm_refused = 0;
+    g_c161.vm_rate_at = now + kC507RateMs;
+}
+
+} // namespace
+
+// Card 507: ProcessLocalScriptFunction(Context, Stack, Result), every local script UFunction body (BP VM calls through
+// UObject::CallFunction and ProcessEvent both end here). The level script opens a door this way, never through
+// ProcessEvent. The caller has already read the parameters into Stack; skipping the body leaves its bytecode position
+// right. Miss path while armed: one counter and a compare against vm_fn.
+void detour_c507_local_script(void* context, void* stack, void* result) {
+    if (g_c507_vm) {
+        ++g_c161.vm_calls;
+        const void* const node = read_ptr(stack, kFrameNode);
+        bool hit = false;
+        for (int32_t i = 0; i < g_c161.vm_fn_n && !hit; ++i) {
+            hit = g_c161.vm_fn[i] == node;
+        }
+        if (hit && c507_vm_refuse(context, node)) {
+            return; // card 507: the client's own door trigger, refused (the host owns the door)
+        }
+    }
+    g_orig_c507_local_script(context, stack, result);
+}
+
 void c161_step(void* engine) {
     void* const world = engine != nullptr ? g_get_game_world(engine) : nullptr;
     if (world == nullptr) {
@@ -577,6 +703,7 @@ void c161_step(void* engine) {
         g_c161.scan_due = now + kC161ScanMs;
         c161_scan(world);
     }
+    c507_vm_rate(now);
     for (int32_t i = 0; i < g_c161.n; ++i) {
         c161_poll(g_c161.d[i]);
         if (!g_client_session) {
@@ -627,8 +754,13 @@ void c492_switch_press(const void* target, const void* pawn) {
 
 // Client: the host's DoorOp for a name no ASTDoor has: "<name> <DoorState digit> [<PawnBuffer>]" (the journal
 // replay leaves the PawnBuffer out; card 095's CollisionOp replay carries it). True when a tracked door took it.
-bool c161_receive(const char* name, char op, const char* text) {
-    C161Door* const d = op >= '0' && op <= '0' + kC161StateMax ? c161_by_name(name) : nullptr;
+bool c161_receive(const void* world, const char* name, char op, const char* text) {
+    const bool digit = op >= '0' && op <= '0' + kC161StateMax;
+    C161Door* d = digit ? c161_by_name(name) : nullptr;
+    if (d == nullptr && digit && world != nullptr) {
+        c161_scan(world); // card 507: a join replay row ahead of the periodic scan lands on the door, not dropped
+        d = c161_by_name(name);
+    }
     auto* const a = d != nullptr ? static_cast<uint8_t*>(c31_weak_get(d->weak)) : nullptr;
     if (d == nullptr || a == nullptr) {
         return d != nullptr; // a tracked name whose actor is gone: taken, nothing to apply
@@ -651,6 +783,7 @@ bool c161_receive(const char* name, char op, const char* text) {
     }
     d->host = host;
     d->host_buffer = buffer;
+    d->host_row = true;
     d->state = before;
     c161_state_line(*d, a, host);
     c161_write(*d, a);
@@ -681,11 +814,16 @@ void c161_map_end() {
                   side(), g_c161.n, g_c161.full, g_c161.sends, g_c161.refused, g_c161.applied, g_c161.missed,
                   g_c161.own);
     }
+    if (g_c507_vm) {
+        log::line("card507: client map totals: BP VM gate %d door functions, %u not gated, %u calls refused",
+                  g_c161.vm_fn_n, g_c161.vm_fn_full, g_c161.vm_refused_map);
+    }
     const int32_t state_at = g_c161.state_at;
     g_c161 = C161State{}; // the class is looked up again: it may unload with the map
     g_c288 = C288Trigger{}; // card 288: no presence of the old map counts as a trigger
     g_c161.state_at = state_at; // one class layout: the offset holds
     g_c161_pe = false;
+    g_c507_vm = false;
 }
 
 // The map's own arm: c161_map_end has already printed the totals and dropped the old map's tables; this reset
@@ -696,6 +834,7 @@ void c161_arm_map() {
     g_c288 = C288Trigger{};
     g_c161.state_at = state_at;
     g_c161_pe = false;
+    g_c507_vm = false;
 }
 
 } // namespace ubw::hooks

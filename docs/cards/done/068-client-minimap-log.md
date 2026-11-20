@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 02:38 to junior ultimate-bug-war-coop-bb, after card 065 was accepted. Walk with the card 063/064 runner (goto, `ui continue`).
 
-Read `docs/STATE.md` ("The client minimap shows no icons" and the card 058 origin fix in `sync_client_minimap_origin`). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("The client minimap shows no icons" and the card 058 origin fix in `sync_client_minimap_origin`). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

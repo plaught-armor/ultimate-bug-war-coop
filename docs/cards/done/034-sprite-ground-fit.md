@@ -2,7 +2,7 @@
 
 Status: done 2026-11-03.
 
-Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 028, 033 and 026. Then read the "Body transform" bullet in card 028's report and the last section of card 026's report. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 028, 033 and 026. Then read the "Body transform" bullet in card 028's report and the last section of card 026's report. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

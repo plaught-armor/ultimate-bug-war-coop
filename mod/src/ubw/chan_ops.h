@@ -39,8 +39,9 @@
 // <base64>" chunked to kChanTextMax, or "R <guid>" when the corpse is gone (pose_c132.cpp).
 // Decal (host to client, text) is the gore decal relay: M/T table rows, D spawns, E releases, B bursts, R round
 // markers and the J journal start, each ended by ';' (decal_c132.cpp).
-// GibPart (host to client, text) is the gib part relay: S spawn and launch, M in-flight samples, R rest rows, each
-// ended by ';' (gib_c137.cpp).
+// GibPart (host to client, text) is the gib part relay: S spawn and launch rows, each ended by ';' (gib_c137.cpp);
+// the join replay also sends its M, R rows as text. Card 519: GibPose (host to client, blob) carries the live M
+// in-flight samples, R rest rows and G taken-back rows in binary (gib_c137.cpp, gib_pose_put).
 //
 // Card 166: Marker (host to client, text) is a server copy's OnDamageCaused or OnDeathCaused for that client's
 // marker, "<D|K> <guid> <damages> <counts> <values> <tags>" (marker_c166.cpp).
@@ -68,6 +69,8 @@
 // Card 459: MechFuel (host to one client, blob of 8 bytes: Fuel, MaximumFuel as floats) is the current fuel of the
 // mech that client pilots; the client writes both into its own mech's STPlayerMechAttributeSet (c459_receive).
 //
+// Card 532: NpcTarget (host to client, blob) carries rows of (NPC NetGUID, target NetGUID << 2 | HasLineOfSight) as
+// two varints: each change of an NPC's primary target or its line of sight (target_c532.cpp).
 // Card 151: Batch (host to client) carries rows of other ops in one frame, one ledger stamp (ue/chan.h).
 //
 // (kChanObjectiveHead is now ue::chan::kChanNamedHead.)
@@ -83,7 +86,7 @@ enum class ChanOp : wchar_t { None, Fire, Ping, Pong, Gib, Anim, Down, Use, Warp
                               AmmoMirror, ObjectiveActors, GrenadeItem, GrenadeSpawn, GrenadeExplode,
                               MechEnter, MechLeave, DoorOp, CollisionOp, WorldOp, TacSupport, TacCharge, Difficulty, TurretMount,
                               TurretLeave, TurretAim, HoldDone, Digest, DigestQuery, LedgerAck, Hit, Pose,
-                              Decal, Dropship, Fx, GibPart, Clock, Switch, Reload, Restore, WarpTo, HitClaim, Marker, BugForm, IntroStart, EndLevel, Round, ScriptWrite, IntroDone, Radio, TravelIds, HurtSound, MechFuel, Score, PeerWeapons, Batch, Stamina, CombatLevel, Bark, Count };
+                              Decal, Dropship, Fx, GibPart, Clock, Switch, Reload, Restore, WarpTo, HitClaim, Marker, BugForm, IntroStart, EndLevel, Round, ScriptWrite, IntroDone, Radio, TravelIds, HurtSound, MechFuel, Score, PeerWeapons, Batch, Stamina, CombatLevel, Bark, Role, GibPose, NpcTarget, Count };
 inline constexpr int32_t kChanArgsNamed = ue::chan::kChanArgsNamed; // card 049: a header, then name chars (see above)
 inline constexpr int32_t kChanArgsText = ue::chan::kChanArgsText;   // card 050: text chars only (see above)
 inline constexpr int32_t kChanArgsBlob = ue::chan::kChanArgsBlob;   // card 136 run 4: bytes in 15-bit units
@@ -99,7 +102,7 @@ inline constexpr int32_t kChanArgs[] = {-1, 1, 1, 1, 3, 3, 5, 1, 5, kChanArgsNam
                                        kChanArgsPacked, kChanArgsText, 1, kChanArgsText, kChanArgsText, kChanArgsText,
                                        kChanArgsText, kChanArgsText, 3, kChanArgsText, 1, 1, kChanArgsText, 1, kChanArgsText,
                                        kChanArgsText, kChanArgsText, kChanArgsBlob, kChanArgsText, kChanArgsText,
-                                       kChanArgsBatch, 1, 1, kChanArgsText}; // card 490: Stamina carries the host setting (0 or 1); card 321: CombatLevel 0/1/2; card 451: Bark
+                                       kChanArgsBatch, 1, 1, kChanArgsText, 1, kChanArgsBlob, kChanArgsBlob}; // card 532: NpcTarget; card 519: GibPose; card 490: Stamina carries the host setting (0 or 1); card 321: CombatLevel 0/1/2; card 451: Bark; card 502: Role
 static_assert(sizeof(kChanArgs) / sizeof(kChanArgs[0]) == static_cast<size_t>(ChanOp::Count));
 static_assert(static_cast<size_t>(ChanOp::Count) <= ue::chan::kChanOpSlots);
 inline constexpr size_t kChanOpCount = static_cast<size_t>(ChanOp::Count);

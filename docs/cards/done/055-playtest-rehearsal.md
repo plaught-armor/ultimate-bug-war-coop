@@ -2,7 +2,7 @@
 
 Status: ready 2026-11-04 (senior, revised: launch step merged, working-set measure dropped). Send it right after 052 is accepted. This is the last gate before the user's 8 pm LAN playtest.
 
-Read `docs/STATE.md`, `docs/PLAYTEST.md`, and the Reports of cards 050 and 052. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md`, `docs/PLAYTEST.md`, and the Reports of cards 050 and 052. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

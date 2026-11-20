@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 13:06 to junior ultimate-bug-war-coop-bb, after card 076 was accepted. Drafted 2026-11-05 (senior). This is the first move card of the split (S1 in `docs/split-map.md`, "Move order").
 
-Read `docs/split-map.md` ("Proposed files", "Move order", "CMake", "Renames when promoted to `ue/`"), `mod/src/log.h`, `mod/src/log.cpp` and `mod/CMakeLists.txt`. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/split-map.md` ("Proposed files", "Move order", "CMake", "Renames when promoted to `ue/`"), `mod/src/log.h`, `mod/src/log.cpp` and `mod/CMakeLists.txt`. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 
@@ -92,7 +92,7 @@ Done (junior, 2026-11-05). Deployed DLL hash 5c06bc142cac5fe4.
 
 ### Log check (c75-solo host log, c77a before vs c77f after)
 
-The normaliser is in the scratchpad at `~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/50a11dc8-a0b2-4c6f-af73-8cd1b2a1b3e9/scratchpad/c77norm.sh`. It strips the `[ms][T]` prefix, pointers and hex, `t=`, `ms`, floats, and numbers of 4 or more digits:
+The normaliser is in the scratchpad at `/home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/50a11dc8-a0b2-4c6f-af73-8cd1b2a1b3e9/scratchpad/c77norm.sh`. It strips the `[ms][T]` prefix, pointers and hex, `t=`, `ms`, floats, and numbers of 4 or more digits:
 
 ```
 sh c77norm.sh logs/c77a-host.log > a.n; sh c77norm.sh logs/c77f-host.log > f.n

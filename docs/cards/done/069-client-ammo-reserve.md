@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 03:06 to junior ultimate-bug-war-coop-bb, after card 068 was accepted.
 
-Read `docs/STATE.md` ("Ammo is not synced", the weapon and inventory layout bullet) and the card 065 follow-ups. Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` ("Ammo is not synced", the weapon and inventory layout bullet) and the card 065 follow-ups. Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04. Picked by the user.
 
-Read `docs/STATE.md` first, then the card 048 Report and Senior review (objectives), and the card 026 channel comment in `mod/src/hooks.cpp` (~6218, "Card 026: mod channel"). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first, then the card 048 Report and Senior review (objectives), and the card 026 channel comment in `mod/src/hooks.cpp` (~6218, "Card 026: mod channel"). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

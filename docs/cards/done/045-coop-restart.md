@@ -2,7 +2,7 @@
 
 Status: done 2026-11-04.
 
-Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", known issue "Co-op restart after game over"), then card 002 (auto-travel, `SetClientTravel`), card 043 (downed state) and card 044 (death screen, Report and Senior review). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", known issue "Co-op restart after game over"), then card 002 (auto-travel, `SetClientTravel`), card 043 (downed state) and card 044 (death screen, Report and Senior review). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

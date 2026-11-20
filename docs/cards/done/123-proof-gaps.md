@@ -10,7 +10,7 @@ Read:
 - card 122 Report (c122f/c122g co-op measure runs before the scale, c122q after it);
 - scenarios `tools/scenarios/c70-late-join.txt`, `c113-travel.txt`.
 
-Repo root: `/path/to/ultimate-bug-war-coop`. DLL base: `4d058f899b394c59` (card 122).
+Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`. DLL base: `4d058f899b394c59` (card 122).
 
 ## Why
 

@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-04. Playtest blocker; the user wants a playtest tonight.
 
-Read `docs/STATE.md`, the card 021 Report (Steps 1 and 2), the card 024 and 026 channel notes, and the card 048 Report (inventory after a checkpoint). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read `docs/STATE.md`, the card 021 Report (Steps 1 and 2), the card 024 and 026 channel notes, and the card 048 Report (inventory after a checkpoint). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 

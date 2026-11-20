@@ -2,7 +2,7 @@
 
 Status: sent 2026-11-05 12:20 to junior ultimate-bug-war-coop-bb, after card 061 was accepted. Drafted 2026-11-05 (senior).
 
-Read the card 075 Report ("Mech fire") and Senior review, the card 024 row in `docs/CARDLOG.md` and the card 024 code (the `InputTag.Fire` relay to the server copy), and the card 074 Report (grenade spawn relay: a pooled `ADProjectile` does not replicate). Repo root: `/path/to/ultimate-bug-war-coop`.
+Read the card 075 Report ("Mech fire") and Senior review, the card 024 row in `docs/CARDLOG.md` and the card 024 code (the `InputTag.Fire` relay to the server copy), and the card 074 Report (grenade spawn relay: a pooled `ADProjectile` does not replicate). Repo root: `/mnt/based_backup/Repos/ultimate-bug-war-coop`.
 
 ## Why
 
@@ -106,7 +106,7 @@ During the client's fire the relay lines read "sent to 0 of 0 clients (pilot pc 
   - The Fire argument stays compatible: kind 0 keeps the old meaning of `Fire 0` and `Fire 1`.
   - On the host, `c26_host_receive` relays kind 1 only for a mech pawn, and any other kind is dropped, so a bad kind cannot index `own[]` on the host.
   - `c24_mech_repress` re-presses only kind 0 on a mech, from the existing `c24_host_guard` tick.
-- **Shots.** Montage: `~/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/c340cb3a-800c-4276-ae3c-b37fdc6f665d/scratchpad/c76.png`.
+- **Shots.** Montage: `/home/king/.cache/claude-tmp/claude-1000/-mnt-based-backup-Repos-ultimate-bug-war-coop/c340cb3a-800c-4276-ae3c-b37fdc6f665d/scratchpad/c76.png`.
   - Clear: the client's own mech fire (client-c76g-c-fire1), the host mech killing bugs (host-c76g-h-fire1), and the host on foot seeing the client mech fire with a hit marker (host-c76e-c-fire2).
   - Weak: client-c76c-h-fire1 shows the host's rounds hitting only at range, in low-LOD geometry.
   - host-c76g-c-fire1 shows nothing useful.
