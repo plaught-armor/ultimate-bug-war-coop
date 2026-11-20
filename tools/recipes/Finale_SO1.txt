@@ -1,0 +1,14 @@
+# Finale_SO1: hand-written in tools/gen_recipes.py LITERAL. Do not edit.
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host clear 20000 kill max-left=99
+try host objective wait Finale_SO1 15
+host objective wait Finale_SO1 30

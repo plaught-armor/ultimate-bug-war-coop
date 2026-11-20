@@ -173,9 +173,12 @@ bool parse_objective(const Tokens& k, Cmd* c, const char** why) {
         if (k.n == 2) {
             return true;
         }
-        for (uint8_t i = 0; i < 4 && k.n == 3; ++i) {
+        // Card 514: `objective go <who> home` stands at the step's own stand (its first go's, the presence nearest its
+        // marker) without counting a go, so the long stay after the presence tries waits in the step's own volume.
+        const bool home = k.n == 4 && strcmp(k.t[3], "home") == 0;
+        for (uint8_t i = 0; i < 4 && (k.n == 3 || home); ++i) {
             if (strcmp(k.t[2], kWho[i]) == 0) {
-                c->copy = i;
+                c->copy = static_cast<uint8_t>(i | (home ? kGoHome : 0u));
                 return true;
             }
         }

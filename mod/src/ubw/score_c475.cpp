@@ -311,8 +311,11 @@ void c323_write_total(void* sub, int32_t total) {
     memcpy(static_cast<uint8_t*>(sub) + kC475Total, &total, sizeof(total));
 }
 
-void c323_host_step(void* engine) {
-    void* const world = engine != nullptr ? g_get_game_world(engine) : nullptr;
+} // namespace
+
+// Card 323, host: a changed total goes out as "T". Also called by the digest's B send (card 529), so a change made
+// earlier in the tick is queued ahead of B and the client applies it before its snapshot.
+void c323_host_send(const void* world) {
     const void* const sub = c475_subsystem(world);
     if (sub == nullptr) {
         return;
@@ -331,6 +334,8 @@ void c323_host_step(void* engine) {
               total - g_c323h.last, f.sent, f.to);
     g_c323h.last = total;
 }
+
+namespace {
 
 // An own add while a raise is held: the part the raise already wrote is taken back out.
 void c323_absorb(void* sub, ULONGLONG now) {
@@ -448,27 +453,35 @@ int c491_scalar(PropKind kind, const uint8_t* at, int32_t size, char* out, size_
     return -1;
 }
 
-// b238: one struct element as "{m=v,...}": its number members (bounded), "{}" when it has none.
+} // namespace
+
+// b238: one struct element as "{m=v,...}": its number members (bounded), "{}" when it has none. Card 527 reads NPC
+// tick functions with it too (hooks_internal.h).
 int c491_struct_text(const void* st, const uint8_t* at, char* out, size_t cap) {
     int used = snprintf(out, cap, "{");
-    const void* f = read_ptr(st, kStructChildProperties);
     int shown = 0;
-    for (int i = 0; f != nullptr && i < kPropMaxFields && used > 0 && static_cast<size_t>(used) < cap;
-         ++i, f = read_ptr(f, kFieldNext)) {
-        const auto* const m = static_cast<const uint8_t*>(f);
-        ObjectName mk{};
-        const PropKind kind = prop_kind(m, mk);
-        char v[40];
-        if (c491_scalar(kind, at + read_i32(m, kPropertyOffset), read_i32(m, kPropertyElementSize), v, sizeof(v)) < 0) {
-            continue;
+    // b329: super structs too (FActorTickFunction keeps TickInterval in its super FTickFunction; L328 printed {}).
+    for (int s = 0; st != nullptr && s < kPropMaxSupers; ++s, st = read_ptr(st, kStructSuper)) {
+        const void* f = read_ptr(st, kStructChildProperties);
+        for (int i = 0; f != nullptr && i < kPropMaxFields && used > 0 && static_cast<size_t>(used) < cap;
+             ++i, f = read_ptr(f, kFieldNext)) {
+            const auto* const m = static_cast<const uint8_t*>(f);
+            ObjectName mk{};
+            const PropKind kind = prop_kind(m, mk);
+            char v[40];
+            if (c491_scalar(kind, at + read_i32(m, kPropertyOffset), read_i32(m, kPropertyElementSize), v, sizeof(v)) < 0) {
+                continue;
+            }
+            used += snprintf(out + used, cap - used, "%s%s=%s", shown++ == 0 ? "" : ",", fname_text(m + kFieldName).text, v);
         }
-        used += snprintf(out + used, cap - used, "%s%s=%s", shown++ == 0 ? "" : ",", fname_text(m + kFieldName).text, v);
     }
     if (used > 0 && static_cast<size_t>(used) < cap) {
         used += snprintf(out + used, cap - used, "}");
     }
     return used;
 }
+
+namespace {
 
 // " name=v" (numbers), " name=n[a,b,...]" (number arrays), " name=n[{m=v,...},...]" (b238: struct arrays), or
 // " name=<kind of inner>" for one property at `at`.
@@ -787,6 +800,12 @@ void c491_resupply_apply(void* pc, void* sub, const char* text) {
         memcpy(pawn + off, &v, sizeof(v));
         c491_watch_set(pawn, v);
     }
+    // Card 502 finding 3 (b263): a pawn that does not resolve yet (a join replay row to a third player) has its level
+    // held in card 209's table and set when it resolves (c491_level_apply); the award, if any, is paid now.
+    const bool held = pawn == nullptr && guid != 0 && level >= 0;
+    if (held) {
+        c209_hold(C209Op::Resupply, guid, static_cast<uint32_t>(level));
+    }
     // b262: the own pawn's step effects on an award row only (a join replay row, award 0, sets the level silently)
     const bool own = set && award == 1 && pc != nullptr && read_ptr(pc, kControllerPawn) == pawn;
     bool played = false;
@@ -800,17 +819,33 @@ void c491_resupply_apply(void* pc, void* sub, const char* text) {
         g_orig_c99_score(sub, tag); // the original: its pawn Blueprints' own ResupplyUpgraded calls are dropped
         g_c491_inner_text = false;
     }
-    const bool ok = (level < 0 || set) && (award == 0 || paid) && (!own || (played && upgraded >= 0));
+    const bool ok = (level < 0 || set || held) && (award == 0 || paid) && (!own || (played && upgraded >= 0));
     if (!ok || note_event_cap(g_c491r.rows, kC491ResupplyRows, "card491 resupply rows")) {
         log::line("%scard491: client t=%llu U pawn %s guid 0x%llX level %d -> %d%s; award %d (applied %d), total %d -> "
                   "%d; own step %s (sound %s, prompts upgraded %d)", ok ? "" : "WARN ",
                   static_cast<unsigned long long>(GetTickCount64()),
-                  pawn != nullptr ? object_name(pawn).text : "unresolved", guid, was, level, set ? "" : " not set",
+                  pawn != nullptr ? object_name(pawn).text : "unresolved", guid, was, level,
+                  set ? "" : held ? " held" : " not set",
                   award, g_c491r.applied, before, c475_total_of(sub), own ? "run" : "none",
                   played ? "played" : "none", upgraded);
     }
 }
 } // namespace
+
+// Card 502 finding 3 (b263), client (c209_step): a held U row's level, set silently once its pawn resolves, like a
+// join replay row (no award, no own step).
+void c491_level_apply(void* pawn, uint64_t guid, int32_t level) {
+    auto* const p = static_cast<uint8_t*>(pawn);
+    const int32_t off = c491_level_offset(p);
+    const int32_t was = off >= 0 ? read_i32(p, off) : -1;
+    if (off >= 0) {
+        memcpy(p + off, &level, sizeof(level));
+        c491_watch_set(p, level);
+    }
+    log::line("%scard491: client t=%llu held U level for guid 0x%llX applied: resolved to %s, level %d -> %d%s", off >= 0 ? "" : "WARN ",
+              static_cast<unsigned long long>(GetTickCount64()), static_cast<unsigned long long>(guid),
+              object_name(pawn).text, was, level, off >= 0 ? "" : " not set (no ResupplyLevel offset)");
+}
 
 // Both sides, both AddFedScore detours: ResupplyLevel's offset once per map, before the first award runs.
 void c491_resupply_arm(const void* sub) {
@@ -919,6 +954,7 @@ void c491_resupply_join_replay(void* pc) {
     char list[kC491Pawns * 28 + 1] = {};
     size_t used = 0;
     int32_t sent = 0;
+    int32_t lost = 0; // senior 2026-11-19: an unsent level 0 is the client's default, so only a level above 0 is lost
     for (int32_t i = 0; i < n; ++i) {
         const uint64_t guid = c41_guid(pawns[i]);
         const int32_t level = c491_level_of(pawns[i]);
@@ -926,12 +962,13 @@ void c491_resupply_join_replay(void* pc) {
         snprintf(text, sizeof(text), "U %llX %d 0", static_cast<unsigned long long>(guid), level);
         const bool ok = guid != 0 && level >= 0 && c95_send_one(pc, ChanOp::Score, text);
         sent += ok ? 1 : 0;
+        lost += !ok && level > 0 ? 1 : 0;
         const int w = snprintf(list + used, sizeof(list) - used, " 0x%llX=%d%s", static_cast<unsigned long long>(guid),
                                level, ok ? "" : "(not sent)");
         used = w > 0 ? std::min(sizeof(list) - 1, used + static_cast<size_t>(w)) : used;
     }
     log::line("%scard491: host t=%llu resupply join replay to %s: %d of %d pawn levels sent:%s",
-              sent == n ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text, sent, n,
+              lost == 0 ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text, sent, n,
               n > 0 ? list : " none bound");
 }
 
@@ -1059,7 +1096,7 @@ void c475_step(void* engine) {
         void* const world = engine != nullptr ? g_get_game_world(engine) : nullptr;
         c491_level_watch(c475_subsystem(world)); // b262
     } else {
-        c323_host_step(engine);
+        c323_host_send(engine != nullptr ? g_get_game_world(engine) : nullptr);
     }
 }
 

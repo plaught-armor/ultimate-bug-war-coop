@@ -1,0 +1,10 @@
+# BrainBug_SO3: hand-written in tools/gen_recipes.py LITERAL. Do not edit.
+try host wait log "card098: host spawn BP_AI_BrainBug_C " timeout=30
+host clear 20000 kill max-left=99
+client ammo fill
+try host warp client BP_AI_BrainBug_C 900
+try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+try client key LeftMouseButton 5000
+host clear 20000 kill max-left=99
+try host kill actor BP_AI_BrainBug_C 30
+host objective wait BrainBug_SO3 15

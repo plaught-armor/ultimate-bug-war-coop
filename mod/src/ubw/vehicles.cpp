@@ -1501,7 +1501,16 @@ void* detour_c75_world_spawn(void* world, void* cls, const double* transform, co
     if (!c75_blocks_spawn(cls, caller)) {
         alignas(16) double moved[12];
         transform = c46_spawn_spot(world, cls, transform, caller, moved); // card 046: no player spawn at the origin
+        LARGE_INTEGER t0{};
+        if (g_c132_fx_log) {
+            QueryPerformanceCounter(&t0);
+        }
         void* const spawned = g_orig_c75_world_spawn(world, cls, transform, params);
+        if (g_c132_fx_log) { // card 527 step 1
+            LARGE_INTEGER t1{};
+            QueryPerformanceCounter(&t1);
+            c527_spawn(cls, spawned, t1.QuadPart - t0.QuadPart);
+        }
         c98_note(C98Kind::Spawn, spawned, nullptr, caller); // card 098 measurement
         const bool strike = strncmp(object_name(cls).text, kC104StrikePrefix, sizeof(kC104StrikePrefix) - 1) == 0;
         if (spawned != nullptr && relayed && (strike || pickup || c105_bp_spawn(caller))) {
@@ -2145,7 +2154,7 @@ void detour_c447_pawn_leaving(void* pc) {
         if (pawn != nullptr) {
             c24_release_pawn(pawn, "release (leaving game)");
             c448_logout(pc, pawn); // card 448: before card 043 drops the pawn's life row
-            c43_logout(pawn);
+            c43_logout(pc, pawn);
         }
     }
     g_orig_c447_pawn_leaving(pc);

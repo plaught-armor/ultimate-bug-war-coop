@@ -43,8 +43,8 @@ host mark
 client key E
 host wait log "card075: host MechEnter from BP_PlayerController_C: mech BP_BaseMech_C at \d+ units" since-mark timeout=10
 client mark
-client warp actor point 3233 -61494 1769
-client wait log "cmd: \d+ warp: own pawn BP_BaseMech_C" since-mark timeout=5
+host warp client point 3233 -61494 1769
+host wait log "cmd: \d+ warp: server copy BP_BaseMech_C" timeout=5
 host mark
 client mark
 client disconnect
@@ -72,8 +72,7 @@ client wait state pawn=client-own timeout=120
 # The map start join wrote the first card323 row (c423b145a: one per join), so the rejoin row is the second.
 try host wait log "card323: host t=\d+ seat join replay to BP_PlayerController_C" count=2 timeout=30
 client mark
-client warp actor BP_BaseMech_C 600
-try client wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \(\S+, \S+, \S+\), \d+ uu from BP_BaseMech_C" since-mark timeout=5
+host warp client BP_BaseMech_C 600
 client look actor BP_BaseMech_C 150
 sleep 1
 # Card 452: the client's CanInteract on the host-piloted mech refuses (no ENTER prompt in the shot).

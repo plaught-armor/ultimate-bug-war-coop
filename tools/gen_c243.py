@@ -20,12 +20,13 @@ HEAD = r'''# Card 243: full-objective soak of FED_C3M2 (senior order 2026-11-13)
 void unless host dll {DLL}
 void unless client dll {DLL}
 failsoft
-host wait state map=FED_C3M2 pawn=host-own timeout=240 void
-client wait state map=FED_C3M2 pawn=client-own timeout=180 void
+# b271 (c243b271a/b): FED_C3M2 starts in the dropship, so the host pawn is "other" until the card 320 hold ends,
+# and the hold waits for the client's continue: the map waits come first, the pawn waits after both continues.
+host wait state map=FED_C3M2 timeout=240 void
+client wait state map=FED_C3M2 timeout=180 void
 # Senior r9 (discovery mode): after the DLL and map checks a void is logged with its fail shots and the run goes
 # on, so one launch shows every fault of the route. A run with any void is not the soak.
 voidsoft
-client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
 host ui continue
 # Senior 2026-11-13: in every 241-243 run the client stayed on the operation card (WB_Loading_Screen_Final_C, "PRESS
 # ANY KEY TO CONTINUE"), so its key input went to the card. Close it the way c135-r2 does and prove it, fail fast.
@@ -34,6 +35,9 @@ client mark
 client ui continue
 client wait log "cmd: \d+ ui continue -> done" since-mark timeout=60
 client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
 client shot c243-client-ingame
 void unless client log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" before client log "cmd: \d+ shot \S*c243-client-ingame"
 host shot c243-host-ingame
@@ -540,7 +544,7 @@ LEVEL_END_C = 'card018: client SetInputMode_UIOnlyEx called by BP function Execu
 
 def board(ship, done):
     """Client first (its boarding is logged, card 260 class if missing), then host E until done."""
-    return (f'try client warp actor {ship} 400\n'
+    return (f'try host warp client {ship} 400\n'
             f'try client look actor {ship} within={SHIP_SPAN}\n'
             + shot('client', stag(ship))
             + 'client mark\n'
@@ -710,8 +714,95 @@ def main():
         f.write(''.join(f'{r} {n}\n' for r, n in _SHOTS))
 
 
+# Card 504 item 2 (senior 2026-11-19): one short scenario per bug proof. PowerPlant only (the three areas are open
+# from the start, card 243 play order), for card 492 presence C_52 and the card 263/252 PowerPlant fight window.
+# C_52 split: the host enters alone first (card300 "waiting" row expected while the client is outside), 5 s, then
+# the client follows (card300 "closed: players past 2 of 2"). PLANT=1 DLL=<hash16> python3 -I tools/gen_c243.py OUT
+C300 = 'card300: host(?:/standalone)? t=\\d+ closure BP_PlayerPresence_C_52 '
+PLANT_SPLIT = ('# Card 492 C_52 split (prediction: one "waiting" row naming C_52, then "closed: players past 2 of 2").\n'
+               '# c243b273a: `objective expect/go` read the active parent (Monorail_O1) and call PowerPlant_SO1 a\n'
+               '# future step (marker off), so the split warps to the trigger by name, as c502 does (BP_PlayerPresence_C_54).\n'
+               'host objective now\nhost mark\n'
+               'host warp actor BP_PlayerPresence_C_52 10\n' + KILL_CLEAR
+               + f'try host wait log "{C300}wanted by entry of \\S+: players past 1 of 2, waiting" since-mark timeout=10\n'
+               'host shot c243-c52-waiting\nclient shot c243-c52-outside\nsleep 5\n'
+               'host warp client BP_PlayerPresence_C_52 60\n'
+               f'host wait log "{C300}closed: players past 2 of 2" since-mark timeout=20\n'
+               + owait('PowerPlant_SO1', 20)
+               + 'host shot c243-c52-closed\nclient shot c243-c52-closed\n')
+_SO1_END = stop_unless('PowerPlant_SO1', 'plant-so1')
+assert PLANT.count(_SO1_END) == 1
+PLANT_SHORT = '# POWERPLANT, short (card 504 item 2).\n' + PLANT_SPLIT + PLANT[PLANT.index(_SO1_END):]
+
+
+# Card 506 (senior 2026-11-19): the plant run is a CLIENT2=1 three-instance run. Both clients stand by the FED_C3M2
+# AA turret (BP_AI_AATurret_C, spawned at -47816 9558 2330), the host kills it by code (`kill actor`, InstaKillTarget),
+# the host sends its card 506 rest row and each client plays it; then both clients leave past the 15000 uu net cull
+# (BP_PlayerPresence_C_52, about 28400 uu away) and come back, so the copy arrives again dead. Proof: the host rest row
+# for BP_AI_AATurret_C, a client rest arrival for it with no hold on both clients, and 0 "not posed after". Every step
+# is `try`: a tool fault here leaves the C_52 proof above intact.
+C506_ROW = 'card269: host rest row sent guid 0x[0-9a-f]+ seq \\S+ to \\d+ PC\\(s\\), BP_AI_AATurret_C'
+C506_ARR = 'card269: client rest arrival BP_AI_AATurret_C guid 0x[0-9a-f]+ seq \\S+ played over'
+C506 = ('# --- Card 506: AA turret rest row, then a relevancy return on both clients.\n'
+        'host mark\nclient mark\nclient2 mark\n'
+        'try host warp actor BP_AI_AATurret_C 2500\n'
+        'try host warp client BP_AI_AATurret_C 2500\n'
+        'try host warp client2 BP_AI_AATurret_C 3000\n'
+        'sleep 3\n'
+        'try host kill actor BP_AI_AATurret_C\n'
+        f'try host wait log "{C506_ROW}" since-mark timeout=20\n'
+        f'try client wait log "{C506_ARR}" since-mark timeout=20\n'
+        f'try client2 wait log "{C506_ARR}" since-mark timeout=20\n'
+        'host shot c506-turret-dead\nclient shot c506-turret-dead\nclient2 shot c506-turret-dead\n'
+        'try host warp client BP_PlayerPresence_C_52 60\n'
+        'try host warp client2 BP_PlayerPresence_C_52 120\n'
+        'sleep 8\n'
+        'client mark\nclient2 mark\n'
+        'try host warp client BP_AI_AATurret_C 2500\n'
+        'try host warp client2 BP_AI_AATurret_C 3000\n'
+        f'try client wait log "{C506_ARR}" since-mark timeout=20\n'
+        f'try client2 wait log "{C506_ARR}" since-mark timeout=20\n'
+        'try client look actor BP_AI_AATurret_C 150\ntry client2 look actor BP_AI_AATurret_C 150\nsleep 2\n'
+        'host shot c506-return\nclient shot c506-return\nclient2 shot c506-return\n')
+
+
+def plant_head():
+    """HEAD with client2: its DLL gate, its map wait and its operation-card continue before the pawn waits."""
+    head = HEAD
+    gate = 'host wait state pawn=host-own timeout=120\n'
+    assert head.count(gate) == 1 and head.count('void unless client dll %s\n' % DLL) == 1
+    head = head.replace('void unless client dll %s\n' % DLL, 'void unless client dll %s\nvoid unless client2 dll %s\n'
+                        % (DLL, DLL))
+    return head.replace(gate, 'client2 wait state map=FED_C3M2 timeout=180 void\n'
+                        'try client2 wait log "card135: client t=\\d+ screen prompt ready" timeout=60\n'
+                        'try client2 ui continue\n' + gate + 'client2 wait state pawn=client-own timeout=120\n')
+
+
+def plant(path):
+    # c492pb280a: with client2 the C_52 closure wants 3 of 3 ("players past 2 of 3, waiting"), so client2 follows too.
+    split = 'host warp client BP_PlayerPresence_C_52 60\n'
+    assert PLANT_SHORT.count(split) == 1 and PLANT_SHORT.count('players past 2 of 2') == 2
+    short = PLANT_SHORT.replace(split, split + 'host warp client2 BP_PlayerPresence_C_52 120\n').replace(
+        'players past 2 of 2', 'players past 3 of 3').replace('players past 1 of 2', 'players past 1 of 3')
+    text = (plant_head() + START + short + C506 + 'host shot c243-end-plant\nclient shot c243-end-plant\n'
+            + 'client2 quit\n' + QUIT)
+    dll = os.environ.get('DLL')
+    if dll:
+        text = text.replace(DLL, dll)
+    text, counts, unproven = settle_stands(text)
+    print('stand checks', counts, 'xy-only points:', unproven)
+    for l in text.splitlines():
+        for rx in re.findall(r'"([^"]*)"', l):
+            re.compile(rx)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text)
+    print('steps', len([l for l in text.splitlines() if l.strip() and not l.startswith('#')]))
+
+
 import os
-if os.environ.get("SIZES"):
+if os.environ.get("PLANT"):
+    plant(sys.argv[1])
+elif os.environ.get("SIZES"):
     for n in ("HEAD","START","MONO","PLANT","SILO","SECRET","DAM","TAIL","END"):
         t=globals()[n]; print(n, len([l for l in t.splitlines() if l.strip() and not l.startswith("#")]))
 elif os.environ.get("PROBE"):

@@ -45,6 +45,26 @@ void c26_host_ping(void* pc, const WireString*, const ChanArgs& args) {
     ue::chan::chan_send_client_now(pc, chan_frame(ChanOp::Pong, ChanArgs{{args.v[0]}}), &ahead);
 }
 
+// Card 502 finding 2 (b263), host: a client's test role, stored on its PC's C50Copy; one row when it changes. An
+// older PC holding the same role (the client's PC before a rejoin) gives it up.
+void c502_receive_role(void* pc, uint32_t role) {
+    if (sprint_side(pc) != kSideServerCopy || role == 0 || role > static_cast<uint32_t>(kC17Slots)) {
+        return;
+    }
+    C50Copy* const c = c50_copy(object_index(pc), true);
+    if (c == nullptr || c->role == role) {
+        return;
+    }
+    for (int32_t i = 0; i < g_c50.copies; ++i) {
+        g_c50.copy[i].role = g_c50.copy[i].role == role ? 0 : g_c50.copy[i].role;
+    }
+    c->role = role;
+    char name[16];
+    snprintf(name, sizeof(name), role == 1 ? "client" : "client%u", role);
+    log::line("card502: host t=%llu PC %s is %s", static_cast<unsigned long long>(GetTickCount64()),
+              object_name(pc).text, name);
+}
+
 void c26_host_pong(void* pc, const WireString*, const ChanArgs& args) {
     c26_pong(pc, args.v[0]);
     if (!c348_pong_current(args.v[0])) {
@@ -137,9 +157,29 @@ ULONGLONG c120_pong_open_ms() {
 ULONGLONG g_c128_host_ping_ms = 0;
 
 namespace {
+// Card 502 finding 2 (b263): this instance's test role from its UBWCOOP_LOG_TAG (run_pair.sh sets "client" and
+// "client2"): 1 "client", N "clientN" (2-9), 0 any other tag.
+uint32_t c502_own_role() {
+    const wchar_t* const t = g_c63.tag;
+    constexpr wchar_t kWord[] = L"client";
+    for (int i = 0; i < 6; ++i) {
+        if (t[i] != kWord[i]) {
+            return 0;
+        }
+    }
+    if (t[6] == L'\0') {
+        return 1;
+    }
+    return t[6] >= L'2' && t[6] <= L'9' && t[7] == L'\0' ? static_cast<uint32_t>(t[6] - L'0') : 0;
+}
+
 void c26_client_answer(void* pc, uint32_t arg) {
     c143_client_ping(pc); // card 143: a held Restore goes before the Pong that starts the host's join replays
     chan_to_host(pc, ChanOp::Pong, arg);
+    const uint32_t role = g_c63_on ? c502_own_role() : 0;
+    if (role != 0) {
+        chan_to_host(pc, ChanOp::Role, role); // card 502 finding 2: with every Pong, since copies empty at each map
+    }
     if (g_c42_test && (arg == kC42WalkPing || arg == kC42DonePing)) {
         c42_ping(pc, arg);
     }
@@ -222,6 +262,7 @@ consteval ChanTable chan_host_table() {
     t[static_cast<size_t>(ChanOp::HitClaim)] = chan_pc_s<c157_receive_claim>; // card 157 client hit claims (host side)
     t[static_cast<size_t>(ChanOp::Round)] = chan_pc_arg0<c181_receive_round>; // card 181
     t[static_cast<size_t>(ChanOp::IntroDone)] = chan_pc_arg0<c320_receive_done>; // card 320
+    t[static_cast<size_t>(ChanOp::Role)] = chan_pc_arg0<c502_receive_role>; // card 502 finding 2
     return t;
 }
 
@@ -264,6 +305,7 @@ consteval ChanTable chan_client_table() {
     t[static_cast<size_t>(ChanOp::Pose)] = chan_pc_s_timed<c132_receive_pose, C252Class::PoseApply>; // card 132 corpse poses
     t[static_cast<size_t>(ChanOp::Decal)] = chan_pc_s<c132_receive_decal>; // card 132 gore decals
     t[static_cast<size_t>(ChanOp::GibPart)] = chan_pc_s<c137_receive_gib>; // card 137 gib parts
+    t[static_cast<size_t>(ChanOp::GibPose)] = chan_pc_s<c137_receive_gib_pose>; // card 519 gib part poses (binary)
     t[static_cast<size_t>(ChanOp::Clock)] = chan_pc_s<pl_clock_client>; // card 155
     t[static_cast<size_t>(ChanOp::Dropship)] = chan_pc_s<c132_dropship_receive>; // card 132 troop dropship states
     t[static_cast<size_t>(ChanOp::Fx)] = chan_pc_s_timed<c136_receive_fx, C252Class::FxApply>; // card 136 host effects
@@ -272,6 +314,7 @@ consteval ChanTable chan_client_table() {
     t[static_cast<size_t>(ChanOp::Stamina)] = chan_pc_arg0<c490_receive>; // card 490
     t[static_cast<size_t>(ChanOp::CombatLevel)] = chan_pc_arg0<c321_level_receive>; // card 321
     t[static_cast<size_t>(ChanOp::Bark)] = chan_pc_s<c451_receive>; // card 451 part 2
+    t[static_cast<size_t>(ChanOp::NpcTarget)] = chan_pc_s<c532_receive>; // card 532
     t[static_cast<size_t>(ChanOp::GrenadeSpawn)] = chan_pc_s<c74_receive>; // card 074
     t[static_cast<size_t>(ChanOp::GrenadeExplode)] = chan_pc_s<c74_receive_explode>; // card 074, card 132 rounds
     t[static_cast<size_t>(ChanOp::HoldDone)] = chan_pc_s<c133_client_arm>; // card 418: the host's satchel fuse start

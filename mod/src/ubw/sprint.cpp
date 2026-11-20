@@ -75,6 +75,10 @@ void detour_cmc_tick(void* cmc, float delta, int32_t tick_type, void* tick_funct
         mirror_client_input(static_cast<const uint8_t*>(cmc));
         c101_cmc_tick(cmc);
     }
+    if (g_c132_fx_log) { // card 527 item 2: an NPC's movement tick is timed
+        c527_component_tick(kC527TickMovement, g_orig_cmc_tick, cmc, delta, tick_type, tick_function);
+        return;
+    }
     g_orig_cmc_tick(cmc, delta, tick_type, tick_function);
 }
 

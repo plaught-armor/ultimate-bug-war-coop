@@ -1,0 +1,204 @@
+# Cards 263 and 252: FED_C3M2 PowerPlant full fight with the step 1b frame split on (senior order 2026-11-19).
+# Shape: map start (c504-nest-c3m2.txt head), `host objective do PowerPlant_SO1` (presence C_52: the PowerPlant
+# encounter, Switch C_2 Add PowerPlant_SO2, gigantic doors close), then a fight hold in place: both players run card 265
+# `clear 2500 10` (auto-target, real fire), 12 rounds of up to 10 s (about 85 s, 8 client frame windows), then six
+# warriors are spawned 700 uu around the host and the fight runs 6 more rounds (the util peak lift). End: a digest
+# round, then `host travel restart` so both sides write the map-end rows (quit does not).
+# Real fire is allowed: this is a fire and perf test. Kills by code only at the end.
+# Predictions (b288, written before the run):
+#   263: every client `card132: client ... frame window` row after the join window holds >= 500 frames (60 fps cap,
+#        ceiling 600), including the windows with a peak over 50.
+#   252: the `mod ms:` sum per window is under 10 percent of the window (under 1000 ms of 10000), `other` the largest
+#        class as in c244b207b (median about 270 ms); no class over 30 percent in any window.
+#   Peak: at least one client window with `window peak` over 50 during the fight (r9 PowerPlant: 108 to 151 whole-table;
+#        per-tick values now, so the natural fight may stay lower, then the spawn block lifts it).
+#   Perf (senior add-on): card330 30 s windows, mod total under 3 percent of frame time on both sides (c243b271b
+#        C3M2: host 1.26, client 1.87 to 2.66); client top step client_significance_step (c243b271b 357 to 559 ms
+#        per 30 s), host top step c132_ext_step; Fx the largest sent op in the host netbudget chan rows during the
+#        fight; digest bytes per round (the Digest op in the chan row of the round) under 2 kB.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c263-c3m2-plant.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1"
+# Perf data (senior add-on): UBWCOOP_C136_LOG off (per-effect log lines); UBWCOOP_C132_FX stays on (frame window
+# and util peak rows need it; its cost is the `audit` column); UBWCOOP_DIAG stays on (scenario rows the go
+# routine reads; its hooks are inside the card330 mod total). Always-on rows: card330 30 s windows and map steps,
+# netbudget chan bytes by op, card132 digest round B and sent rows, card329 fx map.
+# Run tail: tools/run_pair.sh c263a 1200
+# Expected wall: about 7 min.
+void unless host dll a86a3943a7f0f8fe
+void unless client dll a86a3943a7f0f8fe
+failsoft
+host wait state map=FED_C3M2 timeout=240 void
+client wait state map=FED_C3M2 timeout=180 void
+voidsoft
+try host ui continue
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host wait log "card049: host t=\d+ Add\w*Objectives?\((?:\w+, )?PowerPlant_SO1(?:, \w+)?\)" timeout=120
+# c263a VOID: SO1 "marker off (a future step); doable: PowerPlant_Marker". The guide marker first (marker routine,
+# card 516: no home go), then SO1's presence C_52 by its routine; the encounter and the door close follow.
+try host objective do PowerPlant_Marker
+# c263e lesson 24: the marker shares ActorReference_C_1 with SO1; the marker wait ends on SO1 Complete and the
+# marker stays current until the script hides it. Run SO1 only if it is not done; then wait on SO2, not "current".
+unless host log "(card049: host t=\d+ Complete\w*Objective\((\w+, )?PowerPlant_SO1\)|card097: host t=\d+ native CompleteObjective (\w+/)?PowerPlant_SO1 )" count=1 host objective do PowerPlant_SO1
+# c263f lesson 26: SO2 is added hidden at map start; the script shows it (and hides the marker, bools 10) on a
+# presence entry (c263e: C_16, by the marker's try 3 stand), not on a timer. Lesson 24 amend: the marker routine
+# itself now holds until that visibility row (drive.py marker_held), so no second marker run here.
+host wait log "card049: host t=\d+ SetObjectiveVisibility\(PowerPlant_SO2\) bools 01" timeout=60
+host shot c263-h-plant
+client shot c263-c-plant
+# Fight hold: 12 rounds, both players run card 265 `clear 2500 10` (card 522: auto-target): each picks the nearest live bug
+# its visibility trace sees, turns to its bounds centre, and holds fire only while the crosshair trace names it; ends
+# 3 s after no live bug is in 2500 uu, or at 10 s. Ammo filled first (the clear voids under a 60-round reserve).
+# c263a: a failed look still fired, blind fire at nothing; the clear never fires without a target under the crosshair.
+# c263g (user saw both fire at nothing): the look had no `live`, so after the first kills it faced a corpse; `live` skips them.
+host mark
+client mark
+# --- fight round 00
+# Place both players 1500 uu short of the nearest live warrior (c263b: the host's nearest was 15606 uu off, past the
+# client's cull distance, so the client saw no warrior in 12 of 12 natural rounds). Again every 4 rounds.
+try host warp actor BP_AI_WarriorBug_C 1500 live
+try host warp client BP_AI_WarriorBug_C 1500 live
+sleep 2
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 01
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 02
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# Card 518: receiver-side shot of the AI Morita fire (muzzle flashes and impacts at the right spots).
+client shot c263-c-aifire
+# --- fight round 03
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 04
+# Place both players 1500 uu short of the nearest live warrior (c263b: the host's nearest was 15606 uu off, past the
+# client's cull distance, so the client saw no warrior in 12 of 12 natural rounds). Again every 4 rounds.
+try host warp actor BP_AI_WarriorBug_C 1500 live
+try host warp client BP_AI_WarriorBug_C 1500 live
+sleep 2
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 05
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 06
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 07
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 08
+# Place both players 1500 uu short of the nearest live warrior (c263b: the host's nearest was 15606 uu off, past the
+# client's cull distance, so the client saw no warrior in 12 of 12 natural rounds). Again every 4 rounds.
+try host warp actor BP_AI_WarriorBug_C 1500 live
+try host warp client BP_AI_WarriorBug_C 1500 live
+sleep 2
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 09
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 10
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- fight round 11
+# c263i: the client is warped every round (its clears found no live bug in 2500 uu between the 4-round warps)
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# Load lift: six warriors around the host (the view point from `look point`), then 6 more rounds.
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+700} {g2} {g3} 180
+host spawn bug {g1+700} {g2+300} {g3} 180
+host spawn bug {g1+700} {g2-300} {g3} 180
+host spawn bug {g1-700} {g2} {g3} 0
+host spawn bug {g1} {g2+700} {g3} 270
+host spawn bug {g1} {g2-700} {g3} 90
+host shot c263-h-spawn
+client shot c263-c-spawn
+# --- lift round 00
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- lift round 01
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- lift round 02
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- lift round 03
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- lift round 04
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# --- lift round 05
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+host shot c263-h-end
+client shot c263-c-end
+host clear 4000 kill
+# Digest round with its byte rows (card 329), then a map restart so both sides write the map-end rows
+# (card330 per-step totals, card329 fx map, netbudget map totals); quit does not write them.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host mark
+client mark
+host travel restart
+try host wait log "card330: host map FED_C3M2 step " since-mark timeout=60
+try client wait log "card330: client map FED_C3M2 step " since-mark timeout=90
+client quit
+host quit

@@ -1,0 +1,12 @@
+# TacSupport_SO4: c335-range-load.txt lines 240-250, written by tools/gen_recipes.py. Do not edit.
+# SO4: the copy's resupply charge is ready (host TacCharge row slot 0 ready flag 1; b18 run 2 host line 4194 shows
+# ready at 17000, not 20000), then the client calls it (Four: IA_TacticalSupport_Slot1, the resupply slot). No ready row: the step fails and the run reports the rows.
+host wait log "card104: host t=\d+ TacCharge to \S+ \(copy \S+\): \d+ 1 " timeout=60
+# Card 324 step 1 item 2: a client shot when the held visual's 300 ms card324 row is in (before LMB), and one after LMB.
+client mark
+client key Four
+try client wait log "card324: client t=\d+ \S+ own pawn \(\S+\) at 300 ms, " since-mark timeout=10
+client shot c324-so4-held-300ms
+client key LeftMouseButton
+client shot c324-so4-after-lmb
+host objective wait TacSupport_SO4 30

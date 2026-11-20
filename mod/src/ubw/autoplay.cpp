@@ -200,7 +200,7 @@ const uint8_t* c126_find(const void* world, uint64_t id) {
 }
 
 // The open top-level objective above o (o itself for a root), or null. Bounded: objectives nest at most a few levels.
-static const uint8_t* c126_root(const uint8_t* o) {
+const uint8_t* c126_root(const uint8_t* o) {
     for (int depth = 0; depth < 8 && o != nullptr; ++depth) {
         const auto* const up = static_cast<const uint8_t*>(read_ptr(o, kObjectiveParent));
         if (up == nullptr) {

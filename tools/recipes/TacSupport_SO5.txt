@@ -1,0 +1,8 @@
+# TacSupport_SO5: c335-range-load.txt lines 257-263, written by tools/gen_recipes.py. Do not edit.
+host clear 1500 kill
+client goto actor BP_TacSuppPickup_BombingRun_Tutorial_C 60
+client wait goto timeout=30
+client look actor BP_TacSuppPickup_BombingRun_Tutorial_C 0 bounds focus=BP_TacSuppPickup_BombingRun_Tutorial_C
+client shot c310-tac-so5
+client key E
+host objective wait TacSupport_SO5 30

@@ -33,6 +33,16 @@ add_library(ubwcoop SHARED
   src/ubw/frame_c330.cpp
   src/ubw/radio_c322.cpp
   src/ubw/bark_c451.cpp
+  src/ubw/target_c532.cpp
+  src/ubw/perf_save_c531.cpp
+  src/ubw/floor_c535.cpp
+  src/ubw/perf_component_c536.cpp
+  src/ubw/perf_target_c538.cpp
+  src/ubw/perf_move_c539.cpp
+  src/ubw/perf_tree_c544.cpp
+  src/ubw/query_bp_c545.cpp
+  src/ubw/perf_overlap_c548.cpp
+  src/ubw/query_c534.cpp
   src/ubw/weapon_c494.cpp
   src/ubw/cave_c493.cpp
   src/ubw/insta_c361.cpp
@@ -132,5 +142,5 @@ target_include_directories(ubwcoop PRIVATE src)
 set_target_properties(ubwcoop PROPERTIES OUTPUT_NAME dwmapi PREFIX "")
 target_compile_definitions(ubwcoop PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_compile_options(ubwcoop PRIVATE /W4 /WX /EHs-c- /GR-)
-target_link_options(ubwcoop PRIVATE /WX)
+target_link_options(ubwcoop PRIVATE /WX /MAP) # map file (dwmapi.map) names mod functions in perf profiles; the DLL bytes do not change
 target_link_libraries(ubwcoop PRIVATE minhook kernel32)

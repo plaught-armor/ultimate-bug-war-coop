@@ -94,9 +94,11 @@ constexpr int32_t kC132AttachHint = 200;    // location gap in kC132LocStep step
 
 // Card 164: classes the client never reads (server-only nav data; spawn points, read only by the spawn path, which
 // guards.cpp gates on the client). Left out of the digest on both sides, counted per row at each round.
+// Card 517: STNavModifierVolume (placed, not replicated, nav only) is 23076 of 28094 actors on FED_C3M2 and most of
+// the 16 to 18 ms build there.
 constexpr const char* kC132ServerOnly[] = {
     "RecastNavMesh",       "RecastNavMesh_Small", "RecastNavMesh_Medium", "RecastNavMesh_Large",
-    "RecastNavMesh_Gigantic", "BP_AISpawnPoint_C", "STSpawnPoint",
+    "RecastNavMesh_Gigantic", "BP_AISpawnPoint_C", "STSpawnPoint", "STNavModifierVolume",
 };
 constexpr int32_t kC132ServerOnlyN = static_cast<int32_t>(sizeof(kC132ServerOnly) / sizeof(kC132ServerOnly[0]));
 
@@ -626,6 +628,15 @@ void c386_line(const C132Digest& d, int64_t qpc_ticks) {
 void c132_add_actor(C132Digest& d, const void* actor, int32_t level, uint32_t lvl) {
     uint64_t t = c386_on() ? __rdtsc() : 0;
     ++g_c386.actors;
+    // Card 517: the server-only check comes before the name, so a left-out actor costs one class name read.
+    const ObjectName cname = class_name(actor);
+    const int32_t skip = c132_server_only(cname.text);
+    if (skip >= 0) {
+        ++d.server_only[skip];
+        c386_lap(t, kC386Class);
+        return;
+    }
+    c386_lap(t, kC386Class);
     char name[kC132NameMax + 1];
     const void* anchor = nullptr;
     uint8_t kind = 0;
@@ -636,13 +647,6 @@ void c132_add_actor(C132Digest& d, const void* actor, int32_t level, uint32_t lv
         return;
     }
     c386_lap(t, kC386Name);
-    const ObjectName cname = class_name(actor);
-    const int32_t skip = c132_server_only(cname.text);
-    if (skip >= 0) {
-        ++d.server_only[skip];
-        c386_lap(t, kC386Class);
-        return;
-    }
     const int32_t cls = c132_name_index(d.cls, cname.text, kC132DigestClasses);
     c386_lap(t, kC386Class);
     if (cls < 0) {
@@ -872,6 +876,51 @@ const void* c323_drawn_mesh(const void* pawn) {
 // host's pawn about 15500 uu off the client. Such a pawn is left out of the digest, the same as every culled NPC (the
 // digest names placed actors only). One digest goes to every client, so a pawn culled for any client is left out.
 // Always false on a client: its only PC is its own.
+// Card 502 finding 1 (b263): with three players a pawn culled for one client is still on another, which then had
+// presence-only Pl:<guid> mismatches (c502b262b rounds 12-13). The host lists the guids it left out (one digest for
+// every client stays) in the B frame; each client leaves its own Pl:<guid> entries for those guids out of its
+// snapshot (c132_try_snap builds it after B), so the slot sums agree with no query. The list is not an entry.
+constexpr int32_t kC323Culled = kC43Max; // player pawns
+struct C323Culled {
+    uint64_t guid[kC323Culled];
+    int32_t n;
+    int32_t skipped; // client: own pawns left out of this snapshot
+};
+C323Culled g_c323_host_culled{};  // host: the guids of the last build
+C323Culled g_c323_client_skip{};  // client: the guids of this round's B frame
+
+bool c323_culled_has(const C323Culled& c, uint64_t guid) {
+    for (int32_t i = 0; i < c.n; ++i) {
+        if (c.guid[i] == guid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void c323_culled_add(C323Culled& c, uint64_t guid) {
+    if (guid != 0 && c.n < kC323Culled && !c323_culled_has(c, guid)) {
+        c.guid[c.n++] = guid;
+    }
+}
+
+// "1e2,1f0" or "-" with none.
+void c323_culled_text(const C323Culled& c, char* out, size_t cap) {
+    size_t used = 0;
+    out[0] = '\0';
+    for (int32_t i = 0; i < c.n; ++i) {
+        const int w = snprintf(out + used, cap - used, "%s%llx", i == 0 ? "" : ",",
+                               static_cast<unsigned long long>(c.guid[i]));
+        if (w < 0 || static_cast<size_t>(w) >= cap - used) {
+            break;
+        }
+        used += static_cast<size_t>(w);
+    }
+    if (used == 0) {
+        snprintf(out, cap, "-");
+    }
+}
+
 bool c323_pawn_culled(const void* world, const void* pawn) {
     for (int s = 0; s < kC17Slots; ++s) {
         void* const pc = g_get_player_controller(world, s);
@@ -891,17 +940,23 @@ void c323_add_player_pawn(C132Digest& d, const void* world, const void* actor) {
     if (read_ptr(actor, kPawnPlayerState) == nullptr) {
         return;
     }
-    if (c323_pawn_culled(world, actor)) {
+    const uint64_t guid = c41_guid(actor);
+    if (g_client_session) {
+        if (guid != 0 && c323_culled_has(g_c323_client_skip, guid)) {
+            ++g_c323_client_skip.skipped; // card 502 finding 1: the host left this pawn out
+            return;
+        }
+    } else if (c323_pawn_culled(world, actor)) {
         static uint32_t lines = 0; // game thread; session total
         if (++lines <= 16) {
             log::line("card323: %s t=%llu digest leaves out player pawn %s guid %llx: a client has no channel for it "
                       "(net culled)",
                       side_text(), static_cast<unsigned long long>(GetTickCount64()), object_name(actor).text,
-                      static_cast<unsigned long long>(c41_guid(actor)));
+                      static_cast<unsigned long long>(guid));
         }
+        c323_culled_add(g_c323_host_culled, guid); // card 502 finding 1: sent in the B frame
         return;
     }
-    const uint64_t guid = c41_guid(actor);
     const int32_t cls = guid != 0 ? c132_name_index(d.cls, "PlayerPawn", kC132DigestClasses) : -1;
     if (cls < 0) {
         return;
@@ -961,6 +1016,11 @@ void c132_build(C132Digest& d, const void* world) {
     d.cls.dropped = 0;
     d.lvl.n = 0;
     d.lvl.dropped = 0;
+    if (g_client_session) {
+        g_c323_client_skip.skipped = 0; // card 502 finding 1: the list itself is this round's B frame's
+    } else {
+        g_c323_host_culled.n = 0;
+    }
     const auto* const levels = static_cast<void* const*>(read_ptr(world, kWorldLevels));
     const int32_t num_levels = read_i32(world, kWorldLevels + kArrayNum);
     for (int32_t l = 0; levels != nullptr && l < num_levels && l < kMaxLevels; ++l) {
@@ -1244,6 +1304,9 @@ int32_t c132_send_begin(const void* world) {
     C132Host& h = g_c132h;
     int32_t to = 0;
     h.tables_to_n = 0;
+    // Card 529: a score change made earlier this tick is still unsent (card 323 polls once per tick); queue its "T"
+    // ahead of B, else the host snapshot holds the new total and the client's does not (c263L314 rounds 5 and 7).
+    c323_host_send(world);
     for (int s = 0; s < kC17Slots; ++s) {
         void* const pc = g_get_player_controller(world, s);
         const C50Copy* const c = pc != nullptr && c26_is_remote_pc(pc) ? c50_copy(object_index(pc), false) : nullptr;
@@ -1256,9 +1319,11 @@ int32_t c132_send_begin(const void* world) {
         if (tables) {
             h.tables_to[h.tables_to_n++] = pc; // at most kC17Slots: one per slot
         }
+        char culled[kC323Culled * 17 + 2];
+        c323_culled_text(g_c323_host_culled, culled, sizeof(culled)); // card 502 finding 1
         char text[kChanTextMax + 1];
-        snprintf(text, sizeof(text), "B%x %x %x %x %x %x %d %x %x %s", h.round, h.d.n, h.d.cls.n, h.d.lvl.n, seq,
-                 h.tables, tables ? 1 : 0, h.whole, c327_host_hash(pc), h.why);
+        snprintf(text, sizeof(text), "B%x %x %x %x %x %x %d %x %x %x %s %s", h.round, h.d.n, h.d.cls.n, h.d.lvl.n, seq,
+                 h.tables, tables ? 1 : 0, h.whole, c327_host_hash(pc), g_c323_host_culled.n, culled, h.why);
         static wchar_t wire[kChanTextFrame];
         const WireString w = chan_text_frame(ChanOp::Digest, text, wire);
         const bool sent = w.num > 0 && chan_send_client(pc, w, true); // card 151: B begins its own batch
@@ -1340,6 +1405,13 @@ void c132_host_start(const void* world, const char* why) {
     h.tables = c132_tables_hash(h.d); // card 329
     h.whole = c132_whole(h.sums);
     ++h.round;
+    if (g_c323_host_culled.n > 0) { // card 502 finding 1: one row per round with culled guids
+        char culled[kC323Culled * 17 + 2];
+        c323_culled_text(g_c323_host_culled, culled, sizeof(culled));
+        log::line("card323: host t=%llu digest round %u culled guids %s: left out of the digest; each client leaves "
+                  "its own Pl:<guid> entries for them out", static_cast<unsigned long long>(GetTickCount64()),
+                  h.round, culled);
+    }
     h.why = why;
     h.frames = 0;
     h.sent = 0;
@@ -2007,6 +2079,12 @@ void c132_try_snap(ULONGLONG now) {
     }
     c132_build(c.own, world);
     c.snapped = true;
+    if (g_c323_client_skip.n > 0) { // card 502 finding 1
+        char culled[kC323Culled * 17 + 2];
+        c323_culled_text(g_c323_client_skip, culled, sizeof(culled));
+        log::line("card323: client t=%llu digest round %u culled guids %s (host): %d own player pawn(s) left out of "
+                  "the snapshot", static_cast<unsigned long long>(now), c.round, culled, g_c323_client_skip.skipped);
+    }
     log::line("card132: client t=%llu digest round %u snapshot: %d entries, last row in %u (S=%u), %llu ms after B",
               static_cast<unsigned long long>(now), c.round, c.own.n, rx, c.sent_s,
               static_cast<unsigned long long>(now - c.b_at));
@@ -2243,7 +2321,9 @@ bool c132_parse_sums(const char* p) {
     return at == len;
 }
 
-// B<round> <entries> <classes> <levels> <S> <T> <tables> <W> <PW> <why>
+// B<round> <entries> <classes> <levels> <S> <T> <tables> <W> <PW> <culled count> <culled guids or -> <why>
+// (card 502 finding 1: count and guids come before the free-text why, so the why can never take them; a list
+// whose length differs from the count refuses the frame)
 bool c132_parse_begin(const char* t) {
     C132Client& c = g_c132c;
     char* p = nullptr;
@@ -2259,7 +2339,40 @@ bool c132_parse_begin(const char* t) {
     c.tables_follow = f[4] != 0;
     c.whole = f[5];
     c.pw = f[6];
-    return n == 7 && p != nullptr && (*p == ' ' || *p == '\0');
+    g_c323_client_skip.n = 0; // card 502 finding 1: "<count> <guid>,<guid>" or "0 -"
+    if (n != 7 || p == nullptr || *p != ' ') {
+        return false;
+    }
+    const int32_t want = static_cast<int32_t>(strtol(p + 1, &p, 16));
+    if (p == nullptr || *p != ' ' || want < 0 || want > kC323Culled) {
+        return false;
+    }
+    ++p;
+    if (want == 0) {
+        if (*p != '-') {
+            return false;
+        }
+        ++p;
+    } else {
+        for (int32_t i = 0; i < kC323Culled; ++i) {
+            char* q = nullptr;
+            const uint64_t guid = strtoull(p, &q, 16);
+            if (q == p) {
+                return false;
+            }
+            c323_culled_add(g_c323_client_skip, guid);
+            p = q;
+            if (*p != ',') {
+                break;
+            }
+            ++p;
+        }
+        if (g_c323_client_skip.n != want) {
+            g_c323_client_skip.n = 0;
+            return false;
+        }
+    }
+    return *p == ' ' || *p == '\0';
 }
 
 // Card 327 PW, client, at each B: the host's hash of this client's inventory against its own. A difference is

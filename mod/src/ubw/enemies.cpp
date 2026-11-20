@@ -670,6 +670,51 @@ void* c37_scan_pawn(const C23List& list, bool fresh, uint32_t i) {
     return fresh ? list.e[i].actor : c31_weak_get(g_c37_pawns.weak[i]);
 }
 
+// Card 528 (diagnostic, UBWCOOP_C132_FX=1): a fresh walk while the seen table is empty (the first after a map arm)
+// that finds pawns. Shows which world the walk read and where its first pawn lives, to tell the left map's corpses
+// (c263L313: 94 re-seen as arrivals 800 ms after the arm) from the new map's pawns. Before g_c37_pawns is overwritten.
+void c528_walk_row(const void* world, const C23List& list) {
+    constexpr uint32_t kC528Rows = 8; // per process
+    static uint32_t rows = 0;         // game thread only
+    if (!g_c132_fx_log || g_c37.seen_count != 0 || list.count == 0 || rows >= kC528Rows) {
+        return;
+    }
+    ++rows;
+    const void* const pawn = list.e[0].actor;
+    const void* const level = read_ptr(pawn, kObjectOuter);
+    const void* const level_world = level != nullptr ? read_ptr(level, kObjectOuter) : nullptr;
+    log::line("card528: %s t=%llu fresh walk with an empty seen table: world %p (last walk's %p), %u pawns; first %s "
+              "level %p in world %p%s",
+              side(), static_cast<unsigned long long>(GetTickCount64()), world, g_c37_pawns.world, list.count,
+              object_name(pawn).text, level, level_world, level_world == world ? "" : " (not this world)");
+}
+
+// Card 528 fix (c263L316: 119 kept NPCs at the seamless travel, no card434 spawn row after the arm): the left map's
+// NPCs that seamless travel carried into Untitled and the destination world are not this map's pawns. The host
+// destroyed them; their channel close removes them here. The scan skips them, so none is a first sighting (a corpse
+// arrival with HandleDying on an actor being torn down). Counted per process for the map-end proof row.
+uint32_t g_c528_dropped = 0; // game thread only; per process
+void c528_drop_kept(C23List& list) {
+    constexpr uint32_t kC528DropRows = 8; // per process
+    static uint32_t rows = 0;             // game thread only
+    uint32_t kept = 0;
+    for (uint32_t i = 0; i < list.count; ++i) {
+        if (c392_kept_npc(list.e[i].actor)) {
+            continue;
+        }
+        list.e[kept++] = list.e[i];
+    }
+    const uint32_t dropped = list.count - kept;
+    list.count = kept;
+    g_c528_dropped += dropped;
+    if (dropped != 0 && g_c37.seen_count == 0 && rows < kC528DropRows) {
+        ++rows;
+        log::line("card528: %s t=%llu walk skipped %u NPCs carried by seamless travel (card 392), %u pawns left, "
+                  "%u skipped this process",
+                  side(), static_cast<unsigned long long>(GetTickCount64()), dropped, kept, g_c528_dropped);
+    }
+}
+
 void c37_scan(void* world, bool dump_due) {
     static C23List list;          // game thread only; too large for the stack
     static C37Seen next[kC37Max]; // game thread only
@@ -679,6 +724,8 @@ void c37_scan(void* world, bool dump_due) {
                        g_weak_assign == nullptr;
     if (fresh) {
         c23_collect(world, nullptr, g_st_character_class(), list);
+        c528_drop_kept(list);
+        c528_walk_row(world, list);
         g_c37_pawns.world = world;
         g_c37_pawns.next_ms = scan_ms + kC37CollectMs;
         g_c37_pawns.count = list.count;
@@ -1964,6 +2011,7 @@ GoreOverkillFn g_orig_gore_overkill = nullptr;
 NpcVoidFn g_enable_corpse_box = nullptr;
 GoreLocationFn g_gore_location = nullptr;
 KinematicBonesFn g_kinematic_bones = nullptr;
+SetRelativeLocationFn g_set_relative_location = nullptr; // card 524
 BodySimulatingFn g_body_simulating = nullptr;
 SkeletalComFn g_skeletal_com = nullptr;
 SetSimulateFn g_orig_c132_set_simulate = nullptr;
@@ -4186,6 +4234,11 @@ constexpr uint32_t kC434SpawnRows = 64;
 constexpr uint32_t kC434FailRows = 16;
 constexpr uint32_t kC434CloseRows = 64;
 constexpr uint32_t kC434MissRows = 48;
+// Card 528 (diagnostic): spawn and close rows in the first kC434ArmWindowMs after each client map arm bypass the
+// per-map caps (own cap kC434ArmRows), so the left map's corpses re-seen in the new world can be joined to their spawn
+// bunch and channel close by object name and guid.
+constexpr ULONGLONG kC434ArmWindowMs = 5000;
+constexpr uint32_t kC434ArmRows = 192;
 
 struct C434Spawn {
     const void* channel; // null once the channel closed
@@ -4206,9 +4259,20 @@ struct C434Client {
     uint32_t fail_lines;
     uint32_t close_lines;
     uint32_t miss_lines;
+    ULONGLONG arm_ms;   // card 528: the last client map arm, 0 before the first
+    uint32_t arm_lines; // card 528: rows logged inside the arm window
 };
 
 C434Client g_c434c{};
+
+// Card 528: a spawn or close row is logged inside the arm window (own cap), else under its per-map cap.
+bool c434_row_allowed(uint32_t& lines, uint32_t cap, const char* tag, ULONGLONG now) {
+    if (g_c434c.arm_ms != 0 && now - g_c434c.arm_ms < kC434ArmWindowMs && g_c434c.arm_lines < kC434ArmRows) {
+        ++g_c434c.arm_lines;
+        return true;
+    }
+    return note_event_cap(lines, cap, tag);
+}
 C434NewActorFn g_orig_c434_new_actor = nullptr;
 C434CleanUpFn g_orig_c434_cleanup = nullptr;
 C434SerializeObjectFn g_orig_c434_serialize_object = nullptr;
@@ -4346,11 +4410,11 @@ bool detour_c434_new_actor(void* map, void* ar, void* channel, void** actor) {
     g_c434c.next = (g_c434c.next + 1) % kC434Spawns;
     e = C434Spawn{channel, guid != nullptr ? *guid : 0, now, 0, 0, false};
     ++g_c434c.spawned;
-    if (note_event_cap(g_c434c.spawn_lines, kC434SpawnRows, "card434 NPC spawn bunch")) {
+    if (c434_row_allowed(g_c434c.spawn_lines, kC434SpawnRows, "card434 NPC spawn bunch", now)) {
         const Vec3 at = actor_location(a);
-        log::line("card434: client t=%llu spawn bunch gave %s guid 0x%llx at (%.0f, %.0f, %.0f), new actor %d",
-                  static_cast<unsigned long long>(now), class_name(a).text, static_cast<unsigned long long>(e.guid),
-                  at.x, at.y, at.z, made ? 1 : 0);
+        log::line("card434: client t=%llu spawn bunch gave %s %s guid 0x%llx at (%.0f, %.0f, %.0f), new actor %d",
+                  static_cast<unsigned long long>(now), class_name(a).text, object_name(a).text,
+                  static_cast<unsigned long long>(e.guid), at.x, at.y, at.z, made ? 1 : 0);
     }
     return made;
 }
@@ -4368,7 +4432,7 @@ void c434_note_close(const void* channel, bool for_destroy, uint8_t reason) {
         e.reason = reason;
         e.for_destroy = for_destroy;
         ++g_c434c.closed;
-        if (note_event_cap(g_c434c.close_lines, kC434CloseRows, "card434 NPC channel close")) {
+        if (c434_row_allowed(g_c434c.close_lines, kC434CloseRows, "card434 NPC channel close", e.close_ms)) {
             log::line("card434: client t=%llu channel of guid 0x%llx closed %llu ms after its spawn, reason %u "
                       "(0 destroyed, 1 dormancy, 2 level unloaded, 3 relevancy, 4 tear off), for destroy %d",
                       static_cast<unsigned long long>(e.close_ms), static_cast<unsigned long long>(e.guid),
@@ -4471,6 +4535,7 @@ void c41_relay_arm_map() {
                   "closed", g_c434c.spawned, g_c434c.no_actor, g_c434c.closed);
     }
     g_c434c = C434Client{};
+    g_c434c.arm_ms = GetTickCount64(); // card 528: the arm window starts here
     const C41Relay keep = g_c41r;
     g_c41r = C41Relay{};
     g_c41_held_n = 0; // card 436: a held row does not cross a map
@@ -5884,6 +5949,16 @@ void c42_step(void* engine) {
         c42_track_tick(now);
     }
     c137_gib_tick(now); // card 137 step 6b
+    c532_tick(now);     // card 532: NpcTarget flush (host), pending rows (client)
+    c531_tick(now);     // card 531: GetSaveId cache totals
+    c535_tick(now);     // card 535: FindFloor skip totals
+    c536_tick(now);     // card 536: FindComponentByClass cache totals
+    c538_tick(now);     // card 538: DoesTargetMeetConditions repeat counts
+    c539_tick(now);     // card 539: client NPC proxy sweep counts
+    c534_tick(now);     // card 534: world query cost rows (diag)
+    c545_tick(now);     // card 545: Blueprint Kismet query rows (diag)
+    c548_tick(now);     // card 548: player primitive UpdateOverlapsImpl rows (diag)
+    c544_tick(engine);  // card 544: dynamic tree padding, once
     if (!g_client_session && g_c42o.n != 0) {
         c42_owed_step(engine, now); // card 269
     }

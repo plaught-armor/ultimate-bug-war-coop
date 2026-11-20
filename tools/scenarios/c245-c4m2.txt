@@ -17,8 +17,8 @@
 #      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c245a 3600
 # Expected wall: about 40 min.
 voidsoft
-void unless host dll e138228037a8dede
-void unless client dll e138228037a8dede
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
 host wait state map=FED_C4M2 timeout=240 void
 client wait state map=FED_C4M2 pawn=client-own timeout=180
 try host ui continue
@@ -671,7 +671,7 @@ client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=6
 try client ui continue
 client wait state pawn=client-own timeout=120
 try host wait log "card323: host t=\d+ seat join replay to \S+: \d+ mech pilot row\(s\)" since-mark timeout=30
-try client warp actor BP_MountableTurret_C 600
+try host warp client BP_MountableTurret_C 600
 try client look actor BP_MountableTurret_C 150
 sleep 1
 client shot c245-323-turret-client
@@ -700,7 +700,7 @@ client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=6
 try client ui continue
 client wait state pawn=client-own timeout=120
 try host wait log "card323: host t=\d+ seat join replay to \S+: [1-9]\d* mech pilot row\(s\)" since-mark timeout=30
-try client warp actor BP_BaseMech_C 600
+try host warp client BP_BaseMech_C 600
 try client look actor BP_BaseMech_C 150
 sleep 1
 client shot c245-323-mech-client
@@ -721,7 +721,10 @@ unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)"
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client wait log "card098: client collision BP_AI_BrainBug_C BP_AI_BrainBug_C " timeout=30
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-00 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-00
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 # --- Brain Bug stages: one damage step per stage, each waiting on its Complete row.
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host kill actor BP_AI_BrainBug_C 30
@@ -738,121 +741,238 @@ unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)"
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host objective wait BrainBug_O1 20
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-01 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-01
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-02 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-02
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-03 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-03
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-04 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-04
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-05 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-05
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-06 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-06
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-07 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-07
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-08 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-08
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-09 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-09
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-10 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-10
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-11 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-11
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-12 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-12
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-13 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-13
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-14 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-14
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-15 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-15
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-16 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-16
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-17 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-17
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-18 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-18
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-19 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-19
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-20 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-21 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-21
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-22 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-22
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-23 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-23
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-24 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-24
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-25 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-25
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-26 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-26
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-27 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-27
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-28 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-28
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-29 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-29
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-30 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-30
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-31 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-31
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-32 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-32
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-33 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-33
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-34 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-34
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-35 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-35
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-36 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-36
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-37 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-37
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-38 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-38
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 host clear 20000 kill max-left=99
 unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 client ammo fill
-unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 retry 3 host warp client BP_AI_BrainBug_C 900 ;; client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug ;; client shot c245-boss-39 ;; client key LeftMouseButton 5000
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try host warp client BP_AI_BrainBug_C 900
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client look actor BP_AI_BrainBug_C 0 bounds hit=BP_AI_BrainBug
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client shot c245-boss-39
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?BrainBug_O1\)" count=1 try client key LeftMouseButton 5000
 host objective wait BrainBug_O1 30
 try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?BrainBug_O1\)" timeout=8
 # digest round: map end

@@ -1,0 +1,221 @@
+# Card 504: routine proofs on FED_C2M1, one run (c504b6, DLL b284 62e2e778930a4dd6: cards 510 and 511). The route to
+# LOS_O05 is c423's pre-steps (c423-gates-c2m1.txt lines 69-555, comments dropped). Routines: marker LOS_O01_SO02,
+# LOS_O02_SO02 (routine_presence, proven c504b3); presence-actorless LOS_O02_SO01, LOS_O03_SO01 (c504b4); marker with
+# the stay phase LOS_O01_SO01 (wave end) and LOS_O04_SO02 (completed through the parent LOS_O04; c504b5); satchel-take
+# LOS_O03_SO02a-c (routine_satchel_take, card 511); board RallyPoint_Marker (routine_board, card 510 focus fallback).
+# The rest keep c423's lines: the nuke pickup LOS_O02_SO03, the plasmabug buildings LOS_O02_SO05b/a, the
+# CrashedDropship_Marker go and the host plants at the turning flak bugs LOS_O03_SO03a-c.
+# Predictions (written before the run):
+#  1. Card 511: "objective expect LOS_O03_SO02a: doable (other), current" (b and c the same, each after the one
+#     before completes). Each "objective do LOS_O03_SO02x" gives "satchel-take ... complete on try N", N 1 for a and b;
+#     c (pickup _3, focus none at 221 uu in c504b1-b5) may now focus on try 1 through a card 510 fallback, else a later
+#     try. "objective wait LOS_O03_SO02" completes and the client replays it. Every other expect gives the same
+#     current/doable result as c504b5 (no future LOS_O03 step doable early).
+#  2. Card 510: the board try 1 look logs "aim scan: fallback origin hit, root <class>" (or "root bounds hit"), then
+#     "by fallback" and focus=BP_BaseMech_C; "objective do: board RallyPoint_Marker ... complete on try 1; client
+#     replayed". Any other look whose 26 points all miss also logs one fallback row; looks with a bounds hit log none.
+#  3. c504b5 proofs hold: marker, stay and presence-actorless steps try 1. FATAL/EXCEPTION 0 on both sides.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c504-board-c2m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c504b6 900
+voidsoft
+failsoft
+void unless host dll 62e2e778930a4dd6
+void unless client dll 62e2e778930a4dd6
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+client shot c504-client-ingame
+host shot c504-host-ingame
+host clear 1500 kill
+# MARKER routine, stay phase: completes at its wave end (c504b4 trace).
+host objective do LOS_O01_SO01
+# MARKER routine (presence routine on the marker stand).
+host objective do LOS_O01_SO02
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O01\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O01\)" timeout=8
+# PRESENCE-ACTORLESS routine (actors 0; completes on the presence volume the actorless stand picks).
+host objective do LOS_O02_SO01
+host objective now
+# MARKER routine (presence routine on the marker stand).
+host objective do LOS_O02_SO02
+# c423: nuke pickup (client) and the two plasmabug buildings by the client's nuke.
+host objective expect LOS_O02_SO03
+host warp actor BP_WeaponPickup_NukeLauncher_C 600
+host clear 1500 kill
+host warp client BP_WeaponPickup_NukeLauncher_C 500
+client goto actor BP_WeaponPickup_NukeLauncher_C 100
+client wait goto timeout=90
+client look actor BP_WeaponPickup_NukeLauncher_C 0 bounds focus=BP_WeaponPickup_NukeLauncher_C
+client shot b11c2-o02-so03-look
+client mark
+client key E
+client wait log "card021: client GiveWeaponByClass\(BP_WeaponDefinition_NukeLauncher_C" since-mark timeout=10
+client inventory
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=15
+host objective expect LOS_O02_SO05b  # b15: SO05 is a container; the doable child
+host clear 3000 kill
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 3200
+& host goto actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 2800
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 2900
+host clear 3000 kill
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_0 0 bounds hit=BP_DestructibleSpawner_Bugnest
+client shot b11c2-o02-nest-b
+client mark
+client key LeftMouseButton 3500
+try client wait log "card296: client t=\d+ spool-up \S+ ended" since-mark timeout=15
+try host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02_SO05b\)" timeout=20
+client inventory
+host clear 1500 kill
+host mark
+client mark
+host warp client BP_TacSuppPickup_BombingRun_C 80
+client look actor BP_TacSuppPickup_BombingRun_C 0 bounds focus=BP_TacSuppPickup_BombingRun_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*config class Config_TacSupp_BombingRun_C" since-mark timeout=10
+client inventory
+host clear 1500 kill
+host mark
+client mark
+host warp client BP_TacSuppPickup_WhitePhosphorus_C 80
+client look actor BP_TacSuppPickup_WhitePhosphorus_C 0 bounds focus=BP_TacSuppPickup_WhitePhosphorus_C
+client shot c306-before-swap
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*config class Config_TacSupp_WhitePhosphorus_C" since-mark timeout=10
+try host wait log "card306: host t=\d+ support swap for " since-mark timeout=10
+try client wait log "card105: client .*BP_TacSuppPickup_BombingRun_C" since-mark timeout=5
+client shot c306-after-swap
+try host wait log "card256: host pickup \d+ rest at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=5
+try host warp actor point {g1} {g2} {g3+100}
+try host warp actor BP_TacSuppPickup_BombingRun_C 300
+try host look actor BP_TacSuppPickup_BombingRun_C 0 bounds
+host shot c306-after-swap
+client inventory
+host inventory
+host warp client BP_AmmoPickup_NukesSmall_C 410
+try client goto actor BP_AmmoPickup_NukesSmall_C 60
+try client wait goto timeout=60
+host objective expect LOS_O02_SO05a
+host clear 3000 kill
+host warp actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 3200
+& host goto actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 2800
+host warp client BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 2900
+host clear 3000 kill
+client look actor BP_DestructibleSpawner_Bugnest_HumanGameplay_C_7 0 bounds hit=BP_DestructibleSpawner_Bugnest
+client shot b11c2-o02-nest-a
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=20
+when client last "AnimationEnded, key NukeLauncher_(Reload|WindDown), actor BP_Weapon_NukeLauncher_C" "NukeLauncher_WindDown" client key R
+try client wait log "AnimationEnded, key NukeLauncher_Reload, actor BP_Weapon_NukeLauncher_C" since-mark timeout=20
+client mark
+client key LeftMouseButton 3000
+try client wait log "card296: client t=\d+ spool-up \S+ ended" since-mark timeout=15
+try host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02_SO05a\)" timeout=20
+client inventory
+host objective wait LOS_O02_SO05 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02_SO05\)" timeout=8
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O02\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O02\)" timeout=8
+# c423: marker go.
+host objective expect CrashedDropship_Marker  # b15: LOS_O04_SO01 is a future step here (marker off)
+host clear 1500 kill
+host objective go all
+try host objective wait LOS_O04_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 host objective go all
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 try host objective wait LOS_O04_SO01 10
+unless host log "card097: host t=\d+ native CompleteObjective LOS_O04/LOS_O04_SO01 " count=1 host objective go all
+host objective wait LOS_O04_SO01 60
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O04_SO01\)" timeout=8
+# MARKER routine, stay phase: a 57.6-70 s hold, completed through the parent LOS_O04 (card097 native row).
+host objective do LOS_O04_SO02
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O04\)" timeout=30
+# PRESENCE-ACTORLESS routine (actors 0; completes on the presence volume the actorless stand picks).
+host objective do LOS_O03_SO01
+# SATCHEL-TAKE routine (card 511: each sub is doable under its open container LOS_O03_SO02, marker on). The host
+# takes one pickup per sub, gated on that sub's own Complete (lesson 9). Instances: a _2, b _5, c _3 (card070).
+host objective do LOS_O03_SO02a
+host objective do LOS_O03_SO02b
+host objective do LOS_O03_SO02c
+# c423: host plants.
+host objective wait LOS_O03_SO02 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03_SO02\)" timeout=8
+host clear 3000 kill
+host objective expect LOS_O03_SO03a
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_2 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 100
+try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 0 bounds focus=SatchelSiteCAC_
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03a 8
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_2 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1040 0 bounds focus=SatchelSiteCAC_
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03a\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03a 20
+host clear 3000 kill
+host objective expect LOS_O03_SO03b
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_0 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 100
+try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 0 bounds focus=SatchelSiteCAC_
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03b 8
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_0 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1034 0 bounds focus=SatchelSiteCAC_
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03b\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03b 20
+host clear 3000 kill
+host objective expect LOS_O03_SO03c
+host mark
+try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_4 " since-mark timeout=20
+host mark
+host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 100
+try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 0 bounds focus=SatchelSiteCAC_
+host clear 3000 kill
+host mark
+host key E 3200 timeout=20
+host wait log "card020: host host-own UADInteractorComponent::Interact\(owner BP_PlayerCharacterMI_C\): target SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT" since-mark timeout=3
+try host objective wait LOS_O03_SO03c 8
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host mark
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 try host wait log "card408: host t=\d+ timeout BP_SatchelBuilding_Flakbug_C_4 " since-mark timeout=20
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host clear 3000 kill
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host warp actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 100
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 sleep 1
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 try host look actor SatchelSiteCAC_BP_SatchelPlacementSite_C_CAT_1 0 bounds focus=SatchelSiteCAC_
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03_SO03c\)" count=1 host key E 3200 timeout=20
+host objective wait LOS_O03_SO03c 20
+host objective wait LOS_O03_SO03 30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03_SO03\)" timeout=8
+host wait log "card049: host sent Complete\w*Objective\((\w+, )?LOS_O03\)" timeout=30
+client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?LOS_O03\)" timeout=8
+host wait log "card049: host sent AddObjective\(LOS_O05\)" timeout=30
+# BOARD routine: the client boards the mech at the rally point.
+host objective do RallyPoint_Marker
+sleep 2
+client shot c504-board-inmech
+host shot c504-board-host
+host objective now

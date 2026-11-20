@@ -789,8 +789,15 @@ int32_t c74_send_all(const void* actor, const WireString& w, int32_t* to, const 
 }
 constexpr uint32_t kC74PathChars = 160; // the init data class's package path, with the terminator
 
+// Card 520: a whole number of uu (or uu/s) for the frame text. llround, so no "-0", which the card 150 packer cannot
+// send as a decimal token.
+long long c74_whole(double v) {
+    return v > -1e12 && v < 1e12 ? llround(v) : 0;
+}
+
 // The frame text: "<throw number> <init data class path> x y z qx qy qz qw vx vy vz", the spawn transform (scale 1)
-// and the projectile's velocity now. False when a name is too long to send whole.
+// and the projectile's velocity now. Card 520: the location and velocity are whole uu and uu/s, the quaternion has 4
+// decimals (the client normalizes it). False when a name is too long to send whole.
 bool c74_transform_text(uint32_t seq, const void* transform, const void* proj, const void* cls, char* text, size_t cap) {
     double q[4] = {};
     memcpy(q, transform, sizeof(q));
@@ -800,8 +807,9 @@ bool c74_transform_text(uint32_t seq, const void* transform, const void* proj, c
     char name[kNameChars];
     const uint32_t package_len = object_name_into(read_ptr(cls, kObjectOuter), package, sizeof(package));
     const uint32_t name_len = object_name_into(cls, name, sizeof(name));
-    snprintf(text, cap, "%u %s.%s %.1f %.1f %.1f %.6f %.6f %.6f %.6f %.1f %.1f %.1f", seq, package, name, at.x, at.y,
-             at.z, q[0], q[1], q[2], q[3], v.x, v.y, v.z);
+    snprintf(text, cap, "%u %s.%s %lld %lld %lld %.4f %.4f %.4f %.4f %lld %lld %lld", seq, package, name,
+             c74_whole(at.x), c74_whole(at.y), c74_whole(at.z), q[0], q[1], q[2], q[3], c74_whole(v.x), c74_whole(v.y),
+             c74_whole(v.z));
     return package_len > 0 && package_len < sizeof(package) && name_len > 0 && name_len < sizeof(name);
 }
 
@@ -947,6 +955,13 @@ void c74_receive(void* pc, const WireString* s) {
         return;
     }
     t[8] = t[9] = t[10] = 1.0;
+    // Card 520: the quaternion comes with 4 decimals; make it unit length again (identity if it reads as zero).
+    const double qn = sqrt(t[0] * t[0] + t[1] * t[1] + t[2] * t[2] + t[3] * t[3]);
+    if (qn > 1e-6) {
+        t[0] /= qn, t[1] /= qn, t[2] /= qn, t[3] /= qn;
+    } else {
+        t[0] = t[1] = t[2] = 0.0, t[3] = 1.0;
+    }
     void* cls = c50_resolve(path); // found, or loaded: a mech round's init data class need not be loaded here yet
     const void* const world = g_actor_get_world(pc);
     c132_proj_copying(true);
@@ -1734,28 +1749,30 @@ C74Path c74_asset_path(const void* asset) {
     return out;
 }
 
-// Host: a relayed throw's explosion, to every client that got the throw: GrenadeExplode "<throw number> x y z
-// <system path> <sound path> sx sy sz <zone class path> zx zy zz zyaw <zone life span s>" (an asset or zone the
-// explosion did not make is "-"; then its numbers are 0).
+// Host: a relayed throw's explosion, to every client that got the throw: GrenadeExplode "<throw number> x y z" in
+// whole uu. Card 520: the client only ends its copy and logs the host's point; the explosion's system, sound and
+// damage zone reach it through the effects manager (card 136 step 5), so they are named in the host's log line only.
 void c74_relay_explode(uint32_t seq, const void* proj, const Vec3& at, const C74Fx& fx, const void* skip_pc) {
-    const Vec3 zone_at = c74_actor_loc(fx.zone);
-    const void* const zone_root = fx.zone != nullptr ? read_ptr(fx.zone, kActorRootComponent) : nullptr;
-    const double zone_yaw = zone_root != nullptr ? component_yaw(zone_root) : 0.0;
-    const float zone_life = fx.zone != nullptr ? g_life_span(fx.zone) : 0.0f;
-    char text[3 * kAssetPathChars + 160];
-    snprintf(text, sizeof(text), "%u %.1f %.1f %.1f %s %s %.1f %.1f %.1f %s %.1f %.1f %.1f %.1f %.2f", seq, at.x, at.y,
-             at.z, c74_asset_path(fx.system).text, c74_asset_path(fx.sound).text, fx.system_at.x, fx.system_at.y,
-             fx.system_at.z, c74_asset_path(fx.zone != nullptr ? read_ptr(fx.zone, kObjectClass) : nullptr).text,
-             zone_at.x, zone_at.y, zone_at.z, zone_yaw, zone_life);
+    char text[80];
+    snprintf(text, sizeof(text), "%u %lld %lld %lld", seq, c74_whole(at.x), c74_whole(at.y), c74_whole(at.z));
     static wchar_t wire[kChanTextFrame];
     const WireString w = chan_text_frame(ChanOp::GrenadeExplode, text, wire);
     int32_t to = 0;
     const int32_t sent = c74_send_all(proj, w, &to, skip_pc);
     const bool round = (seq & kC132RoundBit) != 0;
     if (sent != to || !round || g_c76_log || g_c132_fx_log) {
-        log::line("%scard%s: host t=%llu GrenadeExplode %s (%s): sent to %d of %d clients", sent == to ? "" : "WARN ",
-                  round ? "132" : "074", static_cast<unsigned long long>(GetTickCount64()), text,
-                  round ? class_name(proj).text : "grenade", sent, to);
+        const Vec3 zone_at = c74_actor_loc(fx.zone);
+        const void* const zone_root = fx.zone != nullptr ? read_ptr(fx.zone, kActorRootComponent) : nullptr;
+        const double zone_yaw = zone_root != nullptr ? component_yaw(zone_root) : 0.0;
+        const float zone_life = fx.zone != nullptr ? g_life_span(fx.zone) : 0.0f;
+        char fx_text[3 * kAssetPathChars + 160];
+        snprintf(fx_text, sizeof(fx_text), "%s %s %.1f %.1f %.1f %s %.1f %.1f %.1f %.1f %.2f",
+                 c74_asset_path(fx.system).text, c74_asset_path(fx.sound).text, fx.system_at.x, fx.system_at.y,
+                 fx.system_at.z, c74_asset_path(fx.zone != nullptr ? read_ptr(fx.zone, kObjectClass) : nullptr).text,
+                 zone_at.x, zone_at.y, zone_at.z, zone_yaw, zone_life);
+        log::line("%scard%s: host t=%llu GrenadeExplode %s (%s; effects %s): sent to %d of %d clients",
+                  sent == to ? "" : "WARN ", round ? "132" : "074", static_cast<unsigned long long>(GetTickCount64()),
+                  text, round ? class_name(proj).text : "grenade", fx_text, sent, to);
     }
     if (round) {
         return;
@@ -1784,21 +1801,10 @@ void* c74_find_asset(const char* path, void* cls) {
 // receiving PC's world. The log gives how far the copy was from the host's.
 void c74_receive_explode(void* /*pc*/, const WireString* s) {
     char text[kChanTextMax + 1];
-    static_assert(kAssetPathChars == 192, "the %191s widths below");
-    char system[kAssetPathChars] = {};
-    char sound[kAssetPathChars] = {};
-    char zone[kAssetPathChars] = {};
     uint32_t seq = 0;
     Vec3 host{};
-    Vec3 fx_at{};
-    Vec3 zone_at{};
-    double zone_yaw = 0.0;
-    float zone_life = 0.0f;
     if (chan_text(s, text, sizeof(text)) <= 0 ||
-        sscanf_s(text, "%u %lf %lf %lf %191s %191s %lf %lf %lf %191s %lf %lf %lf %lf %f", &seq, &host.x, &host.y,
-                 &host.z, system, static_cast<unsigned>(sizeof(system)), sound, static_cast<unsigned>(sizeof(sound)),
-                 &fx_at.x, &fx_at.y, &fx_at.z, zone, static_cast<unsigned>(sizeof(zone)), &zone_at.x, &zone_at.y,
-                 &zone_at.z, &zone_yaw, &zone_life) != 15) {
+        sscanf_s(text, "%u %lf %lf %lf", &seq, &host.x, &host.y, &host.z) != 4) { // card 520: number and point only
         log::line("WARN card074: client: bad GrenadeExplode frame");
         return;
     }

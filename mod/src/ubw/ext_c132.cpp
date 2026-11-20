@@ -126,6 +126,7 @@ struct ClientRow {
     bool warned;
     bool c423_warned;  // card 423: the "client destroyed, host alive" WARN was logged
     ULONGLONG c423_due; // card 423: a live row waiting for our own script until this time; 0: none
+    ULONGLONG c423_alive_at; // card 423: our copy destroyed while the host's row said alive, since this time; 0: none
 };
 struct ExtSweep {
     int32_t level;
@@ -464,12 +465,17 @@ bool c423_client(void* actor, ClientRow& r, C423Via via) {
             c423_line(r, own, "none"); // our own script ran (or the copy loaded destroyed)
         }
         r.c423_due = 0;
+        r.c423_alive_at = 0;
         return false;
     }
     if (host == 0) {
-        if (!r.c423_warned) {
+        // Senior 2026-11-19 (c502b270a: 37 of 37 bridge parts had the host's destroyed row within 85 ms): our own
+        // script runs first, so the WARN waits kC423WaitMs for the host's row.
+        r.c423_alive_at = r.c423_alive_at != 0 ? r.c423_alive_at : now;
+        if (!r.c423_warned && now - r.c423_alive_at >= kC423WaitMs) {
             r.c423_warned = true;
-            log::line("WARN card423: client %s destroyed, host alive", r.name);
+            log::line("WARN card423: client %s destroyed, host alive after %llu ms", r.name,
+                      static_cast<unsigned long long>(now - r.c423_alive_at));
         }
         return false;
     }

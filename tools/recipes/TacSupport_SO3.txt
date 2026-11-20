@@ -1,0 +1,47 @@
+# TacSupport_SO3: c335-range-load.txt lines 194-239, written by tools/gen_recipes.py. Do not edit.
+host clear 1500 kill
+# Only the shooter goes (b14: the host pawn stood in the line of fire); the look target is the live objective actor.
+try host objective go client
+# b17 (senior, item 1): the objective's own action. The client, at the live stand point, fires the Morita at each of the
+# three warrior targets until its death row; no tac support call here.
+# Item 3 (b17, senior a): the Morita key comes from the client's card 050 row (slot 0 key One, slot 1 key Two; b16:
+# "switch to weapon 1" on Two). Pressed only when the Morita is not the equipped slot: a press on the equipped slot
+# is the underslung toggle (b14 279258619), and the targets must be shot with the plain Morita.
+client wait log "card050: client t=\d+ apply #\d+ .*slots before .*, after \S*\|[0-9]=BP_WeaponDefinition_MoritaMk1_C" timeout=10
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?0=BP_WeaponDefinition_MoritaMk1_C" client key One
+when client last "card050: client t=\d+ apply #\d+ " "slots before .*, after (\d)\|(?!(?:\S*\|)?\1=BP_WeaponDefinition_MoritaMk1_C)(?:\S*\|)?1=BP_WeaponDefinition_MoritaMk1_C" client key Two
+# Run 10 (line 205 VOID: aim hit the host pawn 132 uu ahead, so the gate voided every fire key and SO3 stayed open):
+# the first look only turns the client to the range (no gate); the gated look comes after the host has moved behind.
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 0 bounds
+# b18 run 2 (line 209 VOID: aim hit BP_PlayerCharacterMI_C at 11914 18132, the host pawn left at BP_PlayerPresence_C_1
+# between the client's stand and the targets): with the client now facing the range, the host moves 300 uu behind
+# the client's pawn along its forward axis (live position, no coordinates), out of every target's line of fire.
+host warp actor BP_PlayerCharacterMI_C 300 behind
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 walk=6
+client shot c310-tac-so3-t1
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_1 .*IsDead now 1" timeout=10
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 walk=6
+client shot c310-tac-so3-t0
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_0 .*IsDead now 1" timeout=10
+client look actor BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 0 bounds hit=BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 walk=6
+client shot c310-tac-so3-t3
+client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+unless host log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " count=1 client key LeftMouseButton 1500
+host wait log "card098: host t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 " timeout=10
+client wait log "card098: client t=\d+ world K BP_KillableBuilding_Base_TacSuppRangeTarget_C_3 .*IsDead now 1" timeout=10
+host objective wait TacSupport_SO3 30

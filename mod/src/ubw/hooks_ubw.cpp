@@ -214,7 +214,9 @@ void ubw_post_tick(void* engine) {
     C330_STEP(c141_step(engine));
     C330_STEP(c24_step(engine));
     C330_STEP(c25_step(engine));
-    C330_STEP(c293_step(engine)); // card 293: minimap NPC markers no player can see
+    if (g_c37.audit) { // card 293 is closed; its marker traces cost about 1 s per C3M2 map on the host (c263L312)
+        C330_STEP(c293_step(engine)); // card 293: minimap NPC markers no player can see
+    }
     C330_STEP(c319_step(engine)); // card 319: client minimap scan gates, every 5 s
     C330_STEP(c321_step(engine)); // card 321: host begin-play count row, once per map
     C330_STEP(c338_step()); // card 338: the 5 s row after a fall zone reposition
@@ -408,13 +410,19 @@ constexpr size_t kC392SetTickEnabledVfn = 0x4A8; // AActor::SetActorTickEnabled(
 // when FSeamlessTravelHandler::Tick returns (ue/net.cpp), inside UEngine::TickWorldTravel, before UGameEngine::Tick
 // ticks the new world, so no actor tick of the destination world runs first. Only remembered NPCs are touched: the
 // destination map's own NPCs never were in Untitled.
+// Card 528 (c263L315, c263L316): these kept NPCs are also the left map's corpses the client's scan re-saw as first
+// sightings (Health <= 0, HandleDying called) in Untitled and in the destination world; no spawn bunch brought them
+// (no card434 spawn row after the arm). The table therefore outlives the arrival: it is replaced at the next Untitled,
+// and `c392_kept_npc` lets the scan skip them until the host's channel close destroys them.
 constexpr uint32_t kC392Kept = 256;
 struct C392Kept {
     C31Weak npc[kC392Kept];
+    const void* raw[kC392Kept]; // identity only, compared before the weak ref is resolved
     uint32_t n;    // remembered
     uint32_t full; // stilled in Untitled but not remembered (table full)
+    bool arrived;  // stilled again at the arrival (the table is kept for card 528)
 };
-C392Kept g_c392{}; // game thread; filled in Untitled, emptied on the next arrival
+C392Kept g_c392{}; // game thread; filled in Untitled, replaced at the next Untitled
 
 void c392_still(void* npc) {
     using SetTickFn = void (*)(void*, bool);
@@ -423,7 +431,7 @@ void c392_still(void* npc) {
 
 // Arrival in the destination world: every remembered NPC still alive is stilled again; the table empties.
 void c392_still_again(const void* world) {
-    if (g_c392.n == 0 && g_c392.full == 0) {
+    if (g_c392.arrived || (g_c392.n == 0 && g_c392.full == 0)) {
         return;
     }
     const void* const npc_class = g_npc_class();
@@ -442,7 +450,52 @@ void c392_still_again(const void* world) {
         log::line("WARN card392: client %u kept NPCs not remembered (table of %u full): their tick may run again in %s",
                   g_c392.full, kC392Kept, object_name(world).text);
     }
-    g_c392 = C392Kept{};
+    g_c392.arrived = true;
+}
+
+// Card 533 (c263L342 client crash, AV reading 0x0 at exe+0x510B401, in world, not at travel): the NPC tick calls
+// FSTBugProceduralAnimationData::UpdateFromNPC, which reads the NPC movement component's CurrentFloor. When
+// CurrentFloor.HitResult.bBlockingHit is set (CMC+0x4F5 bit 0), it resolves the weak HitResult.Component (CMC+0x520)
+// and calls GetCollisionObjectType (vfn +0x5D8) on the result without a null check. A bug standing on another bug
+// that the client destroyed (net cull, `clear` kill) leaves that weak ref dead, and the call goes through null. Card
+// 392 was the same AV from the travel path. The floor result is stale in that case, so the guard clears
+// bBlockingHit before the original runs: the anim data then treats the NPC as not standing on a hit, and the CMC
+// rewrites CurrentFloor at its next floor find. The function's other +0x520 read (exe+0x510B658) only compares
+// pointers. Always on, both sides: a host bug can stand on a bug that was just destroyed too.
+constexpr size_t kC533GetMovementVfn = 0x748;   // APawn::GetMovementComponent
+constexpr size_t kC533FloorHitFlags = 0x4F5;    // CMC CurrentFloor (0x438) + HitResult (0x10) + bBlockingHit byte (0xAD)
+constexpr size_t kC533FloorHitComponent = 0x520; // CMC CurrentFloor.HitResult.Component, FWeakObjectPtr
+using C533UpdateFn = void (*)(void* data, const void* npc, float delta);
+C533UpdateFn g_orig_c533_update = nullptr;
+uint32_t g_c533_cleared = 0; // game thread; logged at 1, 2, 4, 8, ...
+
+void detour_c533_update_from_npc(void* data, const void* npc, float delta) {
+    using GetMovementFn = uint8_t* (*)(const void*);
+    uint8_t* const mc = (npc != nullptr && g_weak_get != nullptr)
+                            ? reinterpret_cast<GetMovementFn>(read_ptr(read_ptr(npc, 0), kC533GetMovementVfn))(npc)
+                            : nullptr;
+    if (mc != nullptr && (mc[kC533FloorHitFlags] & 1U) != 0U &&
+        g_weak_get(mc + kC533FloorHitComponent) == nullptr) {
+        mc[kC533FloorHitFlags] = static_cast<uint8_t>(mc[kC533FloorHitFlags] & ~1U);
+        ++g_c533_cleared;
+        if ((g_c533_cleared & (g_c533_cleared - 1U)) == 0U) {
+            log::line("card533: t=%llu NPC %s floor component gone, blocking hit cleared before the anim update "
+                      "(%u so far)",
+                      static_cast<unsigned long long>(GetTickCount64()), object_name(npc).text, g_c533_cleared);
+        }
+    }
+    g_orig_c533_update(data, npc, delta);
+}
+
+// Card 528: true for an NPC the client carried out of the left map by seamless travel (card 392's table). Client game
+// thread only; a raw pointer match is confirmed through the weak ref, so a reused address is not a false match.
+bool c392_kept_npc(const void* actor) {
+    for (uint32_t i = 0; i < g_c392.n && i < kC392Kept; ++i) {
+        if (g_c392.raw[i] == actor) {
+            return c31_weak_get(g_c392.npc[i]) == actor;
+        }
+    }
+    return false;
 }
 
 void c392_still_kept_npcs(void* world) {
@@ -469,6 +522,7 @@ void c392_still_kept_npcs(void* world) {
             c392_still(actors[a]);
             ++stilled;
             if (g_c392.n < kC392Kept) {
+                g_c392.raw[g_c392.n] = actors[a];
                 c31_weak_set(g_c392.npc[g_c392.n++], actors[a]);
             } else {
                 ++g_c392.full;
@@ -1225,6 +1279,26 @@ int c29_bool(const void* object, const char* const* names) {
 void* c29_server_copy(const void* own) {
     return c29_server_copy_nth(own, 0);
 }
+// Card 502 finding 2 (b263): the server copy whose client sent `role` (c502_receive_role). Test commands use it, so
+// "client" stays the first client after a rejoin, whose new PC comes last in PlayerController order.
+void* c29_server_copy_role(const void* own, uint32_t role) {
+    for (int i = 0; i < kC17Slots && own != nullptr; ++i) {
+        const void* const pc = g_get_player_controller(own, i);
+        void* const pawn = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+        const C50Copy* const c = pc != nullptr ? c50_copy(object_index(pc), false) : nullptr;
+        if (c != nullptr && c->role == role && sprint_side(pawn) == kSideServerCopy &&
+            is_a(pawn, g_player_mi_class())) {
+            return pawn;
+        }
+    }
+    static uint32_t warns = 0; // game thread; session total
+    if (own != nullptr && role != 0 && ++warns <= 8) {
+        log::line("WARN card502: host t=%llu no PC has role %u stored; PlayerController order (server copy %u)",
+                  static_cast<unsigned long long>(GetTickCount64()), role, role);
+    }
+    return role != 0 ? c29_server_copy_nth(own, static_cast<int>(role) - 1) : nullptr;
+}
+
 // Card 209: the nth server copy (0 first) in PlayerController order, or null; with two clients, n 1 is the second.
 void* c29_server_copy_nth(const void* own, int n) {
     // GetPlayerController takes any world-context object; the pawn is one.
@@ -1814,6 +1888,8 @@ float c43_max_health(const void* component) {
 void c43_transition(const C43Roster& r, C43Entry& e, const void* pawn, const char* why) {
     void* component = nullptr;
     const float health = c21_health(static_cast<const uint8_t*>(pawn), &component);
+    const uint64_t guid = c41_guid(pawn); // card 509: a leaver's Up later sends this, not a closing connection's 0
+    e.guid = guid != 0 ? guid : e.guid;
     c43_broadcast(r, e);
     ++g_c43.n.transitions;
     if (sprint_side(pawn) == kSideHostOwn) {
@@ -2617,7 +2693,7 @@ void c76_tag(const void* asc, const void* tag, bool pressed) {
 const HookSpec kHooksUbw[] = {
     // Card 461 (diagnostic): the mover of a released rider's capsule; one compare of g_c461_armed outside its window.
     {&offsets::UPrimitiveComponent_MoveComponentImpl, reinterpret_cast<void*>(&detour_c461_move),
-     reinterpret_cast<void**>(&g_orig_c461_move), &g_gate_diag},
+     reinterpret_cast<void**>(&g_orig_c461_move), &g_gate_c461_c539}, // card 539 counts ride on it
     // Card 416: the minimap marker interface wrappers; a teammate pawn is answered by the mod, all else unchanged.
     {&offsets::ISTMinimapMarkerInterface_Execute_GetIconTexture, reinterpret_cast<void*>(&detour_c416_icon),
      reinterpret_cast<void**>(&g_orig_c416_icon)},
@@ -2690,6 +2766,69 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_orig_input_axis), &g_gate_diag},
     {&offsets::UCharacterMovementComponent_TickComponent, reinterpret_cast<void*>(&detour_cmc_tick),
      reinterpret_cast<void**>(&g_orig_cmc_tick)}, // card 019
+    {&offsets::ASTNonPlayableCharacterBase_Tick, reinterpret_cast<void*>(&detour_c527_actor_tick),
+     reinterpret_cast<void**>(&g_orig_c527_actor_tick), &g_c132_fx_log}, // card 527 item 2
+    {&offsets::FSTBugProceduralAnimationData_UpdateFromNPC, reinterpret_cast<void*>(&detour_c533_update_from_npc),
+     reinterpret_cast<void**>(&g_orig_c533_update)}, // card 533
+    {&offsets::UADTargetComponent_TickComponent, reinterpret_cast<void*>(&detour_c532_tick),
+     reinterpret_cast<void**>(&g_orig_c532_tick)}, // card 532: client target tick off
+    {&offsets::UADTargetComponent_GetPrimaryTarget, reinterpret_cast<void*>(&detour_c532_get_primary),
+     reinterpret_cast<void**>(&g_orig_c532_get_primary)}, // card 532: client shows the host's target
+    {&offsets::USTSaveComponent_GetSaveId, reinterpret_cast<void*>(&detour_c531_save_id),
+     reinterpret_cast<void**>(&g_orig_c531_save_id), &g_c531_on}, // card 531: save component cache (perf)
+    {&offsets::UCharacterMovementComponent_FindFloor, reinterpret_cast<void*>(&detour_c535_find_floor),
+     reinterpret_cast<void**>(&g_orig_c535_find_floor), &g_c535_on}, // card 535: client NPC floor skip (perf)
+    // card 537: owned-component set changes bump a generation; these rows come before the cache row
+    {&offsets::AActor_AddOwnedComponent, reinterpret_cast<void*>(&detour_c537_add),
+     reinterpret_cast<void**>(&g_orig_c537_add), &g_c536_on},
+    {&offsets::AActor_RemoveOwnedComponent, reinterpret_cast<void*>(&detour_c537_remove),
+     reinterpret_cast<void**>(&g_orig_c537_remove), &g_c536_on},
+    {&offsets::AActor_ResetOwnedComponents, reinterpret_cast<void*>(&detour_c537_reset),
+     reinterpret_cast<void**>(&g_orig_c537_reset), &g_c536_on},
+    {&offsets::AActor_FindComponentByClass, reinterpret_cast<void*>(&detour_c536_find),
+     reinterpret_cast<void**>(&g_orig_c536_find), &g_c536_on}, // card 536: component lookup cache (perf)
+    {&offsets::USTAttackComponent_DoesTargetMeetConditions, reinterpret_cast<void*>(&detour_c538_conditions),
+     reinterpret_cast<void**>(&g_orig_c538_conditions), &g_c538_on}, // card 538: targeting repeat counts (perf diag)
+    {&offsets::UWorld_SweepSingleByChannel, reinterpret_cast<void*>(&detour_c534<0>), reinterpret_cast<void**>(&g_orig_c534[0]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_SweepMultiByChannel, reinterpret_cast<void*>(&detour_c534<1>), reinterpret_cast<void**>(&g_orig_c534[1]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_SweepTestByChannel, reinterpret_cast<void*>(&detour_c534<2>), reinterpret_cast<void**>(&g_orig_c534[2]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_SweepSingleByObjectType, reinterpret_cast<void*>(&detour_c534<3>), reinterpret_cast<void**>(&g_orig_c534[3]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_SweepMultiByObjectType, reinterpret_cast<void*>(&detour_c534<4>), reinterpret_cast<void**>(&g_orig_c534[4]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_LineTraceSingleByChannel, reinterpret_cast<void*>(&detour_c534<5>), reinterpret_cast<void**>(&g_orig_c534[5]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_LineTraceMultiByChannel, reinterpret_cast<void*>(&detour_c534<6>), reinterpret_cast<void**>(&g_orig_c534[6]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_LineTraceTestByChannel, reinterpret_cast<void*>(&detour_c534<7>), reinterpret_cast<void**>(&g_orig_c534[7]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_OverlapAnyTestByChannel, reinterpret_cast<void*>(&detour_c534<8>), reinterpret_cast<void**>(&g_orig_c534[8]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_OverlapMultiByObjectType, reinterpret_cast<void*>(&detour_c534<9>), reinterpret_cast<void**>(&g_orig_c534[9]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_ComponentSweepMulti, reinterpret_cast<void*>(&detour_c534<10>), reinterpret_cast<void**>(&g_orig_c534[10]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UWorld_ComponentOverlapMulti, reinterpret_cast<void*>(&detour_c534<11>), reinterpret_cast<void**>(&g_orig_c534[11]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::USceneComponent_UpdateOverlaps, reinterpret_cast<void*>(&detour_c534<12>), reinterpret_cast<void**>(&g_orig_c534[12]),
+     &g_c132_fx_log}, // card 534 diag
+    {&offsets::UKismetSystemLibrary_CapsuleTraceSingleForObjects, reinterpret_cast<void*>(&detour_c545_capsule),
+     reinterpret_cast<void**>(&g_orig_c545_capsule), &g_c132_fx_log}, // card 545 diag
+    {&offsets::UKismetSystemLibrary_SphereOverlapComponents, reinterpret_cast<void*>(&detour_c545_sphere),
+     reinterpret_cast<void**>(&g_orig_c545_sphere), &g_c132_fx_log}, // card 545 diag
+    {&offsets::UPrimitiveComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_prim),
+     reinterpret_cast<void**>(&g_orig_c548_impl[0]), &g_c132_fx_log}, // card 548 diag
+    {&offsets::USkinnedMeshComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_skinned),
+     reinterpret_cast<void**>(&g_orig_c548_impl[1]), &g_c132_fx_log}, // card 548 diag
+    {&offsets::USkeletalMeshComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_skeletal),
+     reinterpret_cast<void**>(&g_orig_c548_impl[2]), &g_c132_fx_log}, // card 548 diag
+    {&offsets::USkeletalMeshComponent_TickComponent, reinterpret_cast<void*>(&detour_c527_mesh_tick),
+     reinterpret_cast<void**>(&g_orig_c527_mesh_tick), &g_c132_fx_log}, // card 527 item 2
+    {&offsets::UADSpriteAnimatorComponent_TickComponent, reinterpret_cast<void*>(&detour_c527_sprite_tick),
+     reinterpret_cast<void**>(&g_orig_c527_sprite_tick), &g_c132_fx_log}, // card 527 item 2
     {&offsets::UCharacterMovementComponent_PerformMovement, reinterpret_cast<void*>(&detour_perform_movement),
      reinterpret_cast<void**>(&g_orig_perform_movement), &g_gate_diag},
     {&offsets::UEnhancedPlayerInput_InputKey, reinterpret_cast<void*>(&detour_player_input_key),
@@ -2753,7 +2892,7 @@ const HookSpec kHooksUbw[] = {
     {&offsets::USTBugProximityAreaWidget_OnNewMarker, reinterpret_cast<void*>(&detour_c319_new_marker), reinterpret_cast<void**>(&g_orig_c319_new_marker), &g_gate_diag},
     {&offsets::USTBugProximityAreaWidget_OnRemoveMarker, reinterpret_cast<void*>(&detour_c319_remove_marker), reinterpret_cast<void**>(&g_orig_c319_remove_marker), &g_gate_diag},
     {&offsets::ASTNonPlayableCharacterBase_StartDying, reinterpret_cast<void*>(&detour_npc_start_dying), reinterpret_cast<void**>(&g_orig_npc_start_dying)},
-    {&offsets::ASTNonPlayableCharacterBase_HandleHealthValueChangedEvent, reinterpret_cast<void*>(&detour_npc_health_changed), reinterpret_cast<void**>(&g_orig_npc_health_changed), &g_gate_c23_c25},
+    {&offsets::ASTNonPlayableCharacterBase_HandleHealthValueChangedEvent, reinterpret_cast<void*>(&detour_npc_health_changed), reinterpret_cast<void**>(&g_orig_npc_health_changed)}, // card 506: ungated (host health edge)
     {&offsets::ASTNonPlayableCharacterBase_BP_OnRevived, reinterpret_cast<void*>(&detour_npc_revived), reinterpret_cast<void**>(&g_orig_npc_revived), &g_gate_c23_c25},
     // Card 065: the range-target relay (and its UBWCOOP_C65_LOG line)
     {&offsets::UActorComponent_Activate, reinterpret_cast<void*>(&detour_c65_activate),
@@ -3179,6 +3318,7 @@ const HookSpec kHooksUbw[] = {
     {&offsets::USTDebugSaveTracker_SetAutoSaveEnabled, reinterpret_cast<void*>(&detour_set_auto_save), reinterpret_cast<void**>(&g_orig_set_auto_save), &g_gate_c30},
     {&offsets::UADHealthComponent_HealthAttributeChanged, reinterpret_cast<void*>(&detour_health_changed), reinterpret_cast<void**>(&g_orig_health_changed)},
     {&offsets::UObject_ProcessEvent, reinterpret_cast<void*>(&detour_process_event), reinterpret_cast<void**>(&g_orig_process_event)},
+    {&offsets::ProcessLocalScriptFunction, reinterpret_cast<void*>(&detour_c507_local_script), reinterpret_cast<void**>(&g_orig_c507_local_script)}, // card 507
     // card 037: host damage log (log only)
     {&offsets::UADHealthComponent_AttributeSetPostEffectApplied, reinterpret_cast<void*>(&detour_post_effect), reinterpret_cast<void**>(&g_orig_post_effect), &g_gate_c23},
     // Card 040: damage pipeline trace (log only, UBWCOOP_C40_DAMAGE_TRACE)
@@ -3328,6 +3468,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::ASTNonPlayableCharacterBase_GetGoreLocation, reinterpret_cast<void**>(&g_gore_location)},
     {&offsets::ASTNonPlayableCharacterBase_IsNPC2D, reinterpret_cast<void**>(&g_is_npc_2d)},
     {&offsets::USkeletalMeshComponent_UpdateKinematicBonesToAnim, reinterpret_cast<void**>(&g_kinematic_bones)},
+    {&offsets::USceneComponent_K2_SetRelativeLocation, reinterpret_cast<void**>(&g_set_relative_location)}, // card 524
     {&offsets::FBodyInstanceCore_ShouldInstanceSimulatingPhysics, reinterpret_cast<void**>(&g_body_simulating)},
     {&offsets::USkeletalMeshComponent_GetSkeletalCenterOfMass, reinterpret_cast<void**>(&g_skeletal_com)}, // card 132
     {&offsets::FBodyInstance_GetUnrealWorldTransform, reinterpret_cast<void**>(&g_pose_body_world)}, // card 132 pose
@@ -3438,6 +3579,7 @@ const CallSpec kCallsUbw[] = {
     // card 029: weapon, mech and turret audit
     {&offsets::ASTEnemyBase_StaticClass, reinterpret_cast<void**>(&g_enemy_class)},
     {&offsets::UADTargetComponent_FindTargetData, reinterpret_cast<void**>(&g_c103_find)}, // card 103
+    {&offsets::UADTargetComponent_FindPrimaryTargetData, reinterpret_cast<void**>(&g_c532_find_primary)}, // card 532
     {&offsets::ASTTicketManager_RefreshTicketLimits, reinterpret_cast<void**>(&g_c111_refresh)}, // card 111
     {&offsets::ASTEncounterManagerBase_GetCurrentWaveID, reinterpret_cast<void**>(&g_c503_wave_id)}, // card 503
     {&offsets::ASTEnemyBase_GetSizeForZone, reinterpret_cast<void**>(&g_c122_size)}, // card 122
@@ -3530,6 +3672,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::USTGameInstance_GetCurrentChapterKillZ, reinterpret_cast<void**>(&g_get_chapter_kill_z)}, // card 046
     {&offsets::UADHealthUtilityLibrary_DealDamageTags, reinterpret_cast<void**>(&g_health_deal_damage)}, // card 048
     {&offsets::USTSaveComponent_GetSaveId, reinterpret_cast<void**>(&g_get_save_id)}, // card 048
+    {&offsets::USTSaveComponent_StaticClass, reinterpret_cast<void**>(&g_c531_static_class)}, // card 531
     {&offsets::IEnhancedInputSubsystemInterface_RemoveMappingContext, reinterpret_cast<void**>(&g_remove_mapping_context)}, // card 048
     {&offsets::UWorld_GetSubsystem_LevelObjective, reinterpret_cast<void**>(&g_c49_get_subsystem)}, // card 049
     {&offsets::USTLevelObjectiveSubsystem_DoesObjectiveExistForID, reinterpret_cast<void**>(&g_c49_exists)}, // card 049

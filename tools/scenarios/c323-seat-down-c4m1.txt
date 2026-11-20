@@ -1,0 +1,96 @@
+# Card 323, last "Done when" item (senior draft, 2026-11-19): a client that rejoins while the host sits on a turret,
+# and again while the host is downed, sees each state within 2 s, and the digest round after each rejoin reads 0.
+# The mech seat is already proved (c447b177c, card452 refused as piloted). Plan and trace: card 323, "Plan for the
+# last Done when item". Three instances (CLIENT2=1): client2 stays Up, so the host's Downed entry is not all down while
+# the client is away (card 366). The bleedout is 30 s; a C4M1 rejoin took about 10 s in c447b177c (lines 50 to 71).
+# Predictions (written before the run):
+#  T1. Host turret mount: the host's pawn becomes the turret (`host wait state pawn=other`).
+#  T2. After the client's rejoin, within 2 s of its "screen prompt ready" row:
+#      `card323: client seat seen: BP_MountableTurret_C... occupied (player state ...)`. This row needs the one-shot
+#      client row from the card 323 plan (b264 or later). On b263 the wait is a try and only the shot shows it.
+#  T3. The client shot from 600 uu shows the host's soldier on the turret.
+#  D1. `host down host`: the host row -> Downed, and client2's card043 row Up -> Downed.
+#  D2. After the client's rejoin: the host row "Down join replay to <pc>: N of M entries sent" with N >= 1, then the
+#      client's card043 row "other pawn ... (host slot 0) ... -> Downed" within 2 s of the host's replay row.
+#  G.  Digest rounds after each rejoin: mismatches 0. 0 EXCEPTION and 0 FATAL on all three logs.
+# Run: systemd-run --user --scope -q -p MemoryMax=16G taskset -c 4-7,12-15 nice -n 10 env LANE=2 CLIENT2=1
+#      SCENARIO=tools/scenarios/c323-seat-down-c4m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c323a 600
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
+void unless client2 dll 4c265abd554c8232
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client2 wait state map=FED_C4M1 pawn=client-own timeout=180
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+try client ui continue
+try client2 wait log "card135: client t=\d+ screen prompt ready" timeout=60
+try client2 ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+# --- T. The host mounts the turret nearest the landing (c447-c4m1 line 148 shape), bugs cleared by code first.
+host mark
+host warp actor BP_MountableTurret_C 90 behind
+host wait log "cmd: \d+ warp: own pawn BP_PlayerCharacterMI_C \(\S+, \S+, \S+\) -> \(\S+, \S+, \S+\), \d+ uu from BP_MountableTurret_C" since-mark timeout=5
+host clear 4000 kill
+sleep 2
+host look actor BP_MountableTurret_C
+host key E
+host wait state pawn=other timeout=10
+host shot c323-host-on-turret
+# T2. The client leaves and rejoins while the host sits on the turret.
+host mark
+client mark
+client disconnect
+client wait log "reconnected \(" since-mark timeout=120
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=120
+client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+try client wait log "card323: client seat seen: BP_MountableTurret_C\S* occupied" since-mark timeout=2
+try client ui continue
+client wait state pawn=client-own timeout=120
+# T3. Client shot of the host on the turret from 600 uu.
+client mark
+host warp client BP_MountableTurret_C 600
+client look actor BP_MountableTurret_C 150
+sleep 1
+client shot c323-sees-turret
+# digest round: card 323 rejoin, host on the turret
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# The host leaves the turret.
+host key E
+host wait state pawn=host-own timeout=10
+# --- D. The host is downed while client2 stays Up; the client rejoins inside the 30 s bleedout.
+host mark
+client mark
+client2 mark
+host clear 1500 kill
+host down host
+host wait log "card043: host t=\d+ BP_PlayerCharacter\w+ \(host-own, slot 0\) -> Downed" since-mark timeout=10
+client2 wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) Up -> Downed" since-mark timeout=10
+host shot c323-host-downed
+client disconnect
+client wait log "reconnected \(" since-mark timeout=60
+client wait log "possess: AcknowledgePossession\(.*Pawn \S+ BP_PlayerCharacter\w+" since-mark timeout=60
+host wait log "card323: host t=\d+ Down join replay to \S+: [1-9]\d* of \d+ entries sent" since-mark timeout=30
+client wait log "card043: client t=\d+ other pawn guid 0x[0-9a-f]+ \(host slot 0\) \w+ -> Downed" since-mark timeout=15
+try client wait log "card135: client t=\d+ screen prompt ready" since-mark timeout=60
+try client ui continue
+client wait state pawn=client-own timeout=120
+client shot c323-rejoin-downed
+# digest round: card 323 rejoin, host downed
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client2 quit
+client quit
+host quit

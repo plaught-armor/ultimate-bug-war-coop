@@ -15,7 +15,7 @@ import os
 import sys
 
 DLL = sys.argv[1] if len(sys.argv) > 1 else "0000000000000000"
-BLOCKS = 36  # b241: 36 (the once-only second satchel hold adds a step per block); b235: 37 (the nest kill wait after each G adds 4 steps per block); b223: 39 still fits (the satchel E retries add 4 steps per block: 2490 of the 2600 cap); b215: 39 (the satchel warps and the none-branch clear add 2 steps per block); b214: 41 (the use look front/behind fallback adds 4 steps per block); b212: 44 (the marker 5 s wait adds a step per block); 45 was under the 2500 step cap with the b209 satchel site warps, the b210 pickup warp and card 485 shot steps; 22 ids plus their count rows (Park_SO1_A..C, Park_SO2_A..E, Stadium_SO1_A..D) and markers
+BLOCKS = 42  # 2026-11-19 c247b299a: 36 ran out at Finale_SO2b (SO2a, SO5, SO6, the O1 end had no block), drive.py MAX_STEPS 3200; b241: 36 # b241: 36 (the once-only second satchel hold adds a step per block); b235: 37 (the nest kill wait after each G adds 4 steps per block); b223: 39 still fits (the satchel E retries add 4 steps per block: 2490 of the 2600 cap); b215: 39 (the satchel warps and the none-branch clear add 2 steps per block); b214: 41 (the use look front/behind fallback adds 4 steps per block); b212: 44 (the marker 5 s wait adds a step per block); 45 was under the 2500 step cap with the b209 satchel site warps, the b210 pickup warp and card 485 shot steps; 22 ids plus their count rows (Park_SO1_A..C, Park_SO2_A..E, Stadium_SO1_A..D) and markers
 HOLD_ROUNDS = 4
 WAVE_LEFT = 'max-left=99'  # a clear inside a wave hold runs while the level script still spawns waves (c245 b196)
 NEST = 'BP_DestructibleSpawner_Bugnest_HumanGameplay_C'  # the class `objective now` actor[0] rows print
@@ -255,7 +255,13 @@ def block(n):
     for _ in range(HOLD_ROUNDS):
         when(HAS, 'host clear 4000 kill ' + WAVE_LEFT)
         when(HAS, 'try host objective wait {g1} 3')
-    when(HAS, r'try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8')
+    # c247b303a: six 8 s client timeouts. A marker step the host ends by "guide marker ended by" (another step that
+    # shares its actor completed) sends no Complete for {g1}, and a failed wait sends none either, so the client
+    # replay never comes. The client wait runs only when the block's last host wait was done and no marker-ended row
+    # came after this block's `objective now` row.
+    when(HAS, r'when host last "cmd: \d+ objective wait \w+ (3|5|15) -> " "done" '
+              r'when host last "(c284: objective wait \w+: guide marker ended by|cmd: \d+ objective now)" "cmd: " '
+              r'try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?{g1}\)" timeout=8')
     # b238 (c247b237a: the current step Research_SO3_C, a satchel site with no charge carried, held six blocks while the
     # Research_SO1 PanelSwitches were never tried): when the block's last wait for the step failed, `objective next`
     # makes the next doable step current (sparse order, wrap; a satchel site no player can interact with is skipped),
@@ -396,8 +402,42 @@ def main():
     digest('map end')
     # C5M2 is the last FED mission: Finale_O1 (dropship C_2 boarding) runs End The Level +27 s, then EndLevel @9540.
     # No next map is known statically; the end waits on the EndLevel row and both sides' final shots.
+    # c247b302a (b302): every Finale step but SO1Dumb and SO5 completed, the transport landed 3.5 s after SO7
+    # (DescendToLandCompleted 0 -> 0), and nobody boarded it, so Finale_O1 never completed. The board recipe is
+    # gen_c243.py board() (proven on HydroDam): client E first (EnterDropship row), then host E until the done row.
+    # c247b302b: the host's send row is `card049: host sent CompleteObjective(Finale_O1) ...` (no t=), so the old
+    # `host t=\d+ (sent )?` pattern never matched; the level ended (debrief on both screens) while the gate kept pressing E.
+    done = r'card049: host (t=\d+ )?(sent )?Complete\w*Objective\((\w+, )?Finale_O1\)'
+    landed = (r'collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship_C, LocalRole 3\) '
+              r'player-inside flag 0 -> 0')
+    ship = 'BP_PlayerTransportDropship_C_2'
+    gate = f'unless host log "{done}" count=1 '
     out.extend(['host objectives', 'client objectives', 'host shot c247-end', 'client shot c247-end',
-                r'try host wait log "card049: host t=\d+ (sent )?Complete\w*Objective\((\w+, )?Finale_O1\)" timeout=60',
+                f'try host wait log "{landed}" timeout=180',
+                f'try host warp client {ship} 400', f'try client look actor {ship} within=800',
+                'client shot c247-board', 'client mark', 'client key E',
+                'try client wait log "collision: client EnterDropship" since-mark timeout=10'])
+    for _ in range(3):
+        out.extend([gate + f'try host warp actor {ship} 400', gate + f'try host look actor {ship} within=800',
+                    gate + 'host key E', gate + f'try host wait log "{done}" timeout=10'])
+    # c247b302b: `host travel restart` at the debrief loaded no map, so no map-end rows (card523, card521 client,
+    # card330) were written. The exit is the gen_c244 tail(): Next on WB_TrooperLevelEnd until the frontend loads on
+    # both sides; that travel writes the map-end rows. The C5M2 debrief's input row comes from BP_HUD_Manager, not
+    # WB_TrooperLevelEnd, so the gate is the card260 EndLevel row.
+    end = r'card260: host EndLevel, sent to '
+    front = r'card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 2\)'
+    front_c = r'card052: t=\d+ world 3D_Frontend \(package /Game/Maps/3D_Frontend/3D_Frontend, net mode 3\)'
+    lg = f'when host last "{end}" "." '
+    out.extend(['host mark', 'client mark', f'try host wait log "{done}" timeout=30'])
+    # c247b311a: SpaceBar after Finale_O1 did not shorten the end: the 27 s is the level script's
+    # CallFunctionWithDelay 27.0 'End The Level' (card493 row), a scripted outro with no skip path.
+    out.append(f'try host wait log "{end}" timeout=60')
+    for _ in range(8):
+        out.append(lg + f'unless host log "{front}" count=1 host ui click BndEvt__TrooperLevelEnd_WB_Button_Next')
+        out.append(lg + f'try host wait log "{front}" timeout=3')
+    out.extend([lg + f'host wait log "{front}" timeout=120', lg + f'client wait log "{front_c}" timeout=60',
+                lg + r'try host wait log "card330: host map FED_C5M2 step " timeout=30',
+                lg + r'try client wait log "card330: client map FED_C5M2 step " timeout=30',
                 'client quit', 'host quit'])
     print('\n'.join(out))
 

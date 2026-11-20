@@ -374,6 +374,72 @@ void c136_log_own(const C136Call& c, const void* owner) {
               c.at.z, owner != nullptr ? class_name(owner).text : "-");
 }
 
+// Card 518 (diagnostic): the client's blocked outermost calls by asset (a cue by its tag), with the first owner's class
+// and how many ran inside an anim notify. Compared with the host's card329 rows per asset, it shows which effects the
+// client already makes itself (footsteps from its own bug animations) and could keep instead of a host row.
+// Step e: the host counts its own outermost calls in the same table, before any send filter, so the two sides' call
+// counts per asset compare directly (c263L317: client AI Morita shot sound 6,920 blocked against 2,357 host rows).
+// Card 518 step h: 128 rows were full in c263L322 (156 calls not counted), so the table holds 256.
+constexpr int32_t kC518Blocked = 256;
+constexpr int32_t kC518BlockedLines = 16;
+struct C518Blocked {
+    const void* asset;
+    uint64_t tag;
+    const void* owner_class;
+    uint32_t n;
+    uint32_t in_notify;
+};
+struct C518BlockedTable {
+    int32_t n;
+    uint32_t unrowed;
+    C518Blocked rows[kC518Blocked];
+};
+C518BlockedTable g_c518_blocked{}; // game thread only (the client's effect calls run there)
+
+void c518_note_blocked(const C136Call& c, const void* owner) {
+    C518BlockedTable& t = g_c518_blocked;
+    if (g_is_in_game_thread != nullptr && !g_is_in_game_thread()) {
+        ++t.unrowed; // the table is game thread only
+        return;
+    }
+    int32_t i = 0;
+    while (i < t.n && !(t.rows[i].asset == c.asset && t.rows[i].tag == c.tag)) {
+        ++i;
+    }
+    if (i == t.n && t.n >= kC518Blocked) {
+        ++t.unrowed;
+        return;
+    }
+    if (i == t.n) {
+        t.rows[t.n++] = C518Blocked{c.asset, c.tag, owner != nullptr ? read_ptr(owner, kObjectClass) : nullptr, 0, 0};
+    }
+    ++t.rows[i].n;
+    t.rows[i].in_notify += t_c136_notify != nullptr ? 1u : 0u;
+}
+
+// The kC518BlockedLines largest rows, then the table starts over.
+void c518_blocked_lines(const char* when) {
+    C518BlockedTable& t = g_c518_blocked;
+    for (int32_t line = 0; line < kC518BlockedLines && line < t.n; ++line) {
+        int32_t best = line;
+        for (int32_t j = line + 1; j < t.n; ++j) {
+            best = t.rows[j].n > t.rows[best].n ? j : best;
+        }
+        const C518Blocked r = t.rows[best];
+        t.rows[best] = t.rows[line];
+        t.rows[line] = r;
+        log::line("card518: %s (%s) %s: %u calls, %u in an anim notify, first owner %s",
+                  g_client_session ? "client fx blocked" : "host fx calls", when,
+                  r.asset != nullptr ? object_name(r.asset).text : fname_text(&r.tag).text, r.n, r.in_notify,
+                  r.owner_class != nullptr ? object_name(r.owner_class).text : "-");
+    }
+    if (t.unrowed != 0) {
+        log::line("card518: %s (%s): %u calls not counted (table of %d full)",
+                  g_client_session ? "client fx blocked" : "host fx calls", when, t.unrowed, kC518Blocked);
+    }
+    t = C518BlockedTable{};
+}
+
 } // namespace
 
 // Both sides, before the capture point's original runs. Returns the event id (0: inner, client, or no event).
@@ -387,6 +453,9 @@ uint32_t c136_fx_enter(const C136Call& c) {
             ++(t.blocked ? g_c136.counts.blocked_outer : g_c136.counts.kept_outer);
             if (!t.blocked && !t.playing && c.point != C136Point::CueHandle) {
                 c136_log_own(c, owner);
+            }
+            if (t.blocked) {
+                c518_note_blocked(c, owner);
             }
         }
         return 0;
@@ -413,6 +482,7 @@ uint32_t c136_fx_enter(const C136Call& c) {
     t.outer_id = id;
     c136_log_event(id, c, of);
     const void* const owner = c136_owner(c);
+    c518_note_blocked(c, owner); // card 518 step e: the host's own calls per asset, before the send filters
     c136_net_queue(id, c, owner, c136_event_instigator(c, owner), c136_key(owner, c), of);
     return id;
 }
@@ -615,7 +685,6 @@ bool c136_attack_local(const C136Call& c, const void* owner) {
 namespace {
 
 constexpr size_t kComponentScale = 0x220;        // ComponentToWorld scale (remote_body.cpp)
-constexpr size_t kNiagaraPoolingMethod = 0x650;  // UNiagaraComponent::PoolingMethod (ReleaseToPool: cmpb $0x2)
 constexpr uint8_t kNiagaraManualRelease = 2;     // ENCPoolMethod::ManualRelease
 constexpr int32_t kC409Assets = 48;
 constexpr int32_t kC418Classes = 16;
@@ -747,6 +816,11 @@ void c409_table_line(C409Table& t, const char* card, const char* when, const cha
 }
 
 } // namespace
+
+// Card 526: the client's discard of a host-sent component (c409_discard), for the attached-spawn detours.
+void c136_discard_component(void* comp) {
+    c409_discard(comp);
+}
 
 // Card 409 step 2, from detour_c136_activate: true when this Activate was the thunk's spawn (handled here).
 bool c409_activate_spawn(void* component, bool reset) {
@@ -1060,11 +1134,13 @@ void c136_report(const char* when, bool keep_state) {
         log::line("card136: host fx map totals (%s): %u events (%s ), %u skips, live peak %d of %d, %u not remembered (set "
                   "full), %u found dead, net mode %u, %u standalone calls skipped", when, total, per_point, k.skips,
                   g_c136.live.peak, kC136Live, k.full, k.dropped, g_c136.net_mode, g_c136.standalone_skips);
+        c518_blocked_lines(when);
     }
     if (g_client_session) {
         log::line("card136: client fx block map totals (%s): %u outermost calls blocked, %u kept, %u effect calls skipped; "
                   "engine cue copies %u dropped, %u kept (own)",
                   when, k.blocked_outer, k.kept_outer, k.blocked_calls, k.cue_dropped, k.cue_kept);
+        c518_blocked_lines(when);
     }
     c136_setvar_dump();
     c409_report(when);

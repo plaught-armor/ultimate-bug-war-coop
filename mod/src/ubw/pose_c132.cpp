@@ -9,7 +9,7 @@
 //
 // Payload: binary, base64 on the wire. Root (body 0) world position as 3 float32, then per body (in Bodies order; one
 // physics asset, so one order on both sides) the position relative to the root as 3 int16 in kPoseUnit uu and the
-// rotation as 4 int16 (quaternion times 32767). Frames: "P <guid> <snap> <part> <parts> <bodies> <flags> <b64>",
+// rotation as 4 int16 (quaternion times 32767); frames carry the card 521 wire form (pose_wire_pack). Frames: "P <guid> <snap> <part> <parts> <bodies> <flags> <b64>",
 // chunked to kChanTextMax; parts arrive in order on the reliable channel. Removal: "R <guid>".
 //
 // The client resolves the guid and, once its own copy simulates with the same body count, sets every body to the host's
@@ -106,6 +106,13 @@ constexpr uint32_t kPoseBlockLines = 40;      // client: card 146 block lines pe
 constexpr uint32_t kPoseHiddenLines = 40;    // host: hidden-mesh ragdoll trace lines per map
 constexpr double kPoseFellUu = 1000.0;       // host: body 0 this far below its start z fell through the world
 constexpr uint8_t kPoseStream = 8;           // card 152: a stream sample, not a snap (the snap field is the sample number)
+// Card 521 step 2: a stream sample sent as zigzag varint deltas from the row's previous sample (stream_base). Every
+// kPoseWholeEvery-th sample goes whole, so a client that missed one waits at most that many samples.
+constexpr uint8_t kPoseDelta = 16;
+constexpr uint16_t kPoseWholeEvery = 8;
+constexpr uint32_t kC524Rows = 80; // card 524: per-guid start offset rows per map
+constexpr ULONGLONG kPoseLateMs = kPoseStepMs + 100; // card 523: a chained sample this late held the copy 100+ ms
+constexpr uint32_t kPoseDeltaLines = 20;     // client: delta miss rows per map
 constexpr int32_t kPoseStreamPerStep = 24;   // host: stream samples per step (card 152 cap arithmetic: 42.9 KB/s)
 // Host: a PC whose pace queue holds more frames than this has the mod channel backed up; a stream sample is replaceable
 // by the next one, so it is skipped for this step rather than queued behind the backlog. 8 frames is two steps of a
@@ -224,6 +231,10 @@ struct PoseRow {
     bool stream_due;         // host: this step's sample moved and no snap is due (sent by pose_stream_send)
     ULONGLONG stream_at;     // host: when the row's last stream sample went (oldest first over the cap)
     uint16_t stream_seq;     // host: stream samples sent; client: the last one received
+    // Card 521 step 2: the last stream sample in its 14 B form. Host: the last one broadcast, as the client decodes it
+    // (wire-rounded). Client: the last one decoded, the base of the next delta (seq stream_seq + 1). Snaps leave it.
+    uint8_t stream_base[kPoseBlob];
+    size_t stream_base_n;
     bool streamed;           // client: a stream sample came; the copy simulates with gravity off while it streams
     bool live;               // client: r.blob is a stream sample, so pose_stream_tick moves the bodies toward it
     uint8_t prev[kPoseBlob]; // client: the sample before r.blob (same body count), where the move starts
@@ -233,6 +244,10 @@ struct PoseRow {
     uint64_t bone0;          // client: FName of body 0's bone (SkeletalBodySetups[0].BoneName)
     Vec3 hold_root;          // client: body 0 when the copy's stream started
     bool grav_off;           // client: pose_grav_off turned the streamed copy's gravity off; pose_grav_on undoes it
+    bool own_fall;           // client (card 523): started at sample 0 with gravity on, falling on its own to sample 1
+    Vec3 own_off;            // client (card 523 r2): sample 0's body 0 minus the copy's body 0 at the own-fall start
+    Vec3 own_done;           // the part of own_off already moved (pose_own_shift)
+    ULONGLONG own_at;        // the own-fall start
     bool sim_warned;         // client: the copy would not simulate at its stream start (one WARN per row)
     Vec3 target0;            // client: the last target pose_stream_move set on body 0
     bool bone_again;         // client (card 186): a frozen final's bone check is read once more on the next tick
@@ -295,6 +310,26 @@ struct PoseJournal {
     // samples skipped over the backlog; peaks of rows moving at once, samples in one step and the pace queue depth.
     uint32_t stream_lines, st_samples, st_bytes, st_cap_hits, st_deferred, st_backlog_skips, st_backlog_peak;
     int32_t st_moving_peak, st_step_peak;
+    // Card 521 step 2. Host: samples sent as deltas and whole, with their wire bytes (before base64). Client: deltas
+    // applied, deltas refused for a missing base (a gap in the sample numbers or a body count change), miss rows.
+    uint32_t c521_deltas, c521_wholes, c521_delta_bytes, c521_whole_bytes, c521_rx_deltas, c521_misses, c521_lines;
+    // Card 521 diag, host: over every sample that could go as a delta, the zigzag varint length of each field's
+    // change (position fields [0], rotation fields [1]; 1, 2, 3 bytes), bodies whose quaternion flipped sign against
+    // the base (every rotation field then moves by about twice its value), and samples sent whole because the delta
+    // was not shorter.
+    uint32_t c521_vlen[2][3], c521_flips, c521_body_n, c521_big;
+    // Card 521 step 4 diag: rotation field deltas (in kPoseRotStep units) by size bucket, split by whether the body's
+    // position moved more than 1 unit in the same delta (0 at rest, 1 moving), and the 2 B or larger ones by field.
+    uint32_t c521_rot_hist[2][6], c521_rot_big_field[4];
+    // Card 523, client: own-fall starts, hand-overs at sample 1 (and those that fell back to a teleport), the body 0
+    // distance from the own fall to sample 1 at the hand-over (sum, worst), and chained samples that came more than
+    // kPoseLateMs after the one before (the copy held still at the last sample meanwhile), with the longest gap.
+    uint32_t c523_falls, c523_handovers, c523_teleports, c523_late, c523_gap_max;
+    double c523_hand_sum, c523_hand_max;
+    uint32_t c524_rows; // card 524: per-guid own-fall start offset rows written this map (capped)
+    uint32_t c524_hand_rows; // card 524: per-guid hand-over rows written this map (capped)
+    uint32_t c523_unfreeze_kept; // card 523 r3: unfreeze snaps that came during an own fall (the fall kept)
+    double c523_off_sum, c523_off_max; // card 523 r2: the copy's body 0 distance from sample 0 at the own-fall start
     // Card 152, client: samples received; copies held; own ragdolls stopped for a hold; finals posed held; the game's
     // own SetAllBodiesSimulatePhysics(1) undone on a held copy; game starts blocked waiting for a row; bone checks.
     uint32_t st_rx, st_holds, st_stopped, st_finals, st_reholds, st_wait_blocks, st_bone_checks;
@@ -379,8 +414,14 @@ struct C291Client {
     uint32_t wait_ms[kC291Waits];
     int32_t wait_n;
     uint32_t lines, rows, same, replayed, from_row, unnamed, unresolved;
+    // Card 524: death edges whose mesh was put back on its actor, those with a smoothing offset over kC524OffUu, the
+    // largest offset, and the per-guid rows written.
+    uint32_t c524_resets, c524_over, c524_lines;
+    double c524_max;
 };
 C291Client g_c291{}; // game thread
+constexpr double kC524OffUu = 30.0;
+constexpr uint32_t kC524Lines = 60;
 
 C291Death* c291_find(uint64_t guid) {
     for (int32_t i = 0; guid != 0 && i < kC291Deaths; ++i) {
@@ -453,6 +494,200 @@ size_t b64_decode(const char* in, size_t n, uint8_t* out, size_t cap) {
 int16_t pose_i16(double v) {
     const double r = v < -32767.0 ? -32767.0 : v > 32767.0 ? 32767.0 : v;
     return static_cast<int16_t>(lround(r));
+}
+
+// Card 521: the wire form of a blob (the row keeps the 14 B body form above; only frames use this one). The head goes
+// as it is. Each body keeps its 3 int16 positions and sends its rotation as the three components other than the
+// largest ("smallest three"), times kPoseWireScale: a unit quaternion's other components lie within 1 / sqrt(2). The
+// largest is made positive (q and -q are one rotation; the stream's blend takes the shorter arc) and rebuilt from the
+// other three. The dropped component's index follows the bodies, 2 bits per body, 4 bodies per byte. A gone body
+// (pose_encode's all-zero marker) sends INT16_MIN as its first component, a value pose_i16 never makes.
+constexpr size_t kPoseWireBodyBytes = 12;
+constexpr double kPoseWireScale = 32767.0 * 1.4142135623730951;
+
+size_t pose_wire_bytes(int32_t bodies) {
+    const size_t n = static_cast<size_t>(bodies);
+    return kPoseHeadBytes + n * kPoseWireBodyBytes + (n + 3) / 4;
+}
+
+// Host: blob (bodies in the 14 B form) to its wire form; returns the wire length.
+size_t pose_wire_pack(const uint8_t* blob, int32_t bodies, uint8_t* out) {
+    memcpy(out, blob, kPoseHeadBytes);
+    uint8_t* const index = out + kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseWireBodyBytes;
+    memset(index, 0, (static_cast<size_t>(bodies) + 3) / 4);
+    for (int32_t i = 0; i < bodies; ++i) {
+        int16_t v[7];
+        memcpy(v, blob + kPoseHeadBytes + static_cast<size_t>(i) * kPoseBodyBytes, sizeof(v));
+        int16_t w[6] = {v[0], v[1], v[2], INT16_MIN, 0, 0};
+        int32_t big = 0;
+        double len = 0.0;
+        for (int32_t k = 0; k < 4; ++k) {
+            big = abs(v[3 + k]) > abs(v[3 + big]) ? k : big;
+            len += static_cast<double>(v[3 + k]) * v[3 + k];
+        }
+        if (len > 0.0) {
+            const double s = (v[3 + big] < 0 ? -1.0 : 1.0) / sqrt(len) * kPoseWireScale;
+            for (int32_t k = 0, j = 3; k < 4; ++k) {
+                w[j] = k == big ? w[j] : pose_i16(v[3 + k] * s);
+                j += k == big ? 0 : 1;
+            }
+            index[i / 4] = static_cast<uint8_t>(index[i / 4] | big << (i % 4 * 2));
+        }
+        memcpy(out + kPoseHeadBytes + static_cast<size_t>(i) * kPoseWireBodyBytes, w, sizeof(w));
+    }
+    return pose_wire_bytes(bodies);
+}
+
+// Client: a wire form back to the 14 B body form; false when the length does not match the body count.
+bool pose_wire_unpack(const uint8_t* in, size_t n, int32_t bodies, uint8_t* blob, size_t& blob_n) {
+    if (bodies < 1 || bodies > kPoseBodies || n != pose_wire_bytes(bodies)) {
+        return false;
+    }
+    memcpy(blob, in, kPoseHeadBytes);
+    const uint8_t* const index = in + kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseWireBodyBytes;
+    for (int32_t i = 0; i < bodies; ++i) {
+        int16_t w[6];
+        memcpy(w, in + kPoseHeadBytes + static_cast<size_t>(i) * kPoseWireBodyBytes, sizeof(w));
+        int16_t v[7] = {w[0], w[1], w[2], 0, 0, 0, 0};
+        if (w[3] != INT16_MIN) {
+            const int32_t big = index[i / 4] >> (i % 4 * 2) & 3;
+            double c[3], sum = 0.0;
+            for (int32_t j = 0; j < 3; ++j) {
+                c[j] = w[3 + j] / kPoseWireScale;
+                sum += c[j] * c[j];
+            }
+            const double large = sqrt(fmax(0.0, 1.0 - sum));
+            for (int32_t k = 0, j = 0; k < 4; ++k) {
+                v[3 + k] = pose_i16((k == big ? large : c[j]) * 32767.0);
+                j += k == big ? 0 : 1;
+            }
+        }
+        memcpy(blob + kPoseHeadBytes + static_cast<size_t>(i) * kPoseBodyBytes, v, sizeof(v));
+    }
+    blob_n = kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseBodyBytes;
+    return true;
+}
+
+// Card 521 step 2, the delta wire form of a stream sample: the head raw, then every int16 field of every body (14 B
+// form, 7 per body) as the zigzag varint of (cur - base), 7 bits per byte, low first. |cur - base| <= 65535, so a
+// field takes at most 3 bytes. A gone body is all zero in both forms and needs no marker.
+// Card 521 step 3 (c263l: 72 percent of rotation fields took 2 B): the 4 rotation fields of a body go in units of
+// kPoseRotStep, rounded, so the client's result lies within kPoseRotStep / 2 of the host's sample (about 0.014
+// degrees). Before that, when the sample's quaternion points away from the base's (dot < 0), the sample's rotation
+// is negated (q and -q are one rotation; pose_stream_tick blends on the shorter arc), so a sign flip costs no bytes.
+// The host keeps as its next base the result the client decodes (pose_delta_unpack of the packed delta), so the
+// rounding never builds up over a chain.
+constexpr int32_t kPoseVarintMax = 3;
+constexpr int32_t kPoseRotStep = 8;
+
+// Host: true when cur's body quaternion points away from base's (dot < 0); the delta then sends cur's negation.
+bool pose_delta_flip(const uint8_t* base, const uint8_t* cur, int32_t body) {
+    int16_t b[7], c[7];
+    memcpy(b, base + kPoseHeadBytes + static_cast<size_t>(body) * kPoseBodyBytes, sizeof(b));
+    memcpy(c, cur + kPoseHeadBytes + static_cast<size_t>(body) * kPoseBodyBytes, sizeof(c));
+    int64_t dot = 0;
+    for (int32_t k = 3; k < 7; ++k) {
+        dot += static_cast<int64_t>(b[k]) * c[k];
+    }
+    return dot < 0;
+}
+
+// Host: the zigzag value of field f (0 to 6) of a body, base b to cur c. Positions (f < 3) go in steps of 1.
+// Rotations go in kPoseRotStep units, rounded half away from zero, from the negated c when flip; a result outside
+// +-32767 moves one unit back toward the base (the unpack refuses anything outside int16). Inputs are within
+// +-32767 (pose_i16 and this clamp), so -c fits.
+uint32_t pose_delta_z(int16_t b, int16_t c, int32_t f, bool flip) {
+    int32_t d = static_cast<int32_t>(c) - b;
+    if (f >= 3) {
+        const int32_t diff = (flip ? -static_cast<int32_t>(c) : static_cast<int32_t>(c)) - b;
+        d = (diff >= 0 ? diff + kPoseRotStep / 2 : diff - kPoseRotStep / 2) / kPoseRotStep;
+        const int32_t v = b + d * kPoseRotStep;
+        d += v > 32767 ? -1 : (v < -32767 ? 1 : 0);
+    }
+    return d < 0 ? (static_cast<uint32_t>(-d) << 1) - 1 : static_cast<uint32_t>(d) << 1;
+}
+
+// Host: base and cur hold `bodies` bodies each. Returns the delta wire length, or 0 when it would reach `cap` (the
+// whole wire length; the sample then goes whole).
+size_t pose_delta_pack(const uint8_t* base, const uint8_t* cur, int32_t bodies, uint8_t* out, size_t cap) {
+    memcpy(out, cur, kPoseHeadBytes);
+    size_t at = kPoseHeadBytes;
+    const int32_t fields = bodies * 7;
+    bool flip = false;
+    for (int32_t i = 0; i < fields && at < cap; ++i) {
+        flip = i % 7 == 0 ? pose_delta_flip(base, cur, i / 7) : flip;
+        int16_t b = 0, c = 0;
+        memcpy(&b, base + kPoseHeadBytes + static_cast<size_t>(i) * 2, 2);
+        memcpy(&c, cur + kPoseHeadBytes + static_cast<size_t>(i) * 2, 2);
+        uint32_t z = pose_delta_z(b, c, i % 7, flip);
+        for (int32_t k = 0; k < kPoseVarintMax && at < cap; ++k) {
+            out[at++] = static_cast<uint8_t>((z & 0x7f) | (z > 0x7f ? 0x80 : 0));
+            z >>= 7;
+            k = z == 0 ? kPoseVarintMax : k;
+        }
+    }
+    return at < cap ? at : 0;
+}
+
+// Host (card 521 diag): counts where a delta's bytes go, by field kind and varint length (the same values
+// pose_delta_pack sends), and the bodies whose rotation was negated (dot < 0). Reads only; base and cur hold `bodies`
+// bodies in the 14 B form.
+void pose_delta_stats(const uint8_t* base, const uint8_t* cur, int32_t bodies) {
+    for (int32_t b = 0; b < bodies; ++b) {
+        const uint8_t* const pb = base + kPoseHeadBytes + static_cast<size_t>(b) * kPoseBodyBytes;
+        const uint8_t* const pc = cur + kPoseHeadBytes + static_cast<size_t>(b) * kPoseBodyBytes;
+        const bool flip = pose_delta_flip(base, cur, b);
+        bool moving = false;
+        for (int32_t f = 0; f < 7; ++f) {
+            int16_t x = 0, y = 0;
+            memcpy(&x, pb + f * 2, 2);
+            memcpy(&y, pc + f * 2, 2);
+            const uint32_t z = pose_delta_z(x, y, f, flip);
+            ++g_pose.c521_vlen[f < 3 ? 0 : 1][z < 0x80 ? 0 : (z < 0x4000 ? 1 : 2)];
+            moving = moving || (f < 3 && z > 2); // zigzag 3 and up: more than 1 unit either way
+            if (f >= 3) {
+                const uint32_t mag = (z + 1) >> 1; // |d| in kPoseRotStep units
+                const int32_t k = mag < 64 ? 0 : (mag < 128 ? 1 : (mag < 256 ? 2 : (mag < 512 ? 3 : (mag < 1024 ? 4 : 5))));
+                ++g_pose.c521_rot_hist[moving ? 1 : 0][k];
+                g_pose.c521_rot_big_field[f - 3] += k > 0 ? 1u : 0u;
+            }
+        }
+        g_pose.c521_flips += flip ? 1u : 0u;
+    }
+    g_pose.c521_body_n += static_cast<uint32_t>(bodies);
+}
+
+// Client: a delta wire form back to the 14 B form over `base` (`bodies` bodies). False on a truncated or long input,
+// a varint over kPoseVarintMax bytes, or a field outside int16.
+bool pose_delta_unpack(const uint8_t* base, const uint8_t* in, size_t n, int32_t bodies, uint8_t* blob, size_t& blob_n) {
+    if (bodies < 1 || bodies > kPoseBodies || n < kPoseHeadBytes) {
+        return false;
+    }
+    memcpy(blob, in, kPoseHeadBytes);
+    size_t at = kPoseHeadBytes;
+    const int32_t fields = bodies * 7;
+    for (int32_t i = 0; i < fields; ++i) {
+        uint32_t z = 0;
+        bool more = true;
+        for (int32_t k = 0; k < kPoseVarintMax && more; ++k) {
+            if (at >= n) {
+                return false;
+            }
+            z |= static_cast<uint32_t>(in[at] & 0x7f) << (7 * k);
+            more = (in[at++] & 0x80) != 0;
+        }
+        int16_t b = 0;
+        memcpy(&b, base + kPoseHeadBytes + static_cast<size_t>(i) * 2, 2);
+        const int32_t d = (z & 1) != 0 ? -static_cast<int32_t>((z + 1) >> 1) : static_cast<int32_t>(z >> 1);
+        const int32_t v = b + d * (i % 7 >= 3 ? kPoseRotStep : 1); // card 521 step 3: rotations in kPoseRotStep units
+        if (more || v < INT16_MIN || v > INT16_MAX) {
+            return false;
+        }
+        const int16_t c = static_cast<int16_t>(v);
+        memcpy(blob + kPoseHeadBytes + static_cast<size_t>(i) * 2, &c, 2);
+    }
+    blob_n = kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseBodyBytes;
+    return at == n;
 }
 
 // The mesh's body array and count; count 0 when unreadable or out of range.
@@ -730,10 +965,10 @@ struct PoseHead { // a frame's head fields: guid, snap (card 152: the sample num
     uint32_t flags;
 };
 
-// One blob's frames, to one PC (pc set) or to every ponged PC (world set).
-PoseSend pose_send_blob(const PoseHead& h, const uint8_t* blob, size_t blob_n, void* pc, const void* world) {
-    static char b64[kPoseB64 + 1];
-    const size_t n = b64_encode(blob, blob_n, b64);
+// A wire form's frames (card 521: whole or delta), to one PC (pc set) or to every ponged PC (world set).
+PoseSend pose_send_wire(const PoseHead& h, const uint8_t* wire, size_t wire_n, void* pc, const void* world) {
+    static char b64[kPoseB64 + 1]; // game thread
+    const size_t n = b64_encode(wire, wire_n, b64);
     const int32_t parts = static_cast<int32_t>((n + kPoseChunk - 1) / kPoseChunk);
     PoseSend s{};
     for (int32_t p = 0; p < parts; ++p) {
@@ -751,6 +986,17 @@ PoseSend pose_send_blob(const PoseHead& h, const uint8_t* blob, size_t blob_n, v
     return s;
 }
 
+// One blob's frames (14 B body form, sent in its whole wire form), to one PC or to every ponged PC.
+PoseSend pose_send_blob(const PoseHead& h, const uint8_t* blob, size_t blob_n, void* pc, const void* world) {
+    static uint8_t wire[kPoseBlob]; // game thread
+    const size_t want = kPoseHeadBytes + static_cast<size_t>(h.bodies) * kPoseBodyBytes;
+    if (h.bodies < 1 || h.bodies > kPoseBodies || blob_n != want) {
+        log::line("card521: host pose send refused: %d bodies, blob %zu bytes", h.bodies, blob_n);
+        return PoseSend{};
+    }
+    return pose_send_wire(h, wire, pose_wire_pack(blob, h.bodies, wire), pc, world);
+}
+
 // The row's frames (its last snap).
 PoseSend pose_send(const PoseRow& r, void* pc, const void* world) {
     return pose_send_blob(PoseHead{r.guid, r.snap, r.bodies, r.flags}, r.blob, r.blob_n, pc, world);
@@ -758,7 +1004,7 @@ PoseSend pose_send(const PoseRow& r, void* pc, const void* world) {
 
 double c191_body0_dist(const PoseRow& r, void* mesh);
 bool c191_bone0_world(const PoseRow& r, void* mesh, Vec3& out);
-void c359_mesh_to_body0(const PoseRow& r, void* mesh); // card 359 b191, below
+double c359_mesh_to_body0(const PoseRow& r, void* mesh, double off); // card 359 b191, below
 
 // Card 359 step 4 (diagnostic), host, at a settled or frozen final: bone 0 to body 0 on the host's own mesh, the
 // distance the client's freeze reads as its error (b129: 91 client WARN rows, constant per guid, bodies exact, blend
@@ -864,6 +1110,10 @@ void pose_hidden_trace(const PoseRow& r, void* mesh, void* const* bodies) {
 // Card 189: the floor trace channel is kEccWorldStatic (ue/actor.h, the card 264 trace_channel binding); the trace
 // length when the chapter kill z is not known (c46_kill_z 0: no game instance).
 constexpr double kC189NoKillZReach = 30000.0;
+// Card 525: a floor this far under body 0 is not a landing. Host long-fall rows over all logs to c247b303a: real drops
+// up to 25,162 uu, then nothing until 795,207 uu (geometry far under the map, about z -1.2M, hit by corpses that fell
+// through the floor). Those kept streaming as long falls at up to about 30,000 uu/s.
+constexpr double kC525MaxDropUu = 100000.0;
 constexpr double kC189SnapUu = 10.0; // host: body 0 moved more than this one sample after the stop: WARN
 
 void pose_hold(PoseRow& r, void* mesh); // below, with pose_release
@@ -935,16 +1185,18 @@ void pose_fell_check(PoseRow& r, void* mesh) {
     }
     r.fell = true;
     const Vec3 from = r.last[0];
-    const Vec3 to{from.x, from.y, have_kill ? kill_z : from.z - kC189NoKillZReach};
+    // c247b309a (FED_C5M2): the kill z there is about -3.4e38 (no kill plane), so the trace ran to it and the row
+    // printed that number. A floor past kC525MaxDropUu counts as none anyway, so the trace stops there.
+    const Vec3 to{from.x, from.y, have_kill ? fmax(kill_z, from.z - kC525MaxDropUu) : from.z - kC189NoKillZReach};
     const bool bound = owner != nullptr && g_line_trace_by_channel != nullptr && g_query_params_ctor != nullptr;
     const Vec3 floor = bound ? trace_channel(owner, from, to, kEccWorldStatic) : to;
-    if (floor.z > to.z + 1.0) {
+    if (floor.z > to.z + 1.0 && from.z - floor.z <= kC525MaxDropUu) {
         log::line("card189: host pose guid 0x%llx long fall, floor at z %.0f (%.0f uu below); body 0 z %.0f, start %.0f",
                   static_cast<unsigned long long>(r.guid), floor.z, from.z - floor.z, from.z, r.start_z);
         return;
     }
     log::line("card132: host pose guid 0x%llx fell through the world: body 0 z %.0f, start %.0f; no floor down to z "
-              "%.0f%s", static_cast<unsigned long long>(r.guid), from.z, r.start_z, to.z,
+              "%.0f (%.0f uu)%s", static_cast<unsigned long long>(r.guid), from.z, r.start_z, to.z, from.z - to.z,
               bound ? "" : " (trace not bound)");
     c189_stop(r, mesh, "no floor");
 }
@@ -1026,19 +1278,46 @@ uint32_t pose_stream_backlog(const void* world) {
     return depth;
 }
 
-// Host (card 152): a row's bodies now, as one stream frame labelled `seq`, to `pc` (null: every ponged PC), encoded
-// into its own buffer (the row's blob keeps the last snap). False when the bodies cannot be read or encoded.
-bool pose_stream_emit(const void* world, const PoseRow& r, uint16_t seq, void* pc, PoseSend& s, Vec3& root,
-                      int32_t& count) {
+// Host (card 152): a row's bodies now, as one stream sample labelled r.stream_seq to every ponged PC, encoded into its
+// own buffers (the row's blob keeps the last snap). Card 521 step 2: the sample goes as a delta from r.stream_base
+// unless its seq is a whole one (kPoseWholeEvery), the body count changed or the delta is not shorter; r.stream_base
+// then becomes this sample as the client decodes it. False when the bodies cannot be read or encoded.
+bool pose_stream_emit(const void* world, PoseRow& r, PoseSend& s, Vec3& root, int32_t& count, bool& delta) {
     void* const mesh = pose_mesh(r);
     count = 0;
+    delta = false;
     void* const* const bodies = mesh != nullptr ? pose_bodies(mesh, count) : nullptr;
     static uint8_t blob[kPoseBlob]; // game thread
-    size_t n = 0;
-    if (count == 0 || !pose_encode_to(mesh, bodies, count, blob, n, root)) {
+    static uint8_t rt[kPoseBlob];
+    static uint8_t wire[kPoseBlob];
+    static uint8_t dwire[kPoseBlob];
+    size_t n = 0, rt_n = 0;
+    if (count == 0 || !pose_encode_to(mesh, bodies, count, blob, n, root) ||
+        n != kPoseHeadBytes + static_cast<size_t>(count) * kPoseBodyBytes) {
         return false;
     }
-    s = pose_send_blob(PoseHead{r.guid, seq, count, kPoseStream}, blob, n, pc, world);
+    const size_t wn = pose_wire_pack(blob, count, wire);
+    if (!pose_wire_unpack(wire, wn, count, rt, rt_n)) {
+        return false;
+    }
+    const bool may = r.stream_seq % kPoseWholeEvery != 0 && r.stream_base_n == rt_n;
+    const size_t dn = may ? pose_delta_pack(r.stream_base, rt, count, dwire, wn) : 0;
+    if (may) {
+        pose_delta_stats(r.stream_base, rt, count);
+        g_pose.c521_big += dn == 0 ? 1u : 0u;
+    }
+    // Card 521 step 3: a delta's base for the next sample is what the client decodes from it (rotations rounded to
+    // kPoseRotStep, maybe negated), not rt. A delta that does not decode goes whole.
+    static uint8_t dec[kPoseBlob];
+    size_t dec_n = 0;
+    delta = dn != 0 && pose_delta_unpack(r.stream_base, dwire, dn, count, dec, dec_n) && dec_n == rt_n;
+    const uint32_t flags = kPoseStream | (delta ? kPoseDelta : 0u);
+    s = pose_send_wire(PoseHead{r.guid, r.stream_seq, count, flags}, delta ? dwire : wire, delta ? dn : wn, nullptr,
+                       world);
+    memcpy(r.stream_base, delta ? dec : rt, rt_n);
+    r.stream_base_n = rt_n;
+    (delta ? g_pose.c521_deltas : g_pose.c521_wholes) += 1;
+    (delta ? g_pose.c521_delta_bytes : g_pose.c521_whole_bytes) += static_cast<uint32_t>(delta ? dn : wn);
     return true;
 }
 
@@ -1047,7 +1326,8 @@ bool pose_stream_one(const void* world, PoseRow& r, ULONGLONG now) {
     PoseSend s{};
     Vec3 root{};
     int32_t count = 0;
-    if (!pose_stream_emit(world, r, r.stream_seq, nullptr, s, root, count)) {
+    bool delta = false;
+    if (!pose_stream_emit(world, r, s, root, count, delta)) {
         return false;
     }
     r.stream_at = now;
@@ -1433,6 +1713,7 @@ const char* pose_try_apply(PoseRow& r) {
     if (r.streamed && (r.flags & (kPoseStream | kPoseUnfreeze)) != 0) {
         return pose_stream_apply(r, npc, mesh, bodies);
     }
+    r.own_fall = false; // card 523: a final ends an own fall too (its gravity is still on, as for an unsettled final)
     r.sim_at_final = c39_mesh_simulating(mesh); // card 186 r2: the frozen-final bone diagnostic
     r.live = false; // gravity stays as it is: only a streamed copy has it off; a frozen final holds it off a tick
     const char* const no_physics = pose_collision_reason(npc, mesh);
@@ -1820,7 +2101,9 @@ void pose_freeze_step(PoseRow& r) {
         r.posed_frame = g_pose_frame;
         return;
     }
-    if (off > kC191BoneTolerance) {
+    // Card 505: the mesh fix runs before the bone check, so the WARN names only a copy still off body 0 after it.
+    const double after = c359_mesh_to_body0(r, mesh, off); // b191: before the world row, the host join reads it
+    if (after > kC191BoneTolerance) {
         // Card 359: an end tick count of 0 over the waits means the blend never ran on this copy (its end physics
         // tick registered but not ticking); the tick function's group, flag and interval bytes say why.
         const uint8_t* const tf = static_cast<const uint8_t*>(mesh) + kEndTickData - 0x18;
@@ -1829,19 +2112,22 @@ void pose_freeze_step(PoseRow& r) {
                   "%02x %02x %02x %02x, interval %.3f; at the last waited end tick bone 0 was %.1f uu off before the "
                   "blend and %.1f after (-1 = none seen); lowest body blend weight %.3f at the first wait, set to 1 on "
                   "every waited tick%s",
-                  static_cast<unsigned long long>(r.guid), off, static_cast<unsigned>(r.freeze_waits),
+                  static_cast<unsigned long long>(r.guid), after, static_cast<unsigned>(r.freeze_waits),
                   r.sim_at_freeze ? 1 : 0, static_cast<unsigned>(r.c191_pre), tf[0], tf[1], tf[2], tf[3],
                   static_cast<double>(read_f32(tf, 4)), static_cast<double>(r.c359_before),
                   static_cast<double>(r.c359_after), static_cast<double>(r.c359_weight), c359_client_text(mesh).text);
         log::line("card359: client guid 0x%llx frozen final%s", static_cast<unsigned long long>(r.guid),
                   c359_snap_text(r).text); // b187: own row, the WARN row is near the log line limit
+    } else if (off > kC191BoneTolerance) {
+        log::line("card191: client guid 0x%llx frozen with bone 0 %.1f uu off body 0 after %u wait tick(s), %.1f after "
+                  "the card359 mesh fix",
+                  static_cast<unsigned long long>(r.guid), off, static_cast<unsigned>(r.freeze_waits), after);
     } else if (r.freeze_waits != 0) {
         log::line("card191: client guid 0x%llx freeze waited %u tick(s) for bone 0, now %.1f uu from body 0; card359: lowest "
                   "body blend weight %.3f at the first wait",
                   static_cast<unsigned long long>(r.guid), static_cast<unsigned>(r.freeze_waits), off,
                   static_cast<double>(r.c359_weight));
     }
-    c359_mesh_to_body0(r, mesh); // b191: before the world row, so the host join reads the fixed bone 0
     Vec3 w{}; // b190: the client's final bone 0, set beside the host's card359 row for the same guid
     if (c191_bone0_world(r, mesh, w) && note_event_cap(g_pose.c359_world_lines, 200, "card359 client world")) {
         log::line("card359: client guid 0x%llx snap %u bone 0 world (%.1f, %.1f, %.1f) at the freeze",
@@ -2035,19 +2321,24 @@ void pose_bone_line(PoseRow& r, void* mesh, void* const* bodies, const char* wha
     const Vec3 at = read_vec3(mesh, kComponentTranslation);
     const Vec3 cs = pose_to_component(mesh, bone);
     const Vec3 sc = read_vec3(mesh, kComponentScale); // card 291: a scale off 1 would explain a constant bone 0 offset
+    // Senior 2026-11-19 (c243b273a guid 0x100, 12.9 uu in 8 samples): bone 0 in component space unchanged since the
+    // stream start while body 0 moved is a pose not refreshed off-screen, and card 359's scale set on that stale bone
+    // is the offset. Plain line then; the target check still WARNs.
+    const bool stale = vec_dist(cs, r.bone0_cs) < 0.1 && vec_dist(body, r.hold_root) > 1.0;
     log::line("%scard152: client bone check guid 0x%llx sample %u (%s): bone 0 (%s) at (%.0f, %.0f, %.0f) is %.1f uu "
               "from body 0 and %.1f uu from the mesh component; body 0 is %.1f uu from the last target set%s; body 0 "
               "moved %.0f uu since the stream start; simulating %d, collision %u, end tick registered %d, "
               "ShouldBlendPhysicsBones %d; card191: mesh component at (%.0f, %.0f, %.0f), bone 0 in component space "
               "(%.1f, %.1f, %.1f), at the stream start (%.1f, %.1f, %.1f); VisibilityBasedAnimTickOption %u, +0xA80 bit "
-              "0x08 %d, bit 0x10 %d; required bones %d; card291: component scale (%.3f, %.3f, %.3f)",
-              d > 1.0 || t > kPoseTargetUu ? "WARN " : "", static_cast<unsigned long long>(r.guid), r.stream_seq, what,
+              "0x08 %d, bit 0x10 %d; required bones %d; card291: component scale (%.3f, %.3f, %.3f)%s",
+              (d > 1.0 && !stale) || t > kPoseTargetUu ? "WARN " : "", static_cast<unsigned long long>(r.guid), r.stream_seq, what,
               prop_name(reinterpret_cast<const uint8_t*>(&r.bone0), 8).text, bone.x, bone.y, bone.z, d, from_mesh, t,
               live ? "" : " (not streaming)", vec_dist(body, r.hold_root), c39_mesh_simulating(mesh) ? 1 : 0,
               collision, pose_end_tick_registered(mesh) ? 1 : 0, pose_should_blend(mesh) ? 1 : 0, at.x, at.y, at.z,
               cs.x, cs.y, cs.z, r.bone0_cs.x, r.bone0_cs.y, r.bone0_cs.z, static_cast<unsigned>(m[kMeshVisTickOption]),
               (m[kMeshTickFlags] & 0x08) != 0 ? 1 : 0, (m[kMeshTickFlags] & 0x10) != 0 ? 1 : 0,
-              read_i32(mesh, kMeshRequiredBones + 8), sc.x, sc.y, sc.z);
+              read_i32(mesh, kMeshRequiredBones + 8), sc.x, sc.y, sc.z,
+              stale && d > 1.0 ? "; stale pose: bone 0 in component space unchanged since the stream start" : "");
 }
 
 // Card 152 (a), client: the first kPoseBoneRows streamed copies check once per sample, half a step after it came in
@@ -2094,6 +2385,30 @@ void pose_stream_move(PoseRow& r, void* const* bodies, double a) {
     }
 }
 
+// Card 523 r2, client, every tick of an own fall: the copy died where the client drew it, on average 150 uu from the
+// host's body (c263k: WarriorBug xy median 148 uu, HopperBug up to 2680 uu high). Every body moves by the next part of
+// own_off, linear over kPoseStepMs, with a physics teleport that keeps the bodies' velocities, so the copy keeps
+// falling on its own while it closes on sample 0's place; the hand-over at sample 1 then meets only the fall's own
+// difference. Rotations stay the copy's own.
+void pose_own_shift(PoseRow& r, void* const* bodies, ULONGLONG now) {
+    const double f = fmin(1.0, static_cast<double>(now - r.own_at) / static_cast<double>(kPoseStepMs));
+    const Vec3 d{r.own_off.x * f - r.own_done.x, r.own_off.y * f - r.own_done.y, r.own_off.z * f - r.own_done.z};
+    if (d.x == 0.0 && d.y == 0.0 && d.z == 0.0) {
+        return;
+    }
+    for (int32_t i = 0; i < r.bodies; ++i) {
+        Xform x{};
+        if (!pose_world(bodies[i], x)) {
+            continue; // gibbed here
+        }
+        x.t[0] += d.x;
+        x.t[1] += d.y;
+        x.t[2] += d.z;
+        g_pose_body_set(bodies[i], &x, kTeleportPhysics, true);
+    }
+    r.own_done = Vec3{r.own_off.x * f, r.own_off.y * f, r.own_off.z * f};
+}
+
 // Card 152, client, every tick: a streamed row not posed yet is tried again (its copy's death edge may run on any
 // tick), and each streaming row is checked (pose_bone_check), teleported (pose_stream_move), its velocities zeroed
 // and its gravity held off. Gravity is set again each tick because the game's Wake Ragdoll turns it back on after
@@ -2107,13 +2422,18 @@ void pose_stream_tick(ULONGLONG now) {
             pose_try_apply(r);
             continue;
         }
-        if (!r.grav_off || !r.live || r.state != PoseState::Applied || r.posed_frame == g_pose_frame) {
+        const bool own = r.own_fall && r.live && r.state == PoseState::Applied && r.posed_frame != g_pose_frame;
+        if (!own && (!r.grav_off || !r.live || r.state != PoseState::Applied || r.posed_frame == g_pose_frame)) {
             continue; // card 152 r3: a held final (live false) is not moved
         }
         void* const mesh = pose_mesh(r);
         int32_t count = 0;
         void* const* const bodies = mesh != nullptr ? pose_bodies(mesh, count) : nullptr;
         if (count == 0 || count != r.bodies) {
+            continue;
+        }
+        if (own) {
+            pose_own_shift(r, bodies, now); // card 523 r2: gravity stays on, no velocity zeroing
             continue;
         }
         pose_bone_check(r, mesh, bodies, now);
@@ -2148,10 +2468,10 @@ void pose_stream_first(PoseRow& r, void* npc, void* mesh, void* const* bodies, b
                   r.bone0 != 0 ? prop_name(reinterpret_cast<const uint8_t*>(&r.bone0), 8).text : "not read");
     }
     if (note_event_cap(g_pose.stream_lines, kPoseStreamLines, "card152 stream")) {
-        log::line("card152: client stream start %s guid 0x%llx at sample %u (%s): simulating, gravity off, collision "
-                  "%u%s", object_name(npc).text, static_cast<unsigned long long>(r.guid), r.stream_seq,
+        log::line("card152: client stream start %s guid 0x%llx at sample %u (%s): simulating, %s, collision "
+                  "%u%s", object_name(npc).text, static_cast<unsigned long long>(r.guid), static_cast<unsigned>(r.stream_seq),
                   (r.flags & kPoseUnfreeze) != 0 ? "unfreeze" : "live",
-                  g_collision_enabled != nullptr ? g_collision_enabled(mesh) : 255u,
+                  r.grav_off ? "gravity off" : "gravity on (card 523 own fall)", g_collision_enabled != nullptr ? g_collision_enabled(mesh) : 255u,
                   already ? "; it was already simulating" : "; ragdoll started for it");
     }
 }
@@ -2180,7 +2500,7 @@ void pose_stream_final(PoseRow& r, const PoseErr& e, bool hold) {
 // Card 152 r2, client: a streamed copy's start. It simulates through the card 039/132 ragdoll start (the one
 // pose_try_apply uses) with physics collision, then its gravity goes off. A frozen copy (card 140 hold) unfreezing
 // is released first. Null once streaming, else why not (the row stays pending).
-const char* pose_stream_start(PoseRow& r, void* npc, void* mesh, void* const* bodies) {
+const char* pose_stream_start(PoseRow& r, void* npc, void* mesh, void* const* bodies, bool own) {
     const char* const no_physics = pose_collision_reason(npc, mesh);
     if (no_physics != nullptr) {
         return no_physics;
@@ -2201,9 +2521,49 @@ const char* pose_stream_start(PoseRow& r, void* npc, void* mesh, void* const* bo
         return "copy would not simulate";
     }
     g_pose.st_stopped += already ? 1u : 0u;
-    pose_grav_off(r, mesh);
+    if (!own) {
+        pose_grav_off(r, mesh);
+    }
     pose_stream_first(r, npc, mesh, bodies, already);
     return nullptr;
+}
+
+// Card 523, client: the next sample on a copy falling on its own since sample 0. Its bodies' current transforms become
+// the move's start (r.prev), its gravity goes off and its velocities are zeroed, and pose_stream_tick moves it from
+// there to this sample over kPoseStepMs, so it neither hangs at sample 0 nor jumps. A copy whose bodies cannot be read
+// in the row's form (a body gone, or one too far from the root) is teleported to the sample as before.
+void pose_stream_handover(PoseRow& r, void* npc, void* mesh, void* const* bodies) {
+    r.own_fall = false;
+    size_t n = 0;
+    Vec3 root{};
+    const bool read = pose_encode_to(mesh, bodies, r.bodies, r.prev, n, root) && n == r.blob_n;
+    pose_grav_off(r, mesh);
+    if (read) {
+        const Vec3 zero{0.0, 0.0, 0.0};
+        g_pose_mesh_linear(mesh, &zero, false);
+        g_pose_mesh_angular(mesh, &zero, false);
+        const double d = vec_dist(pose_want_from(r.prev, 0), pose_want_from(r.blob, 0));
+        ++g_pose.c523_handovers;
+        g_pose.c523_hand_sum += d;
+        g_pose.c523_hand_max = fmax(g_pose.c523_hand_max, d);
+        if (g_pose.c524_hand_rows < kC524Rows) { // card 524: the hand-over distance per guid, split xy and z
+            ++g_pose.c524_hand_rows;
+            const Vec3 a = pose_want_from(r.prev, 0), b = pose_want_from(r.blob, 0);
+            log::line("card524: client hand-over %s guid 0x%llx: body 0 off sample %u xy %.1f uu, z %+.1f uu (host "
+                      "minus client), %llu ms after the own-fall start",
+                      object_name(npc).text, static_cast<unsigned long long>(r.guid), static_cast<unsigned>(r.stream_seq),
+                      sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)), b.z - a.z,
+                      static_cast<unsigned long long>(GetTickCount64() - r.own_at));
+        }
+    } else {
+        memcpy(r.prev, r.blob, r.blob_n);
+        pose_apply_bodies(mesh, bodies, r);
+        ++g_pose.c523_teleports;
+    }
+    r.target0 = pose_want_from(r.blob, 0);
+    r.live = true;
+    r.state = PoseState::Applied;
+    r.posed_frame = g_pose_frame;
 }
 
 // Card 152, client: a stream sample or an unfreeze row on a streamed guid. The copy's stream starts on the first
@@ -2216,6 +2576,7 @@ const char* pose_stream_apply(PoseRow& r, void* npc, void* mesh, void* const* bo
     if (c31_weak_get(r.actor) != npc) {
         pose_grav_on(r, nullptr); // the old copy is gone (back in relevancy): the new one starts its own stream
         r.held = false;
+        r.own_fall = false;
         c31_weak_set(r.actor, npc);
     }
     PoseArrival* const arrival = arrival_find(npc);
@@ -2223,10 +2584,57 @@ const char* pose_stream_apply(PoseRow& r, void* npc, void* mesh, void* const* bo
         r.arrived = true; // card 251
         arrival_show(*arrival, mesh);
     }
+    if (r.own_fall) {
+        // Card 523 r3 (c263l): the host sends an unfreeze snap with sample 0 (same ms, flags 5); it is the same
+        // moment, so the own fall goes on. Only the next stream sample hands over.
+        if ((r.flags & kPoseStream) == 0) {
+            ++g_pose.c523_unfreeze_kept;
+            r.state = PoseState::Applied;
+            r.posed_frame = g_pose_frame;
+            return nullptr;
+        }
+        pose_stream_handover(r, npc, mesh, bodies);
+        return nullptr;
+    }
     if (!r.grav_off) {
-        const char* const why = pose_stream_start(r, npc, mesh, bodies);
+        // Card 523: a live sample 0 on a copy that is on screen (not held hidden as a dead arrival) starts the copy's
+        // ragdoll from its own animation pose with gravity on, as the host's started; the next sample takes it over.
+        const bool own = (r.flags & kPoseUnfreeze) == 0 && r.stream_seq == 0 && arrival == nullptr;
+        const char* const why = pose_stream_start(r, npc, mesh, bodies, own);
         if (why != nullptr) {
             return why;
+        }
+        if (own) {
+            const Vec3 want = pose_want_from(r.blob, 0);
+            const bool read = r.hold_root.x != 0.0 || r.hold_root.y != 0.0 || r.hold_root.z != 0.0; // body 0 read
+            r.own_off = read ? Vec3{want.x - r.hold_root.x, want.y - r.hold_root.y, want.z - r.hold_root.z} : Vec3{};
+            r.own_done = Vec3{};
+            const double off = read ? vec_dist(want, r.hold_root) : 0.0;
+            g_pose.c523_off_sum += off;
+            g_pose.c523_off_max = fmax(g_pose.c523_off_max, off);
+            if (read && g_pose.c524_rows < kC524Rows) { // card 524: body 0 to body 0, split xy and z, per guid
+                ++g_pose.c524_rows;
+                const double dx = want.x - r.hold_root.x, dy = want.y - r.hold_root.y;
+                // The copy's actor z against its ReplicatedMovement.Location z (the host's last sent location): a
+                // dead copy that stayed up while the host's capsule fell shows either a low replicated z the client
+                // did not follow, or a replicated z as high as the actor (the host stopped sending).
+                Vec3 rep{};
+                const bool rep_ok = c132_rep_location(npc, &rep);
+                const Vec3 at = c74_actor_loc(npc);
+                log::line("card524: client own-fall start %s guid 0x%llx: body 0 off sample 0 xy %.1f uu, z %+.1f uu "
+                          "(host minus client), applied %llu ms after sample 0 came; actor z %.0f, replicated z %s%.0f",
+                          object_name(npc).text, static_cast<unsigned long long>(r.guid), sqrt(dx * dx + dy * dy),
+                          want.z - r.hold_root.z, static_cast<unsigned long long>(GetTickCount64() - r.got), at.z,
+                          rep_ok ? "" : "unread ", rep.z);
+            }
+            r.own_fall = true;
+            r.live = true;
+            r.state = PoseState::Applied;
+            r.applied_at = GetTickCount64();
+            r.own_at = r.applied_at;
+            r.posed_frame = g_pose_frame;
+            ++g_pose.c523_falls;
+            return nullptr;
         }
     }
     r.live = true;
@@ -2382,15 +2790,47 @@ void arrival_tick(ULONGLONG now) {
 
 // Card 152, client: a stream sample (one frame). A streaming copy (simulating, gravity off) moves from the sample
 // before it; a copy not streaming yet is posed by pose_try_apply.
-C132Result pose_stream_part(void* pc, PoseRow& r, unsigned seq, int bodies, const char* b, const char*& reason) {
+// Client (card 521 step 2): a delta sample's base is the row's last decoded sample, one seq back, same body count.
+// False (counted, a capped row) when it is not; the row then waits for the next whole sample.
+bool pose_delta_base(const PoseRow& r, unsigned seq, int bodies) {
+    const size_t want = kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseBodyBytes;
+    const bool ok = r.stream_base_n == want && static_cast<uint16_t>(r.stream_seq + 1) == static_cast<uint16_t>(seq);
+    if (!ok) {
+        ++g_pose.c521_misses;
+        if (note_event_cap(g_pose.c521_lines, kPoseDeltaLines, "card521 delta")) {
+            log::line("card521: client delta miss guid 0x%llx sample %u: base sample %u, base %zu bytes for %d bodies",
+                      static_cast<unsigned long long>(r.guid), seq, r.stream_seq, r.stream_base_n, bodies);
+        }
+    }
+    return ok;
+}
+
+C132Result pose_stream_part(void* pc, PoseRow& r, unsigned seq, int bodies, unsigned flags, const char* b,
+                            const char*& reason) {
     static uint8_t blob[kPoseBlob]; // game thread
-    const size_t n = b64_decode(b, strlen(b), blob, sizeof(blob));
-    if (n != kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseBodyBytes) {
+    static uint8_t wire[kPoseBlob];
+    const bool delta = (flags & kPoseDelta) != 0;
+    if (delta && !pose_delta_base(r, seq, bodies)) {
+        reason = "delta miss";
+        return C132Result::Skipped;
+    }
+    const size_t wn = b64_decode(b, strlen(b), wire, sizeof(wire));
+    size_t n = 0;
+    if (delta ? !pose_delta_unpack(r.stream_base, wire, wn, bodies, blob, n)
+              : !pose_wire_unpack(wire, wn, bodies, blob, n)) {
         ++g_pose.bad;
         reason = "bad payload";
         return C132Result::Refused;
     }
+    memcpy(r.stream_base, blob, n);
+    r.stream_base_n = n;
+    g_pose.c521_rx_deltas += delta ? 1u : 0u;
     const bool chain = r.grav_off && r.state == PoseState::Applied && r.bodies == bodies && r.blob_n == n;
+    if (chain) { // card 523: the gap since the sample before, while the copy sat at that sample
+        const ULONGLONG gap = GetTickCount64() - r.cur_at;
+        g_pose.c523_late += gap > kPoseLateMs ? 1u : 0u;
+        g_pose.c523_gap_max = gap > g_pose.c523_gap_max ? static_cast<uint32_t>(gap) : g_pose.c523_gap_max;
+    }
     ++r.rx_samples;                         // card 269 B
     r.rx_chained += chain ? 1u : 0u;
     memcpy(r.prev, chain ? r.blob : blob, n);
@@ -2439,8 +2879,9 @@ C132Result pose_snap_part(void* pc, PoseRow& r, unsigned snap, int part, int par
         reason = "part buffered";
         return C132Result::Applied;
     }
-    r.blob_n = b64_decode(r.b64, r.b64_n, r.blob, sizeof(r.blob));
-    if (r.blob_n != kPoseHeadBytes + static_cast<size_t>(bodies) * kPoseBodyBytes) {
+    static uint8_t wire[kPoseBlob]; // game thread
+    r.blob_n = 0;
+    if (!pose_wire_unpack(wire, b64_decode(r.b64, r.b64_n, wire, sizeof(wire)), bodies, r.blob, r.blob_n)) {
         ++g_pose.bad;
         reason = "bad payload";
         return C132Result::Refused;
@@ -2469,6 +2910,11 @@ C132Result pose_part(void* pc, const char* text, const char*& reason) {
         return C132Result::Refused;
     }
     PoseRow* r = pose_find(guid);
+    if (r == nullptr && (flags & kPoseDelta) != 0) { // card 521: a delta with no row has no base; make no empty row
+        ++g_pose.c521_misses;
+        reason = "delta miss";
+        return C132Result::Skipped;
+    }
     if (r == nullptr && g_pose.n >= kPoseRows) {
         ++g_pose.dropped;
         reason = "table full";
@@ -2485,7 +2931,7 @@ C132Result pose_part(void* pc, const char* text, const char*& reason) {
             reason = "stream sample in parts";
             return C132Result::Refused;
         }
-        return pose_stream_part(pc, *r, snap, bodies, text + at, reason);
+        return pose_stream_part(pc, *r, snap, bodies, flags, text + at, reason);
     }
     return pose_snap_part(pc, *r, snap, part, parts, bodies, flags, text + at, reason);
 }
@@ -2628,12 +3074,16 @@ bool c191_bone0_world(const PoseRow& r, void* mesh, Vec3& out) {
 // the client's WARN card191 bone 0 to body 0 distance; body 0 itself matches the host): a copy frozen with bone 0
 // over kC359FixUu off body 0 moves its mesh component by (body 0 - bone 0), TeleportPhysics, while its bodies still
 // simulate (the freeze follows). One row per fix with bone 0 to body 0 before and after and how far body 0 moved.
-void c359_mesh_to_body0(const PoseRow& r, void* mesh) {
-    constexpr double kC359FixUu = 50.0;
+// Card 505 (c243b273a: 25 of 33 corpses 5 to 50 uu off stayed drawn off their bodies): the fix starts at 5 uu.
+// c502b278b: 22 client and 62 client2 WARN card191 frozen rows read 1.0 to 5.0 uu, between the freeze tolerance and that
+// 5 uu start; the fix now starts at kC191BoneTolerance, so a copy the WARN would name is moved first.
+// Returns bone 0 to body 0 after the fix (off, the step's reading, when nothing moved).
+double c359_mesh_to_body0(const PoseRow& r, void* mesh, double off) {
+    constexpr double kC359FixUu = kC191BoneTolerance;
     constexpr uint8_t kTeleportPhysics = 1;
     const C191Bone b = c191_bone(r, mesh);
     if (!b.ok || b.d <= kC359FixUu || g_add_world_offset == nullptr) {
-        return;
+        return off;
     }
     const double delta[3] = {b.b0.x - b.w.x, b.b0.y - b.w.y, b.b0.z - b.w.z};
     g_add_world_offset(mesh, delta, false, nullptr, kTeleportPhysics);
@@ -2645,6 +3095,7 @@ void c359_mesh_to_body0(const PoseRow& r, void* mesh) {
                   static_cast<unsigned long long>(r.guid), r.snap, delta[0], delta[1], delta[2], b.d,
                   a.ok ? a.d : -1.0, a.ok ? vec_dist(a.b0, b.b0) : -1.0, g_pose.c359_fixes);
     }
+    return a.ok ? a.d : off;
 }
 
 // Card 359 (b124 rows: 90 of 90 bad copies had an end tick on every waited tick): on a copy whose animation still
@@ -2733,6 +3184,18 @@ void pose_stream_reset() {
     g_pose.st_unfreezes = g_pose.st_target_warns = g_pose.sim_skipped = 0;
     g_pose.st_freeze_blocked = g_pose.st_freeze_block_lines = g_pose.st_check_skips = g_pose.st_finals_sent = 0;
     g_pose.st_bone_max = g_pose.st_target_max = 0.0;
+    g_pose.c521_deltas = g_pose.c521_wholes = g_pose.c521_delta_bytes = g_pose.c521_whole_bytes = 0;
+    g_pose.c521_rx_deltas = g_pose.c521_misses = g_pose.c521_lines = 0;
+    memset(g_pose.c521_vlen, 0, sizeof(g_pose.c521_vlen));
+    g_pose.c521_flips = g_pose.c521_body_n = g_pose.c521_big = 0;
+    memset(g_pose.c521_rot_hist, 0, sizeof(g_pose.c521_rot_hist));
+    memset(g_pose.c521_rot_big_field, 0, sizeof(g_pose.c521_rot_big_field));
+    g_pose.c523_falls = g_pose.c523_handovers = g_pose.c523_teleports = g_pose.c523_late = g_pose.c523_gap_max = 0;
+    g_pose.c523_hand_sum = g_pose.c523_hand_max = 0.0;
+    g_pose.c523_off_sum = g_pose.c523_off_max = 0.0;
+    g_pose.c523_unfreeze_kept = 0;
+    g_pose.c524_rows = 0;
+    g_pose.c524_hand_rows = 0;
 }
 
 // Card 152: one stream map line per side, for sizing kPoseStreamPerStep and kPoseStreamBacklog. Logged once a map, from
@@ -2757,6 +3220,38 @@ void pose_stream_map_line() {
                   g_pose.st_bone_checks, g_pose.st_bone_max, g_pose.st_target_max, g_pose.st_target_warns, kPoseTargetUu,
                   g_pose.sim_skipped, g_pose.st_freeze_blocked);
         pose_grav_line();
+    }
+    if (g_pose.c521_deltas + g_pose.c521_wholes != 0) { // card 521 step 2, own row (the card152 rows stay as they were)
+        log::line("card521: host pose stream wire totals: %u delta samples (%u B), %u whole samples (%u B), whole every "
+                  "%u", g_pose.c521_deltas, g_pose.c521_delta_bytes, g_pose.c521_wholes, g_pose.c521_whole_bytes,
+                  static_cast<unsigned>(kPoseWholeEvery));
+    }
+    if (g_pose.c521_body_n != 0) {
+        log::line("card521: host delta field sizes over %u bodies: position 1/2/3 B %u/%u/%u, rotation 1/2/3 B "
+                  "%u/%u/%u; %u rotations negated (dot < 0); %u samples whole because the delta was not shorter",
+                  g_pose.c521_body_n, g_pose.c521_vlen[0][0], g_pose.c521_vlen[0][1], g_pose.c521_vlen[0][2],
+                  g_pose.c521_vlen[1][0], g_pose.c521_vlen[1][1], g_pose.c521_vlen[1][2], g_pose.c521_flips,
+                  g_pose.c521_big);
+        const uint32_t (&h)[2][6] = g_pose.c521_rot_hist;
+        const uint32_t (&bf)[4] = g_pose.c521_rot_big_field;
+        log::line("card521: host rotation delta spread (steps of %d, buckets <64/<128/<256/<512/<1024/more): at rest "
+                  "%u/%u/%u/%u/%u/%u, moving %u/%u/%u/%u/%u/%u; 64 and up by field x/y/z/w %u/%u/%u/%u",
+                  kPoseRotStep, h[0][0], h[0][1], h[0][2], h[0][3], h[0][4], h[0][5], h[1][0], h[1][1], h[1][2],
+                  h[1][3], h[1][4], h[1][5], bf[0], bf[1], bf[2], bf[3]);
+    }
+    if (g_pose.c521_rx_deltas + g_pose.c521_misses != 0) {
+        log::line("card521: client pose stream wire totals: %u deltas applied, %u delta misses",
+                  g_pose.c521_rx_deltas, g_pose.c521_misses);
+    }
+    if (g_pose.c523_falls + g_pose.c523_late != 0) {
+        log::line("card523: client stream own falls: %u started (body 0 off sample 0 mean %.1f uu, worst %.1f uu, closed over "
+                  "%llu ms; %u unfreeze snaps kept it), %u handed over at the next sample (body 0 mean %.1f "
+                  "uu, worst %.1f uu), %u teleported; %u chained samples over %llu ms late, longest gap %u ms",
+                  g_pose.c523_falls, g_pose.c523_falls != 0 ? g_pose.c523_off_sum / g_pose.c523_falls : 0.0,
+                  g_pose.c523_off_max, static_cast<unsigned long long>(kPoseStepMs), g_pose.c523_unfreeze_kept, g_pose.c523_handovers,
+                  g_pose.c523_handovers != 0 ? g_pose.c523_hand_sum / g_pose.c523_handovers : 0.0,
+                  g_pose.c523_hand_max, g_pose.c523_teleports, g_pose.c523_late,
+                  static_cast<unsigned long long>(kPoseLateMs), g_pose.c523_gap_max);
     }
     pose_stream_reset();
 }
@@ -3553,14 +4048,17 @@ void rest_host_drop(RestRow& r, const void* world) {
     rest_remove(&r);
 }
 
-// Host, per pose step: a corpse gone, or out of the Dead state (revived, overkilled), loses its row ("R" to the
+// Host, per pose step: a corpse gone, or neither in the Dead state nor dead by health (revived), loses its row ("R" to the
 // clients); a row without a NetGUID sends once it has one.
 void rest_host_step(const void* world, ULONGLONG now) {
     for (int32_t i = g_rest.n - 1; i >= 0; --i) {
         RestRow& r = g_rest.rows[i];
         void* const npc = c31_weak_get(r.actor);
         const uint8_t state = npc != nullptr ? static_cast<const uint8_t*>(npc)[kNpcBaseState] : kBaseStateDead;
-        if (npc != nullptr && state != kBaseStateDead) {
+        float health = 0.0f;
+        // Card 506: a corpse dead by health keeps its row in any base state (the AA turret ends in state 3, not Dead).
+        const bool dead = state == kBaseStateDead || (npc != nullptr && c25_dead(npc, &health) == 1);
+        if (npc != nullptr && !dead) {
             ++g_rest.left_dead;
             if (note_event_cap(g_rest.lines, kRestLines, "card269 rest")) {
                 log::line("card269: host rest row removed %s guid 0x%llx seq %s: base state %u, removal %s",
@@ -3568,7 +4066,7 @@ void rest_host_step(const void* world, ULONGLONG now) {
                           r.guid != 0 ? "sent" : "not sent (no NetGUID)");
             }
         }
-        if (npc == nullptr || state != kBaseStateDead) {
+        if (npc == nullptr || !dead) {
             rest_host_drop(r, world);
             continue;
         }
@@ -3762,6 +4260,16 @@ void rest_check_tick(ULONGLONG now) {
         if (is_playing == nullptr) {
             continue; // the copy or its player is gone: nothing to read
         }
+        // Senior 2026-11-19 (c502b269a guid 0xf16: its ragdoll started about 2 s before read-back 2): a copy now in a
+        // ragdoll or with a pose row moves from physics, so its read-back says nothing about a replayed death.
+        void* const rest_mesh = read_ptr(npc, kCharacterMesh);
+        if (pose_find(r.guid) != nullptr || (rest_mesh != nullptr && c39_mesh_simulating(rest_mesh))) {
+            if (note_event_cap(g_rest.lines, kRestLines, "card269 rest")) {
+                log::line("card269: client rest read-back %u skipped for guid 0x%llx: %s", static_cast<unsigned>(r.reads + 1),
+                          static_cast<unsigned long long>(r.guid), pose_find(r.guid) != nullptr ? "pose row" : "mesh simulating");
+            }
+            continue;
+        }
         const bool playing = is_playing(player, r.played);
         const bool first = r.reads == 0;
         g_rest.checks += first ? 1u : 0u;
@@ -3841,6 +4349,10 @@ void c291_client_totals() {
                   "played from the row %u, copy not resolved %u, no FName %u; death edges with no row (last %d) %u",
                   n, n > 0 ? w[n / 2] : 0u, n > 0 ? w[n - 1] : 0u, g_c291.rows, g_c291.same, g_c291.replayed,
                   g_c291.from_row, g_c291.unresolved, g_c291.unnamed, kC291Deaths, no_row);
+    }
+    if (g_c291.c524_resets != 0) {
+        log::line("card524: client death edges: %u meshes put back on their actor, %u with a smoothing offset over %.0f "
+                  "uu, largest %.1f uu", g_c291.c524_resets, g_c291.c524_over, kC524OffUu, g_c291.c524_max);
     }
     g_c291 = C291Client{};
 }
@@ -3991,6 +4503,7 @@ void c269_death_note(void* npc) {
     if (g_client_session || npc == nullptr || g_is_npc_2d == nullptr || g_is_npc_2d(npc)) {
         return;
     }
+    c506_dead_note(npc, "death note"); // card 506
     DeathNote& d = g_rest.notes[g_rest.notes_next];
     g_rest.notes_next = (g_rest.notes_next + 1) % kDeathNotes;
     c31_weak_set(d.actor, npc);
@@ -4013,11 +4526,50 @@ void c269_death_note(void* npc) {
 // with no bug animator): true when the host's death row came first and its sequence was played here, from the start;
 // the caller then skips the game's own pick (TryPlayDeathAnimation). False: the caller plays its own, and the row,
 // when it comes, compares (c291_receive).
+// Card 524, client (c291_death_edge): a dying copy's movement stops ticking, so SmoothClientPosition no longer decays
+// the network smoothing offset that every later replicated move still adds (SmoothCorrection): the mesh stays where
+// the copy was while the actor follows the host's corpse (c247b309a HopperBug mesh up to 2665 uu above its actor).
+// At the edge the offset is zeroed, the mesh goes back to the character's base offset (a teleport, rotation kept),
+// and smoothing is turned off (Disabled: a correction moves the capsule only), so the mesh rides its actor from here.
+void c524_mesh_reset(void* npc, uint64_t guid) {
+    auto* const mesh = static_cast<uint8_t*>(read_ptr(npc, kCharacterMesh));
+    auto* const cmc = static_cast<uint8_t*>(read_ptr(npc, kCharacterMovement));
+    if (mesh == nullptr || cmc == nullptr || g_set_relative_location == nullptr) {
+        return;
+    }
+    auto* const data = static_cast<uint8_t*>(read_ptr(cmc, kCmcClientData));
+    const Vec3 off = data != nullptr ? read_vec3(data, kClientMeshTranslationOffset) : Vec3{};
+    const Vec3 base = read_vec3(npc, kCharacterBaseTranslation);
+    const double actor_z = actor_location(npc).z;
+    const double before = read_vec3(mesh, kComponentTranslation).z - actor_z;
+    const double rel = vec_dist(read_vec3(mesh, kCompRelativeLocation), base);
+    const uint8_t mode = cmc[kCmcSmoothingMode];
+    if (data != nullptr) {
+        memset(data + kClientMeshTranslationOffset, 0, sizeof(Vec3));
+    }
+    cmc[kCmcSmoothingMode] = 0;
+    alignas(16) uint8_t hit[0x200] = {}; // FHitResult out (0xE8 here); unused with no sweep
+    g_set_relative_location(mesh, &base, false, hit, true);
+    const double after = read_vec3(mesh, kComponentTranslation).z - actor_z;
+    const double len = vec_dist(off, Vec3{});
+    ++g_c291.c524_resets;
+    g_c291.c524_over += len > kC524OffUu ? 1u : 0u;
+    g_c291.c524_max = fmax(g_c291.c524_max, len);
+    if (g_c291.c524_lines < kC524Lines) {
+        ++g_c291.c524_lines;
+        log::line("card524: client death edge %s guid 0x%llx: smoothing mode %u, offset (%.0f, %.0f, %.0f)%s; mesh %.0f "
+                  "uu from its base offset; mesh minus actor z %.0f before, %.0f after",
+                  class_name(npc).text, static_cast<unsigned long long>(guid), mode, off.x, off.y, off.z,
+                  data != nullptr ? "" : " (no client data)", rel, before, after);
+    }
+}
+
 bool c291_death_edge(void* npc, bool play) {
     const uint64_t guid = g_client_session && npc != nullptr ? c41_guid(npc) : 0;
     if (guid == 0) {
         return false;
     }
+    c524_mesh_reset(npc, guid);
     C291Death& d = c291_entry(guid);
     d.edge_at = GetTickCount64();
     d.sequence = play && g_is_npc_2d != nullptr && !g_is_npc_2d(npc);
@@ -4113,6 +4665,78 @@ void c207_shown_corpse(void* npc, const void* mesh) {
                   rest_find(0, npc) != nullptr ? 1 : 0, named ? 1 : 0);
     }
 }
+
+// Card 506 (c243b273a: a host AA turret died with no TryPlayDeathAnimation, no Dead base state and no ragdoll, so it
+// had no pose or rest row; its copy, sent again dead, was hidden 9 s and then played its death again). Host: a 3D NPC
+// dead by health is noted here (health edge, death event, start dying, death note); kC506SettleMs later, still dead
+// with no pose row (a ragdoll), no rest row (the Dead state's) and a mesh not simulating, it gets a rest row: its
+// death name when it has one (c269_state_host), else kRestBare.
+namespace {
+constexpr int32_t kC506Pending = 32;
+constexpr ULONGLONG kC506SettleMs = 5000; // the Dead state's own row and a ragdoll's pose row come well before this
+struct C506Pending {
+    C31Weak actor;
+    ULONGLONG at;
+    const char* path;
+};
+C506Pending g_c506[kC506Pending] = {};
+int32_t g_c506_n = 0;
+uint32_t g_c506_full = 0;
+} // namespace
+
+void c506_dead_note(void* npc, const char* path) {
+    float health = 0.0f;
+    if (g_client_session || npc == nullptr || g_is_npc_2d == nullptr || g_is_npc_2d(npc) ||
+        c25_dead(npc, &health) != 1 || pose_find_actor(npc) != nullptr || rest_find(0, npc) != nullptr) {
+        return;
+    }
+    for (int32_t i = 0; i < g_c506_n; ++i) {
+        if (c31_weak_get(g_c506[i].actor) == npc) {
+            return; // noted already
+        }
+    }
+    if (g_c506_n == kC506Pending) {
+        ++g_c506_full;
+        return;
+    }
+    C506Pending& p = g_c506[g_c506_n++];
+    c31_weak_set(p.actor, npc);
+    p.at = GetTickCount64();
+    p.path = path;
+}
+
+namespace {
+// Host, each pose step: due notes become rest rows or are dropped; one row per add.
+void c506_pending_step(ULONGLONG now) {
+    for (int32_t i = g_c506_n - 1; i >= 0; --i) {
+        C506Pending& p = g_c506[i];
+        void* const npc = c31_weak_get(p.actor);
+        if (npc != nullptr && now - p.at < kC506SettleMs) {
+            continue;
+        }
+        const char* const path = p.path;
+        g_c506[i] = g_c506[--g_c506_n];
+        float health = 0.0f;
+        if (npc == nullptr || c25_dead(npc, &health) != 1 || pose_find_actor(npc) != nullptr ||
+            rest_find(0, npc) != nullptr || read_ptr(npc, kCharacterMesh) == nullptr ||
+            c39_mesh_simulating(read_ptr(npc, kCharacterMesh))) {
+            continue;
+        }
+        char seq[kSpriteName] = {};
+        const bool named = rest_name_text(c41_current(npc), seq, sizeof(seq));
+        if (named) {
+            c269_state_host(npc, kBaseStateDead);
+        }
+        if (rest_find(0, npc) == nullptr) {
+            rest_host_row(npc, kRestBare, p.at, now); // no death name (or none from the note): the row owns the copy
+        }
+        log::line("card506: host rest row added by %s: %s guid 0x%llx, base state %u, health %.1f, seq %s, %u note(s) "
+                  "lost to a full table", path, class_name(npc).text, static_cast<unsigned long long>(c41_guid(npc)),
+                  static_cast<const uint8_t*>(npc)[kNpcBaseState], static_cast<double>(health),
+                  rest_find(0, npc) != nullptr ? rest_find(0, npc)->seq : "none", g_c506_full);
+    }
+}
+} // namespace
 
 // Card 291 step 1b: a reflected bool of `object` as 0 or 1, or -1 when the class has no such bool property.
 int32_t c291_bool(const void* object, const char* name) {
@@ -4298,7 +4922,8 @@ void c132_pose_sim_change(void* mesh, bool simulate, int was_simulating) {
 bool c152_pose_game_freeze(void* mesh, uintptr_t caller_rva) {
     void* const npc = mesh != nullptr ? read_ptr(mesh, kComponentOwner) : nullptr;
     PoseRow* const r = npc != nullptr && read_ptr(npc, kCharacterMesh) == mesh ? pose_find_actor(npc) : nullptr;
-    if (r == nullptr || !r->grav_off || (r->state != PoseState::Applied && r->state != PoseState::Freezing)) {
+    if (r == nullptr || (!r->grav_off && !r->own_fall) ||
+        (r->state != PoseState::Applied && r->state != PoseState::Freezing)) {
         return false;
     }
     ++g_pose.st_freeze_blocked;
@@ -4393,6 +5018,9 @@ void c132_pose_step(void* engine) {
     if (world != nullptr) {
         pose_host_step(world, now);
         sprite_host_step(world, now); // card 177
+        if (g_c506_n != 0) {
+            c506_pending_step(now); // card 506
+        }
         if (g_rest.n != 0) {
             rest_host_step(world, now); // card 269
         }
@@ -4444,16 +5072,22 @@ namespace {
 // not streaming yet is skipped; false then.
 bool pose_replay_stream(const void* world, PoseRow& r, void* pc) {
     pose_guid_check(world, r);
-    if (r.guid == 0 || r.stream_seq == 0) {
+    if (r.guid == 0 || r.stream_seq == 0 || r.stream_base_n <= kPoseHeadBytes) {
         return false;
     }
-    PoseSend s{};
-    Vec3 root{};
-    int32_t count = 0;
+    // Card 521 step 2: the last broadcast sample itself (r.stream_base), whole, so the joiner's delta base is every
+    // other PC's. Its quaternions may differ from theirs by 1 int16 step (pack then unpack again), until the next
+    // whole sample.
+    const int32_t count = static_cast<int32_t>((r.stream_base_n - kPoseHeadBytes) / kPoseBodyBytes);
     const uint16_t seq = static_cast<uint16_t>(r.stream_seq - 1);
-    if (!pose_stream_emit(world, r, seq, pc, s, root, count)) {
+    const PoseSend s =
+        pose_send_blob(PoseHead{r.guid, seq, count, kPoseStream}, r.stream_base, r.stream_base_n, pc, world);
+    if (s.frames == 0) {
         return false;
     }
+    float head[3];
+    memcpy(head, r.stream_base, sizeof(head));
+    const Vec3 root{head[0], head[1], head[2]};
     if (note_event_cap(g_pose.stream_lines, kPoseStreamLines, "card152 stream")) {
         log::line("card152: host replay stream guid 0x%llx sample %u to the joining PC: %d bodies, root (%.0f, %.0f, "
                   "%.0f); %d bytes in %d frames, %d sent", static_cast<unsigned long long>(r.guid), seq, count, root.x,
@@ -4600,7 +5234,7 @@ uint32_t c132_pose_check(uint32_t round) {
         // unsettled send) is still falling on both screens from the same start: left out and counted. Its freeze snap
         // is checked one tick later (card140 freeze check) and here after it. Card 152: a streamed row is compared
         // against its last sample, with the tolerance widened by the distance the copy is still moving toward it.
-        if (!r.streamed && (sim_here || (r.flags & (kPoseUnfreeze | kPoseUnsettled)) != 0)) {
+        if ((!r.streamed || r.own_fall) && (sim_here || (r.flags & (kPoseUnfreeze | kPoseUnsettled)) != 0)) {
             ++simulating;
             continue;
         }

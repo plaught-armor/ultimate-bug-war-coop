@@ -60,7 +60,7 @@ against c238-c5m2.
 
 ## Step 1 result (2026-11-18, senior, static)
 
-Source: `kis.py` dump of the full FED_C5M2_Scripting extract (0 decode errors; card 301 pass). Offsets are
+Source: `tools/kismet/kis.py` dump of the full FED_C5M2_Scripting extract (0 decode errors; card 301 pass). Offsets are
 ubergraph offsets. "Hidden add" means the add call sits in the handler but is an unresolved import call, so the
 compact grep does not show it. Three objectives open at once at the start (`Debug set objectives` / intro chain
 @14898 -> @12008 -> @216 -> @334): Research_O1, Outpost_O1, Array_O1, in any order. Each one's completion calls
@@ -148,3 +148,80 @@ Not started. Starts after the 2026-11-13 playtest, in card order, one map at a t
   `MemoryMax=12G` scope, test sound to the null sink.
 - Ids that are markers only or never added leave M only with the senior's agreement: report them with the
   evidence (no Add or Complete call in the ubergraph) before the first run.
+
+## c247b302a (b302 cc796efeb952a0f7, senior 2026-11-19)
+
+- 558 s, scenario passed, 24 digest rounds at 0 mismatches. Finale_SO0 to SO4 (all children), SO6 and SO7
+  completed; Finale_SO5 has no add (as the step 1 table says) and SO1Dumb stays open. Finale_O1 did not complete.
+- Cause: the transport BP_PlayerTransportDropship_C_2 launched at the finale (card342 rows, host 20640037) and
+  landed (DescendToLandCompleted, flag 0 -> 0, host 20649425) 3.5 s after SO7; the scenario never boarded it. It
+  completes Finale_O1 only on PlayerEntering (@13949).
+- Fix (gen_c247.py main): wait the landing row, then the gen_c243 `board()` recipe (client E first, EnterDropship
+  row; host E until the Finale_O1 complete row, 3 tries), then wait for the level-end travel's card330 map rows, with a
+  `host travel restart` if none came in 90 s, so the map-end rows (card523, card521 client) are written.
+
+## Debrief exit (senior, 2026-11-19, after c247b302b)
+
+- c247b302b: the level ended on both sides, but the fallback `host travel restart` at the debrief (card113
+  TransitionToLevel(chapter 4, level 1)) loaded no map, so the map-end rows (card330, card523, card521 client) were
+  never written.
+- `gen_c247.py` now ends as `gen_c244.py` `tail()` does: after the card260 EndLevel row, `host ui click
+  BndEvt__TrooperLevelEnd_WB_Button_Next` until the host frontend row (net mode 2), then the client frontend row
+  (net mode 3), then the card330 `map FED_C5M2 step` rows on both sides. The gate is the card260 row, because the
+  C5M2 debrief's input row comes from BP_HUD_Manager, not WB_TrooperLevelEnd.
+- Regexes tested against real lines: card260 and the Finale_O1 done row (c247b302b host, 1 match each), both frontend
+  rows and the card330 map row (c514a). Scenario regenerated with b303 pins (8ece51514ce72a9d). Backups
+  `build/gen_c247.py.pre-debrief`, `build/c247-c5m2.txt.pre-debrief`.
+
+## Run c247b303a (b303 8ece51514ce72a9d, junior run, senior read 2026-11-19)
+
+- The level end passes: Finale_O1 sent, host EndLevel, debrief Next, host 3D_Frontend net mode 2, client net mode 3,
+  card330 `map FED_C5M2 step` rows on both sides. 557 s, rc 0/0, scenario passed, 0 VOID, FATAL 0.
+- Map-end rows are present: card521 client 1883 deltas, 0 misses; card523 (still r2 here) 132 own falls.
+- One Pose mismatch in 26 digest rounds (round 13, AphidBug 0xfc0): a corpse that fell through the floor and streamed as
+  a long fall. Cause and fix in card 525.
+- Dead time: 168 s in 24 timed-out `try` waits (two of 15 s, many of 8 s). That is the next idle cut for this
+  scenario.
+
+## Idle cut after c247b303a (senior, 2026-11-19)
+
+- The 8 s client `replayed Complete` timeouts came from marker steps ended by "guide marker ended by" (Outpost_SO4 by
+  Outpost_SO2, 50 rows; Outpost_SO5, 5 rows): no Complete is sent for them. gen_c247.py now gates that wait on a done
+  host wait with no marker-ended row in the block, and a marker-ended row runs `objective next`. Lesson 29 in
+  docs/reference/objective-routines.md. Scenario regenerated for b307 d7043648110be420 (3239 lines).
+- Predictions (next run): 0 client `replayed Complete` timeouts after a marker-ended row; Outpost_SO4 marker-ended rows
+  down from 50 to at most 2; total timed-out `try` wait time well under 168 s; card 525: 0 Pose mismatches.
+
+## Run c247b307a (b307 d7043648110be420, junior run, senior dig 2026-11-19)
+
+- FAIL: all 42 blocks ran out at Array (Array_SO3 never reached), so Finale never started and the level did not end.
+  21 digest rounds, 0 mismatches. No card 525 row (no corpse fall). Timed-out try waits 312.4 s, 290 s of them in
+  the dropship tail after the blocks ran out.
+- Cause: my `objective next` on a marker-ended row. Outpost_SO4 took 25 blocks (b303a: 11), 121 marker-ended rows.
+  The real fault is under it: Outpost_SO4 is not a guide for Outpost_SO2. SO2 completed before SO4 was added, and SO4
+  completes by its own trigger (table row O4). The wait called it done at once each time.
+- Fix (after b307): `objective next` on marker-ended removed from gen_c247.py; objective_c284.cpp counts a marker as
+  guide-ended only when a wait saw its sibling open while the marker was open (backup build/objective_c284.cpp.pre247g).
+  The client replay-wait gate stays. Lesson 30. Scenario regenerated (3197 lines); its pins need the next build.
+- Predictions (next build): 0 "guide marker ended by Outpost_SO2" rows for Outpost_SO4; Outpost_SO4 completes by
+  CompleteSubObjective in at most 11 blocks (as b303a); the blocks reach Finale and the level ends; PowerPlant_Marker
+  on C3M2 still guide-ends (c263 runs).
+
+## Run c247b308a (b308, killed by the user, junior dig 2026-11-19)
+
+- Outpost_SO4 passed (the b308 guide fix held). The run broke at Assassin: Array_SO4's presence try 3 (cmd 419,
+  24542604 ms) picked BP_PlayerPresence_C_17, 52826 uu from Array's marker. C_17 is Assassin_SO1's trigger, so
+  CompleteSubObjective(Assassin_SO1) was sent before Assassin_SO1 was added, C_17 switched off, and Assassin_SO1
+  stayed open; its own tries then stood 46867 uu off (C_29).
+- Fix, b309 a86a3943a7f0f8fe (junior): a next presence over 20000 uu from the marker actor is not entered. The largest
+  pick seen in b303a and b308a that was not past it was 18140 uu (C_16). Lesson 31.
+- Open: Array_SO4 needed 3 tries in b308a and tries 2 and 3 for an earlier step stood at the same presence
+  (11087 uu) four times without completing it. c247b309a shows whether Array_SO4 completes within the bound.
+
+## Run c247b309a (b309 a86a3943a7f0f8fe, junior run, senior dig 2026-11-19): level ended
+
+- The level ended (Finale_O1 complete at 25604848 ms, EndLevel to the client at 25631868 ms), 666 s, rc 0/0, 0 FATAL
+  or ERROR, 24 digest rounds at 0 mismatches. The 20000 uu cap fired once (Array_SO4 try 3, C_17) and Array_SO4 still
+  completed. Outpost_SO4 took 7 blocks, with 0 "guide marker ended by" rows.
+- Idle: timed-out try waits 64.5 s in 13 (b307 312 s). The biggest item is `clear kill`, 298 s over 243 calls; that is
+  card 513 material.

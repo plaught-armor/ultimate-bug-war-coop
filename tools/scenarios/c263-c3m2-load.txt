@@ -1,0 +1,259 @@
+# Card 263 load variant: FED_C3M2 PowerPlant at a 4-player bug load (user order 2026-11-19: "crank it up to what
+# 4 players would deal with"). Same map start, marker and SO1 steps as c263-c3m2-plant.txt (lines 29-55 copied),
+# then 150 warriors spawned in 5 rings around the host on top of the natural fight, then 6 fight rounds, digest, restart.
+# Sizing: c263h natural PowerPlant fight peaked at client `window peak 55` (util fallback live 45) for one encounter
+# built for 1 player; 4 players = about 4x = about 200 live bugs, so +150 spawned. Caps: kUtilLiveMax 512, pose and
+# ext rows 1024, so 200 fits every table.
+# Predictions (b309, written before the run): spawned rows 150 (`card125: host spawned BP_AI_WarriorBug_C`), client
+# `window peak` over 150 in the first lift window; client frame windows >= 500 frames (60 fps cap) if the load holds;
+# mod ms per window under 10 percent; digest mismatches 0. A frame window under 500 is a finding, not a void.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2 DEPLOY=1
+#      SCENARIO=tools/scenarios/c263-c3m2-load.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1" tools/run_pair.sh c263L 1200
+# Expected wall: about 5 min.
+void unless host dll e62e76f63a05d88f
+void unless client dll e62e76f63a05d88f
+failsoft
+host wait state map=FED_C3M2 timeout=240 void
+client wait state map=FED_C3M2 timeout=180 void
+voidsoft
+try host ui continue
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host wait log "card049: host t=\d+ Add\w*Objectives?\((?:\w+, )?PowerPlant_SO1(?:, \w+)?\)" timeout=120
+# c263a VOID: SO1 "marker off (a future step); doable: PowerPlant_Marker". The guide marker first (marker routine,
+# card 516: no home go), then SO1's presence C_52 by its routine; the encounter and the door close follow.
+try host objective do PowerPlant_Marker
+# c263e lesson 24: the marker shares ActorReference_C_1 with SO1; the marker wait ends on SO1 Complete and the
+# marker stays current until the script hides it. Run SO1 only if it is not done; then wait on SO2, not "current".
+unless host log "(card049: host t=\d+ Complete\w*Objective\((\w+, )?PowerPlant_SO1\)|card097: host t=\d+ native CompleteObjective (\w+/)?PowerPlant_SO1 )" count=1 host objective do PowerPlant_SO1
+# c263f lesson 26: SO2 is added hidden at map start; the script shows it (and hides the marker, bools 10) on a
+# presence entry (c263e: C_16, by the marker's try 3 stand), not on a timer. Lesson 24 amend: the marker routine
+# itself now holds until that visibility row (drive.py marker_held), so no second marker run here.
+host wait log "card049: host t=\d+ SetObjectiveVisibility\(PowerPlant_SO2\) bools 01" timeout=60
+host shot c263-h-plant
+client shot c263-c-plant
+# 4-player load: 150 warriors in rings of 800..2400 uu around the host view point, each facing the host.
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+752} {g2+274} {g3} 200
+host spawn bug {g1+613} {g2+514} {g3} 220
+host spawn bug {g1+400} {g2+693} {g3} 240
+host spawn bug {g1+139} {g2+788} {g3} 260
+host spawn bug {g1-139} {g2+788} {g3} 280
+host spawn bug {g1-400} {g2+693} {g3} 300
+host spawn bug {g1-613} {g2+514} {g3} 320
+host spawn bug {g1-752} {g2+274} {g3} 340
+host spawn bug {g1-800} {g2} {g3} 0
+host spawn bug {g1-752} {g2-274} {g3} 20
+host spawn bug {g1-613} {g2-514} {g3} 40
+host spawn bug {g1-400} {g2-693} {g3} 60
+host spawn bug {g1-139} {g2-788} {g3} 80
+host spawn bug {g1+139} {g2-788} {g3} 100
+host spawn bug {g1+400} {g2-693} {g3} 120
+host spawn bug {g1+613} {g2-514} {g3} 140
+host spawn bug {g1+752} {g2-274} {g3} 160
+host spawn bug {g1+1200} {g2} {g3} 180
+host spawn bug {g1+1159} {g2+311} {g3} 195
+host spawn bug {g1+1039} {g2+600} {g3} 210
+host spawn bug {g1+849} {g2+849} {g3} 225
+host spawn bug {g1+600} {g2+1039} {g3} 240
+host spawn bug {g1+311} {g2+1159} {g3} 255
+host spawn bug {g1} {g2+1200} {g3} 270
+host spawn bug {g1-311} {g2+1159} {g3} 285
+host spawn bug {g1-600} {g2+1039} {g3} 300
+host spawn bug {g1-849} {g2+849} {g3} 315
+host spawn bug {g1-1039} {g2+600} {g3} 330
+host spawn bug {g1-1159} {g2+311} {g3} 345
+host spawn bug {g1-1200} {g2} {g3} 0
+host spawn bug {g1-1159} {g2-311} {g3} 15
+host spawn bug {g1-1039} {g2-600} {g3} 30
+host spawn bug {g1-849} {g2-849} {g3} 45
+host spawn bug {g1-600} {g2-1039} {g3} 60
+host spawn bug {g1-311} {g2-1159} {g3} 75
+host spawn bug {g1} {g2-1200} {g3} 90
+host spawn bug {g1+311} {g2-1159} {g3} 105
+host spawn bug {g1+600} {g2-1039} {g3} 120
+host spawn bug {g1+849} {g2-849} {g3} 135
+host spawn bug {g1+1039} {g2-600} {g3} 150
+host spawn bug {g1+1159} {g2-311} {g3} 165
+host spawn bug {g1+1600} {g2} {g3} 180
+host spawn bug {g1+1565} {g2+333} {g3} 192
+host spawn bug {g1+1462} {g2+651} {g3} 204
+host spawn bug {g1+1294} {g2+940} {g3} 216
+host spawn bug {g1+1071} {g2+1189} {g3} 228
+host spawn bug {g1+800} {g2+1386} {g3} 240
+host spawn bug {g1+494} {g2+1522} {g3} 252
+host spawn bug {g1+167} {g2+1591} {g3} 264
+host spawn bug {g1-167} {g2+1591} {g3} 276
+host spawn bug {g1-494} {g2+1522} {g3} 288
+host spawn bug {g1-800} {g2+1386} {g3} 300
+host spawn bug {g1-1071} {g2+1189} {g3} 312
+host spawn bug {g1-1294} {g2+940} {g3} 324
+host spawn bug {g1-1462} {g2+651} {g3} 336
+host spawn bug {g1-1565} {g2+333} {g3} 348
+host spawn bug {g1-1600} {g2} {g3} 0
+host spawn bug {g1-1565} {g2-333} {g3} 12
+host spawn bug {g1-1462} {g2-651} {g3} 24
+host spawn bug {g1-1294} {g2-940} {g3} 36
+host spawn bug {g1-1071} {g2-1189} {g3} 48
+host spawn bug {g1-800} {g2-1386} {g3} 60
+host spawn bug {g1-494} {g2-1522} {g3} 72
+host spawn bug {g1-167} {g2-1591} {g3} 84
+host spawn bug {g1+167} {g2-1591} {g3} 96
+host spawn bug {g1+494} {g2-1522} {g3} 108
+host spawn bug {g1+800} {g2-1386} {g3} 120
+host spawn bug {g1+1071} {g2-1189} {g3} 132
+host spawn bug {g1+1294} {g2-940} {g3} 144
+host spawn bug {g1+1462} {g2-651} {g3} 156
+host spawn bug {g1+1565} {g2-333} {g3} 168
+host spawn bug {g1+2000} {g2} {g3} 180
+host spawn bug {g1+1970} {g2+347} {g3} 190
+host spawn bug {g1+1879} {g2+684} {g3} 200
+host spawn bug {g1+1732} {g2+1000} {g3} 210
+host spawn bug {g1+1532} {g2+1286} {g3} 220
+host spawn bug {g1+1286} {g2+1532} {g3} 230
+host spawn bug {g1+1000} {g2+1732} {g3} 240
+host spawn bug {g1+684} {g2+1879} {g3} 250
+host spawn bug {g1+347} {g2+1970} {g3} 260
+host spawn bug {g1} {g2+2000} {g3} 270
+host spawn bug {g1-347} {g2+1970} {g3} 280
+host spawn bug {g1-684} {g2+1879} {g3} 290
+host spawn bug {g1-1000} {g2+1732} {g3} 300
+host spawn bug {g1-1286} {g2+1532} {g3} 310
+host spawn bug {g1-1532} {g2+1286} {g3} 320
+host spawn bug {g1-1732} {g2+1000} {g3} 330
+host spawn bug {g1-1879} {g2+684} {g3} 340
+host spawn bug {g1-1970} {g2+347} {g3} 350
+host spawn bug {g1-2000} {g2} {g3} 0
+host spawn bug {g1-1970} {g2-347} {g3} 10
+host spawn bug {g1-1879} {g2-684} {g3} 20
+host spawn bug {g1-1732} {g2-1000} {g3} 30
+host spawn bug {g1-1532} {g2-1286} {g3} 40
+host spawn bug {g1-1286} {g2-1532} {g3} 50
+host spawn bug {g1-1000} {g2-1732} {g3} 60
+host spawn bug {g1-684} {g2-1879} {g3} 70
+host spawn bug {g1-347} {g2-1970} {g3} 80
+host spawn bug {g1} {g2-2000} {g3} 90
+host spawn bug {g1+347} {g2-1970} {g3} 100
+host spawn bug {g1+684} {g2-1879} {g3} 110
+host spawn bug {g1+1000} {g2-1732} {g3} 120
+host spawn bug {g1+1286} {g2-1532} {g3} 130
+host spawn bug {g1+1532} {g2-1286} {g3} 140
+host spawn bug {g1+1732} {g2-1000} {g3} 150
+host spawn bug {g1+1879} {g2-684} {g3} 160
+host spawn bug {g1+1970} {g2-347} {g3} 170
+host spawn bug {g1+2400} {g2} {g3} 180
+host spawn bug {g1+2373} {g2+358} {g3} 189
+host spawn bug {g1+2293} {g2+707} {g3} 197
+host spawn bug {g1+2162} {g2+1041} {g3} 206
+host spawn bug {g1+1983} {g2+1352} {g3} 214
+host spawn bug {g1+1759} {g2+1632} {g3} 223
+host spawn bug {g1+1496} {g2+1876} {g3} 231
+host spawn bug {g1+1200} {g2+2078} {g3} 240
+host spawn bug {g1+877} {g2+2234} {g3} 249
+host spawn bug {g1+534} {g2+2340} {g3} 257
+host spawn bug {g1+179} {g2+2393} {g3} 266
+host spawn bug {g1-179} {g2+2393} {g3} 274
+host spawn bug {g1-534} {g2+2340} {g3} 283
+host spawn bug {g1-877} {g2+2234} {g3} 291
+host spawn bug {g1-1200} {g2+2078} {g3} 300
+host spawn bug {g1-1496} {g2+1876} {g3} 309
+host spawn bug {g1-1759} {g2+1632} {g3} 317
+host spawn bug {g1-1983} {g2+1352} {g3} 326
+host spawn bug {g1-2162} {g2+1041} {g3} 334
+host spawn bug {g1-2293} {g2+707} {g3} 343
+host spawn bug {g1-2373} {g2+358} {g3} 351
+host spawn bug {g1-2400} {g2} {g3} 0
+host spawn bug {g1-2373} {g2-358} {g3} 9
+host spawn bug {g1-2293} {g2-707} {g3} 17
+host spawn bug {g1-2162} {g2-1041} {g3} 26
+host spawn bug {g1-1983} {g2-1352} {g3} 34
+host spawn bug {g1-1759} {g2-1632} {g3} 43
+host spawn bug {g1-1496} {g2-1876} {g3} 51
+host spawn bug {g1-1200} {g2-2078} {g3} 60
+host spawn bug {g1-877} {g2-2234} {g3} 69
+host spawn bug {g1-534} {g2-2340} {g3} 77
+host spawn bug {g1-179} {g2-2393} {g3} 86
+host spawn bug {g1+179} {g2-2393} {g3} 94
+host spawn bug {g1+534} {g2-2340} {g3} 103
+host spawn bug {g1+877} {g2-2234} {g3} 111
+host spawn bug {g1+1200} {g2-2078} {g3} 120
+host spawn bug {g1+1496} {g2-1876} {g3} 129
+host spawn bug {g1+1759} {g2-1632} {g3} 137
+host spawn bug {g1+1983} {g2-1352} {g3} 146
+host spawn bug {g1+2162} {g2-1041} {g3} 154
+host spawn bug {g1+2293} {g2-707} {g3} 163
+host spawn bug {g1+2373} {g2-358} {g3} 171
+host shot c263L-h-spawn
+client shot c263L-c-spawn
+host mark
+client mark
+# Load rounds: `try` clears (senior 2026-11-19, c263L): the clear voids when a bug is within 400 uu at the cap, and the
+# mobbed host always is; this test measures frames, not that safety rule.
+# --- load round 00
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+# --- load round 01
+try host warp client BP_AI_WarriorBug_C 1500 live
+# Card 518 step d: receiver-side shot of the client's own bug footstep dust. c263L318 took it after round 00 and got
+# melee range and gore; now right after the 1500 uu warp, facing the warrior, before the clear (bugs walking in).
+try client look actor BP_AI_WarriorBug_C
+sleep 1
+client shot c263L-c-dust
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+# --- load round 02
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+# --- load round 03
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+# --- load round 04
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+# --- load round 05
+try host warp client BP_AI_WarriorBug_C 1500 live
+# Card 532 proof 4 (b341): players apart (client warped 1500 uu from a warrior, host mobbed). The client faces the
+# host; bugs chasing the host should face the host on the client screen (host-sent primary target overlay).
+try client look actor BP_PlayerCharacterMI_C 60
+sleep 1
+client shot c263L-c-c532
+host shot c263L-h-c532
+client ammo fill
+host ammo fill
+try both clear 2500 10 max-left=999
+host shot c263-h-end
+client shot c263-c-end
+host clear 4000 kill
+# Digest round with its byte rows (card 329), then a map restart so both sides write the map-end rows
+# (card330 per-step totals, card329 fx map, netbudget map totals); quit does not write them.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host mark
+client mark
+host travel restart
+try host wait log "card330: host map FED_C3M2 step " since-mark timeout=60
+try client wait log "card330: client map FED_C3M2 step " since-mark timeout=90
+client quit
+host quit

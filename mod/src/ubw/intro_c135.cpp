@@ -762,6 +762,45 @@ int32_t c135_paused(const void* widget) {
 // Both sides, every tick: once per map, the first tick the remembered screen's loading icon is hidden (ESlateVisibility
 // Collapsed 1 or Hidden 2; it is SelfHitTestInvisible 4 while "LOADING..." shows), the press prompt is up. Test
 // marker for the press-prompt screen shots; reads only.
+// Card 323 (senior ask, b264): at the client's one-shot "screen prompt ready" row, each mech and turret pawn whose
+// APawn::PlayerState is set (a seat someone holds) gets one row, so a rejoin shows the host's seat without a shot.
+// Rows are capped at kC323SeatRows; the scan is bounded by kMaxLevels and kMaxLevelActors.
+constexpr int32_t kC323SeatRows = 16;
+void c323_seat_rows(const void* world) {
+    const void* const mech = g_mech_class != nullptr ? g_mech_class() : nullptr;
+    const void* const turret = g_turret_class != nullptr ? g_turret_class() : nullptr;
+    if (world == nullptr || (mech == nullptr && turret == nullptr)) {
+        log::line("card323: client seat seen: no world or no mech/turret class; not scanned");
+        return;
+    }
+    const auto* const levels = static_cast<void* const*>(read_ptr(world, kWorldLevels));
+    const int32_t num_levels = read_i32(world, kWorldLevels + kArrayNum);
+    int32_t rows = 0;
+    int32_t seats = 0;
+    for (int32_t l = 0; levels != nullptr && l < num_levels && l < kMaxLevels; ++l) {
+        const void* const level = levels[l];
+        const auto* const actors = level != nullptr ? static_cast<void* const*>(read_ptr(level, kLevelActors)) : nullptr;
+        const int32_t num = level != nullptr ? read_i32(level, kLevelActors + kArrayNum) : 0;
+        for (int32_t a = 0; actors != nullptr && a < num && a < kMaxLevelActors; ++a) {
+            const void* const actor = actors[a];
+            const bool seat = actor != nullptr && ((mech != nullptr && is_a(actor, mech)) ||
+                                                   (turret != nullptr && is_a(actor, turret)));
+            if (!seat) {
+                continue;
+            }
+            ++seats;
+            const void* const ps = read_ptr(actor, kPawnPlayerState);
+            if (ps == nullptr || rows >= kC323SeatRows) {
+                continue;
+            }
+            ++rows;
+            log::line("card323: client seat seen: %s occupied (player state %s)", object_name(actor).text,
+                      object_name(ps).text);
+        }
+    }
+    log::line("card323: client seat seen: %d of %d mech/turret pawn(s) occupied", rows, seats);
+}
+
 void c135_prompt_step() {
     if (!g_c135.screen_seen || g_c135.prompt_logged || g_weak_get == nullptr) {
         return;
@@ -800,6 +839,9 @@ void c135_prompt_step() {
               c135_bool(screen, "LoadingFinished"), c135_bool(screen, "LandscapeLoadingFinished"),
               static_cast<unsigned long long>(now - g_c135.screen_ms), c135_paused(stack),
               world != nullptr ? object_name(world).text : "?");
+    if (g_client_session) {
+        c323_seat_rows(world);
+    }
 }
 
 // Client, while the op waits on the card 156 restore with the HUD and pawn live: the engine's own ClientRestart for a

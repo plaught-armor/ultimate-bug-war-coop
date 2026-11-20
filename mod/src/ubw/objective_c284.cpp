@@ -42,13 +42,22 @@ constexpr int32_t kC284MaxActors = 8;     // actor rows per step
 // the target does not step.
 // b257 (c245b256a line 395, Bridge_SO4 BP_Switch_C_3): the 2D gap from the root (60 uu) put the eye 19 uu from the
 // switch's bounds face and no look gave focus; b229 pressed it from 172 uu at pitch -5. The step is now measured in
-// 2D from the nearest point of the target actor's bounds box: no step when that face is within kC284StepFaceUu,
-// otherwise the pawn stops kC284StepFaceUu off it. A step with no actor measures from the target point.
-constexpr double kC284StepFaceUu = 150.0;
+// 2D from the nearest point of the target actor's bounds box (no step within 150 uu of that face).
+// Card 512 (c504k1, Stadium_SO1_B-D): bounds can sit off the switch (face 100 uu, eye 369 uu from the target), so
+// the face no longer gates the step: the eye distance to the target does, and the pawn stops kC284StepEyeUu off it.
+constexpr double kC284StepEyeUu = 200.0;
 constexpr int32_t kC284MaxRows = 32;      // step and container rows per `now`
 constexpr int32_t kC284GoSteps = 16;      // b238: steps whose `go` count is kept (objective next cycles them)
 constexpr double kC284EyeUu = 60.0;       // go: the view pitch is measured from this far over the pawn's center
 constexpr uint8_t kC284NoMode = 0xFF;     // no CharacterMovement: mode unknown
+// Card 513 (c504k2: 158 goes held the full 1 s settle, 38 s): the settle ends early once every placed pawn has been
+// walking and within kC284StillUu of one point for kC284StillMs (the first window starts at the first settle tick,
+// after the warp). The c.ms cap, the settle rows and the fail checks are unchanged. A client pawn is read on the host
+// (server authoritative): a ServerMove the client sent before it saw the warp moves the host's copy and restarts the
+// window; an idle client still sends moves at least every 1/12 s, so on a local pair those land well inside 300 ms.
+constexpr double kC284StillUu = 5.0;
+constexpr uint64_t kC284StillMs = 300;
+constexpr uint8_t kC284MoveWalking = 1;   // EMovementMode MOVE_Walking
 constexpr const char* kC284Who[3] = {"host", "client", "client2"};
 
 // What the stand point is measured from and where it is.
@@ -64,6 +73,7 @@ struct C284Stand {
 
 enum class C284Placed : uint8_t { None, Ok, NotMoved };
 
+constexpr int32_t kC284GuideIds = 32; // a map has a few marker steps; C5M2 and C3M2 have under ten
 struct C284 {
     const void* world;      // key only: a new world drops everything below
     uint64_t current;       // the step `expect` named last, else the picker's; 0 none
@@ -77,6 +87,19 @@ struct C284 {
     Vec3 landed[3];         // go: each pawn's location right after SetActorLocation
     C284Placed placed[3];   // go: None, not placed
     int32_t slot[3];        // go: ring degrees, or kC284SlotStand
+    Vec3 still_at[3];       // card 513: where each pawn's still window started
+    uint64_t still_from[3]; // card 513: when it started (ms); 0 before the first settle tick
+    uint64_t guide_ids[kC284GuideIds]; // c247b307a: marker steps seen open while their actor-sharing sibling was open
+    int32_t guide_n;                   // ids in use; a full table records no more (the wait then runs to its time)
+    uint64_t zone_ids[kC284GuideIds];  // card 516: steps a zone guide marker handed on to (the sole shown sibling)
+    int32_t zone_n;                    // ids in use; a full table records no more
+    uint64_t shown_ids[kC284GuideIds]; // card 516: steps whose marker was shown at one of their goes
+    int32_t shown_n;                   // ids in use; a full table records no more
+    uint64_t handed_id;                // card 516: the step whose handed-on condition held on the last wait tick
+    int32_t handed_ticks;              // consecutive wait ticks it held
+    uint64_t base_id;                  // card 516: the zone guide whose sibling counts are below; 0 none
+    int32_t base_total;                // its parent's other children at the first wait tick on it
+    int32_t base_done;                 // how many of those were complete then
 };
 C284 g_c284{};
 
@@ -91,6 +114,22 @@ void c284_reset(const void* world) {
     if (g_c284.world != world) {
         g_c284 = C284{};
         g_c284.world = world;
+    }
+}
+
+bool c284_has(const uint64_t* ids, int32_t n, uint64_t id) {
+    for (int32_t k = 0; k < n && k < kC284GuideIds; ++k) {
+        if (ids[k] == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Card 516: step `id`'s marker was shown at a go (c284_handed_on needs it shown once before it counts it hidden).
+void c284_note_shown(uint64_t id) {
+    if (!c284_has(g_c284.shown_ids, g_c284.shown_n, id) && g_c284.shown_n < kC284GuideIds) {
+        g_c284.shown_ids[g_c284.shown_n++] = id;
     }
 }
 
@@ -115,11 +154,12 @@ int32_t c284_go_count(uint64_t id) {
     return 0;
 }
 
-// pawns[0] the host's own, [1] and [2] the server copies of the clients' pawns (PlayerController order); null: none.
+// pawns[0] the host's own, [1] and [2] the server copies of "client" and "client2" (card 502 finding 2: by the role
+// each client sent); null: none.
 void c284_pawns(void* pc, void* pawns[3]) {
     pawns[0] = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
-    pawns[1] = pawns[0] != nullptr ? c29_server_copy_nth(pawns[0], 0) : nullptr;
-    pawns[2] = pawns[0] != nullptr ? c29_server_copy_nth(pawns[0], 1) : nullptr;
+    pawns[1] = pawns[0] != nullptr ? c29_server_copy_role(pawns[0], 1) : nullptr;
+    pawns[2] = pawns[0] != nullptr ? c29_server_copy_role(pawns[0], 2) : nullptr;
 }
 
 const uint8_t* c284_obj(const SparseView& v, int32_t i) {
@@ -147,14 +187,24 @@ bool c284_doable(const void* world, const SparseView& v, const uint8_t* o, const
     if (o[kObjectiveMarker] != 0) {
         return true;
     }
-    const void* const up = read_ptr(o, kObjectiveParent);
-    if (up == parent) {
+    const auto* const up = static_cast<const uint8_t*>(read_ptr(o, kObjectiveParent));
+    // Card 511 (c504b4/b5, FED_C2M1 LOS_O03_SO02a-c, the satchel pickups): the steps' own markers stay off and their
+    // open container LOS_O03_SO02, not the active parent, shows the place. A step under an open container with its
+    // marker on is doable.
+    if (up != nullptr && up != parent && up[kObjectiveComplete] == 0 && up[kObjectiveMarker] != 0) {
+        return true;
+    }
+    // b273 (c243b272a, FED_C3M2 Monorail_SO1: actors 0, no marker actor, marker off, while its sibling Monorail_Marker
+    // shows the place): directly under the parent, only an actorless step counts, and only by an open sibling marker
+    // row with its marker on, the one c284_actorless_stand stands near. Any other marker-off step there is a future step.
+    const bool actorless = c126_actor(o) == nullptr && c126_marker_of(world, o) == nullptr;
+    if (up == parent && !actorless) {
         return false; // directly under the active parent with its marker off: a future step
     }
     for (int32_t i = 0; i < v.count; ++i) {
         const uint8_t* const s = c284_obj(v, i);
         if (s != nullptr && s != o && read_ptr(s, kObjectiveParent) == up && s[kObjectiveComplete] == 0 &&
-            s[kObjectiveMarker] != 0) {
+            s[kObjectiveMarker] != 0 && (up != parent || c126_kind_of(world, s) == C126Kind::Marker)) {
             return true;
         }
     }
@@ -189,6 +239,17 @@ void c284_doable_list(const void* world, const SparseView& v, const void* parent
     if (at == 0) {
         snprintf(buf, size, "none");
     }
+}
+
+// b272 (c243b271c, FED_C3M2): the level script opens Silo_O1, PowerPlant_O1 and Monorail_O1 together with markers
+// in all three, so c126_active_parent falls back to the lowest slot (Silo_O1) while the route works Monorail_O1:
+// every Monorail and PowerPlant `expect` voided "not under the active parent" though the steps were doable. The step
+// `expect` names (`named`, else the current one) sets the parent: its own open top-level objective. Without an open
+// one, the active parent.
+const void* c284_parent(const void* world, const SparseView& v, const uint8_t* named) {
+    const uint8_t* const o = named != nullptr ? named : (g_c284.current != 0 ? c126_find(world, g_c284.current) : nullptr);
+    const uint8_t* const root = o != nullptr && o[kObjectiveComplete] == 0 ? c126_root(o) : nullptr;
+    return root != nullptr && root != o ? root : c126_active_parent(v);
 }
 
 // The current step: the one `expect` named, while it is still an open step; else the picker's choice. Null: none.
@@ -415,6 +476,8 @@ int32_t c284_slot(const void* world, void* pawn, const C284Stand& s, bool taken[
 // entry). Marker and other steps whose own stand fails stand at that presence's shape centre instead. Test tool only.
 constexpr int32_t kC284PresenceRings = 3;  // ring radii: 1/4, 2/4, 3/4 of the shape's x, y reach
 constexpr int32_t kC284PresenceSpokes = 8; // points per ring
+constexpr double kC284PresenceNearUu = 5000.0; // b274: a presence further from a marker never stands in for it
+void c284_off_mesh_floor(const void* pawn, Vec3& at);
 bool c284_presence_stand(const void* world, void* host_pawn, C284Stand& s, void* presence = nullptr) {
     void* const pp = presence != nullptr ? presence : c64_find_actor(world, "BP_PlayerPresence_C", s.target);
     C126Shape sh{};
@@ -434,6 +497,17 @@ bool c284_presence_stand(const void* world, void* host_pawn, C284Stand& s, void*
                   nav.x, nav.y, nav.z, zone.text);
         centre = false;
     }
+    // c247b295a (FED_C5M2 Finale_SO0): BP_PlayerPresence_C_23's centre projected to a navmesh point 513 uu off it and
+    // outside its shape, so the players stood beside the presence that completes the step. The centre point counts
+    // only with the pawn's capsule inside the shape; otherwise the ring points, then the static floor under the
+    // centre (off the navmesh), and the outside centre point only as the last resort.
+    const Vec3 outside = nav;
+    const bool centre_outside = centre && !c126_capsule_inside(sh, host_pawn, Vec3{nav.x, nav.y, nav.z + half});
+    if (centre_outside) {
+        log::line("c284: presence centre of %s projects to (%.0f, %.0f, %.0f), outside its shape; trying ring points",
+                  object_name(pp).text, nav.x, nav.y, nav.z);
+        centre = false;
+    }
     if (!centre) {
         // b11 C2M1 soak run 3 (LOS_O02_SO02, BP_PlayerPresence_C_5 at (156649, 23887, 10480)): no navmesh point at
         // the centre; c255-c2m1-r2 completed the step from (158906, 23488, 10615), 2300 uu off it. So: rings
@@ -449,10 +523,21 @@ bool c284_presence_stand(const void* world, void* host_pawn, C284Stand& s, void*
                     c126_capsule_inside(sh, host_pawn, Vec3{nav.x, nav.y, nav.z + half}) &&
                     !c284_in_fall_zone(world, host_pawn, Vec3{nav.x, nav.y, nav.z + half + kC284WarpUp}, zone);
         }
+        from = "presence ring point";
+        if (!found) {
+            nav = sh.center;
+            c284_off_mesh_floor(host_pawn, nav);
+            found = c126_capsule_inside(sh, host_pawn, Vec3{nav.x, nav.y, nav.z + half});
+            from = "presence centre (off the navmesh)";
+        }
+        if (!found && centre_outside) {
+            nav = outside;
+            found = true;
+            from = "presence centre (outside the shape)";
+        }
         if (!found) {
             return false;
         }
-        from = "presence ring point";
     }
     s.actor = pp;
     s.from = from;
@@ -464,38 +549,81 @@ bool c284_presence_stand(const void* world, void* host_pawn, C284Stand& s, void*
 
 constexpr int32_t kC284PresenceTries = 3; // actorless step: presences tried, one per `objective go` in a row
 static_assert(kC284PresenceTries == 3, "c284_nth_presence compares three skip slots");
-// The switched-on BP_PlayerPresence_C that is `nth` nearest `from` (0 the nearest), or null. Test tool only.
-void* c284_nth_presence(const void* world, const Vec3& from, int32_t nth) {
-    void* skip[kC284PresenceTries] = {};
+// The switched-on BP_PlayerPresence_C nearest `from` once the `nth` nearest presences of ALL (on or off) are left
+// out, or null. Test tool only.
+// Card 514 (c513a FED_C4M1 Metro_SO2 d1): the skip ranks used to count switched-on presences only. Try 1 stood in
+// BP_PlayerPresence_C_13, whose entry runs imp858(false) on it (14000); try 2 (nth 1) then skipped the nearest live
+// one, C_70 (the level end, 7722 uu), and stood at C_191 (8620), try 3 at (-2500, -95400). The ranks now count every
+// presence, so a presence spent by an earlier try no longer shifts the next try past the live one after it.
+// Card 516 (c244b322a, FED_C4M1 Bridge_SO1): ranking every presence repeated a pick. Nearest to the marker were C_9
+// (try 1's own stand), C_256 (already switched off), C_255, then C_12 (Bridge_SO2's trigger). Try 2 skipped C_9 and
+// stood in C_255; try 3 skipped C_9 and C_256 and stood in C_255 again, so C_12 was never entered and the step VOIDed
+// after a 312 s stay. Now try n skips the nearest presence of all (try 1's) and the presences tries 2 to n-1 of the
+// same step stood in, and takes the nearest switched-on one left: every try enters a new presence. The picks are
+// remembered per `from` point; they are compared as addresses only, never read.
+struct C284Picks {
+    Vec3 from;
+    void* picked[kC284PresenceTries];
+};
+C284Picks g_c284_picks{};
+
+void* c284_nearest_presence(const void* world, const Vec3& from, void* const (&skip)[kC284PresenceTries + 1],
+                            bool live_only) {
     void* pp = nullptr;
-    for (int32_t k = 0; k <= nth && k < kC284PresenceTries; ++k) {
-        pp = nullptr;
-        double best = 0.0;
-        const auto* const levels = static_cast<void* const*>(read_ptr(world, kWorldLevels));
-        const int32_t num_levels = read_i32(world, kWorldLevels + kArrayNum);
-        for (int32_t l = 0; levels != nullptr && l < num_levels && l < kMaxLevels; ++l) {
-            const auto* const actors =
-                levels[l] != nullptr ? static_cast<void* const*>(read_ptr(levels[l], kLevelActors)) : nullptr;
-            const int32_t num = levels[l] != nullptr ? read_i32(levels[l], kLevelActors + kArrayNum) : 0;
-            for (int32_t a = 0; actors != nullptr && a < num && a < kMaxLevelActors; ++a) {
-                void* const x = actors[a];
-                if (x == nullptr || x == skip[0] || x == skip[1] || x == skip[2] ||
-                    strcmp(class_name(x).text, "BP_PlayerPresence_C") != 0) {
-                    continue;
-                }
-                C132ExtField f{};
-                if (!c132_ext_field(x, f) || (f.ext & 1u) == 0) {
-                    continue; // switched off: the level script used it up (run 2: BP_PlayerPresence_C_1)
-                }
-                const double d = vec_dist(actor_location(x), from);
-                if (pp == nullptr || d < best) {
-                    pp = x;
-                    best = d;
-                }
+    double best = 0.0;
+    const auto* const levels = static_cast<void* const*>(read_ptr(world, kWorldLevels));
+    const int32_t num_levels = read_i32(world, kWorldLevels + kArrayNum);
+    for (int32_t l = 0; levels != nullptr && l < num_levels && l < kMaxLevels; ++l) {
+        const auto* const actors =
+            levels[l] != nullptr ? static_cast<void* const*>(read_ptr(levels[l], kLevelActors)) : nullptr;
+        const int32_t num = levels[l] != nullptr ? read_i32(levels[l], kLevelActors + kArrayNum) : 0;
+        for (int32_t a = 0; actors != nullptr && a < num && a < kMaxLevelActors; ++a) {
+            void* const x = actors[a];
+            bool skipped = x == nullptr;
+            for (int32_t k = 0; k <= kC284PresenceTries && !skipped; ++k) {
+                skipped = skip[k] != nullptr && x == skip[k];
+            }
+            if (skipped || strcmp(class_name(x).text, "BP_PlayerPresence_C") != 0) {
+                continue;
+            }
+            C132ExtField f{};
+            if (live_only && (!c132_ext_field(x, f) || (f.ext & 1u) == 0)) {
+                continue; // switched off: the level script used it up (run 2: BP_PlayerPresence_C_1)
+            }
+            const double d = vec_dist(actor_location(x), from);
+            if (pp == nullptr || d < best) {
+                pp = x;
+                best = d;
             }
         }
-        skip[k] = pp;
     }
+    return pp;
+}
+
+void* c284_nth_presence(const void* world, const Vec3& from, int32_t nth) {
+    void* skip[kC284PresenceTries + 1] = {};
+    if (nth <= 0) {
+        return c284_nearest_presence(world, from, skip, true);
+    }
+    const bool same = vec_dist(g_c284_picks.from, from) < 1.0;
+    if (nth == 1 || !same) {
+        g_c284_picks = C284Picks{from, {}};
+    }
+    skip[0] = c284_nearest_presence(world, from, skip, false); // try 1's presence, on or off
+    const int32_t prior = nth - 1 < kC284PresenceTries ? nth - 1 : kC284PresenceTries - 1;
+    for (int32_t k = 0; k < prior; ++k) {
+        skip[k + 1] = g_c284_picks.picked[k];
+    }
+    void* const pp = c284_nearest_presence(world, from, skip, true);
+    if (prior < kC284PresenceTries) {
+        g_c284_picks.picked[prior] = pp;
+    }
+    // card 514 review: a wrong rank shows here, not as a VOID
+    log::line("c284: nth presence %d: skipped %s%s%s, picked %s", nth,
+              skip[0] != nullptr ? prop_name(static_cast<const uint8_t*>(skip[0]) + kObjectName, 8).text : "none",
+              skip[1] != nullptr ? ", " : "",
+              skip[1] != nullptr ? prop_name(static_cast<const uint8_t*>(skip[1]) + kObjectName, 8).text : "",
+              pp != nullptr ? prop_name(static_cast<const uint8_t*>(pp) + kObjectName, 8).text : "none");
     return pp;
 }
 
@@ -556,9 +684,54 @@ void* c284_hub_presence(const void* world, const uint8_t* cur, int32_t k, const 
 // 10615), 2300 uu from BP_PlayerPresence_C_5; the presence nearest the HOST was the previous step's, used up). The
 // objective names no presence, so each `objective go` in a row for the same step takes the next nearest presence
 // to the sibling marker's actor (to the host with no such sibling), kC284PresenceTries at most. Test tool only.
+// c247b288a (FED_C5M2, b288): Assassin_SO2 is actorless with no sibling marker; the level script completes it on
+// entering BP_PlayerPresence_C_6 (card 247 table row S2, @3057), about 89000 uu from the host. The nearest-presence
+// tries never reach it (50 failed waits, soak ended without Finale). A row here names the presence the script
+// completes the step from, taken from a static script trace; it is tried before the nearest-presence tries.
+// Names only, no coordinates. Test tool only.
+struct C284PresenceHint {
+    const char* objective;
+    const char* presence;
+};
+constexpr C284PresenceHint kC284PresenceHints[] = {
+    {"Assassin_SO2", "BP_PlayerPresence_C_6"}, // FED_C5M2, card 247 row S2
+    // FED_C5M2, card 247 row S3: entering C_21 (@8152) starts SetWaves C_7; its end event completes SO3 (@8230).
+    // c247b297a (b297): the nearest-presence try stood at C_617, 38284 uu off; SO3 stayed open, no Finale_O1.
+    {"Assassin_SO3", "BP_PlayerPresence_C_21"},
+    // FED_C5M2, card 247 row F6: entering C_408 (@30571) runs `Nuke Town` and completes SO6 (@30898).
+    {"Finale_SO6", "BP_PlayerPresence_C_408"},
+    // FED_C5M2, card 247 row F5: the complete call (@31007) comes from entering C_62 (@35214).
+    {"Finale_SO5", "BP_PlayerPresence_C_62"},
+};
+constexpr int32_t kC284Hints = static_cast<int32_t>(sizeof(kC284PresenceHints) / sizeof(kC284PresenceHints[0]));
+
+// The hinted presence of objective `o`, or null (no row, or no such placed actor on this map).
+static void* c284_hint_presence(const void* world, const uint8_t* o, const Vec3& from) {
+    const auto id = fname_text(o + kObjectiveId);
+    for (int32_t i = 0; i < kC284Hints; ++i) {
+        if (strcmp(id.text, kC284PresenceHints[i].objective) == 0) {
+            return c64_find_actor(world, kC284PresenceHints[i].presence, from);
+        }
+    }
+    return nullptr;
+}
+
 const char* c284_actorless_stand(const void* world, void* host_pawn, const uint8_t* o, C284Stand& s, int32_t nth) {
     if (host_pawn == nullptr) {
         return "no actor, no objective marker actor and no host pawn";
+    }
+    void* const hint = c284_hint_presence(world, o, actor_location(host_pawn));
+    if (hint != nullptr) {
+        s.target = actor_location(hint);
+        if (!c284_presence_stand(world, host_pawn, s, hint)) {
+            return "no actor, no objective marker actor and no navmesh point in the hinted presence";
+        }
+        const Vec3 at = actor_location(hint);
+        log::line("c284: actorless step stands at hinted presence %s at (%.0f, %.0f, %.0f), %.0f uu from the host",
+                  object_name(hint).text, at.x, at.y, at.z, vec_dist(at, actor_location(host_pawn)));
+        s.from = "hinted presence (script trace)";
+        s.yaw = c284_yaw_to(s.nav, s.target);
+        return nullptr;
     }
     const void* const up = read_ptr(o, kObjectiveParent);
     void* mark = nullptr;
@@ -671,6 +844,27 @@ bool c284_is_pickup(const void* actor) {
            strstr(object_name(actor).text, "WeaponPickup") != nullptr;
 }
 
+// b274 (c243b273a Monorail_SO3: the face stand on the switch bounds' bottom, z 1620, sat 59 uu over the real floor; the
+// client fell 68 uu after the warp and the go failed its drift check): an off-navmesh stand drops onto the static
+// floor (kEccWorldStatic) found within kC284FloorDownUu under it, traced from kC284FloorUpUu over it. Without one
+// (or a start inside geometry) the stand keeps its bounds height (logged).
+constexpr double kC284FloorUpUu = 100.0;
+constexpr double kC284FloorDownUu = 300.0;
+void c284_off_mesh_floor(const void* pawn, Vec3& at) {
+    bool inside = false;
+    const Vec3 low{at.x, at.y, at.z - kC284FloorDownUu};
+    const Vec3 hit = pawn != nullptr ? trace_channel(pawn, Vec3{at.x, at.y, at.z + kC284FloorUpUu}, low, kEccWorldStatic,
+                                                     nullptr, nullptr, &inside)
+                                     : low;
+    const bool found = pawn != nullptr && !inside && hit.z > low.z + 1.0;
+    log::line("c284: off-navmesh stand (%.0f, %.0f, %.0f): static floor %s (z %.0f)%s", at.x, at.y, at.z,
+              pawn == nullptr ? "not traced (no host pawn)" : inside ? "inside geometry" : found ? "found" : "none",
+              hit.z, found ? ": stands on it" : ": keeps the bounds height");
+    if (found) {
+        at.z = hit.z;
+    }
+}
+
 bool c284_pickup_stand(const void* world, void* host_pawn, C284Stand& s) {
     if (g_actor_bounds == nullptr) {
         return false;
@@ -693,11 +887,35 @@ bool c284_pickup_stand(const void* world, void* host_pawn, C284Stand& s) {
     const double a = atan2(h.y - floor.y, h.x - floor.x);
     const double out = kC284UseUu + (extent.x > extent.y ? extent.x : extent.y);
     s.nav = Vec3{floor.x + cos(a) * out, floor.y + sin(a) * out, floor.z};
+    c284_off_mesh_floor(host_pawn, s.nav);
     s.from = "pickup bounds (off the navmesh)";
     log::line("WARN c284: use stand %s: no navmesh point near its bounds (centre (%.0f, %.0f, %.0f), extent (%.0f, "
               "%.0f, %.0f), root (%.0f, %.0f, %.0f)); stand off the navmesh at (%.0f, %.0f, %.0f), %.0f uu toward the "
               "host", object_name(s.actor).text, centre.x, centre.y, centre.z, extent.x, extent.y, extent.z, root.x,
               root.y, root.z, s.nav.x, s.nav.y, s.nav.z, out);
+    return true;
+}
+
+// b272 (c243b271c Monorail_SO3: BP_WallSwitch_C at (-40294, 54387, 1720) with the host 11800 uu away, every switch
+// try "none") while c243-c3m2-b6r2 stood the host at (-40178, 54416, 1739) and pressed it there. As the pickup
+// fallback does: the players stand kC284UseUu out from the bounds face along the root yaw, on the bounds' bottom, off
+// the navmesh (logged). False only without GetActorBounds.
+bool c284_face_stand(const void* host_pawn, C284Stand& s) {
+    if (g_actor_bounds == nullptr) {
+        return false;
+    }
+    const void* const root = read_ptr(s.actor, kActorRootComponent);
+    const double yaw = (root != nullptr ? component_yaw(root) : 0.0) / kRadToDeg;
+    Vec3 centre{}, extent{};
+    g_actor_bounds(s.actor, false, &centre, &extent, false);
+    const double cx = cos(yaw), sy = sin(yaw);
+    const double out = fabs(cx) * extent.x + fabs(sy) * extent.y + kC284UseUu; // the box edge, then kC284UseUu more
+    s.nav = Vec3{centre.x + cx * out, centre.y + sy * out, centre.z - extent.z};
+    c284_off_mesh_floor(host_pawn, s.nav);
+    s.from = "switch face (off the navmesh)";
+    log::line("WARN c284: use stand %s: no try projects to the navmesh; stand off the navmesh at (%.0f, %.0f, %.0f), "
+              "%.0f uu out from the bounds centre (%.0f, %.0f, %.0f) along yaw %.0f deg", object_name(s.actor).text,
+              s.nav.x, s.nav.y, s.nav.z, out, centre.x, centre.y, centre.z, yaw * kRadToDeg);
     return true;
 }
 
@@ -726,6 +944,19 @@ const char* c284_marker_next_presence(const void* world, void* host_pawn, C284St
     }
     const int32_t n = nth % kC284PresenceTries;
     void* const pp = c284_nth_presence(world, base, n);
+    // c247b308a (FED_C5M2): Array_SO4's try 3 had no presence left near its marker, so it stood in
+    // BP_PlayerPresence_C_17, 52826 uu off: Assassin_SO1's trigger. The level script ran its entry before Assassin_SO1
+    // was added (CompleteSubObjective flags 0x200) and switched C_17 off, so Assassin_SO1 could never complete; its
+    // own tries then stood 46867 uu off. A next presence past kC284NextPresenceMaxUu belongs to another part of the
+    // map: the step stays open instead (largest useful pick seen: 18140 uu, Array_SO4 C_16).
+    constexpr double kC284NextPresenceMaxUu = 20000.0;
+    if (pp != nullptr && vec_dist(actor_location(pp), base) > kC284NextPresenceMaxUu) {
+        const Vec3 away = actor_location(pp);
+        log::line("c284: marker step try %d: next presence %s at (%.0f, %.0f, %.0f) is %.0f uu from marker actor %s, "
+                  "past %.0f uu: not entered", n + 1, prop_name(static_cast<const uint8_t*>(pp) + kObjectName, 8).text,
+                  away.x, away.y, away.z, vec_dist(away, base), object_name(mark).text, kC284NextPresenceMaxUu);
+        return "marker step left open: the next switched-on presence is too far from the marker actor";
+    }
     if (pp == nullptr || !c284_presence_stand(world, host_pawn, s, pp)) {
         return "marker step left open: no next switched-on presence with a navmesh point near the marker actor";
     }
@@ -760,6 +991,27 @@ const char* c284_stand(const void* world, void* host_pawn, const uint8_t* o, C28
     if (nth > 0 && bare_location) {
         return c284_marker_next_presence(world, host_pawn, s, nth, o);
     }
+    // c247b292a (FED_C5M2 Finale_SO0): the marker ActorReference_C_8 sits at the centre of BP_PlayerPresence_C_23, and
+    // the level script completes the step on entering C_23. Try 0 stood on the marker's own navmesh point, 532 uu off
+    // and outside C_23; tries 1 and 2 (c284_marker_next_presence) then skip the nearest presence as already tried, so
+    // C_23 was never entered. A bare location within kC284MarkerInPresenceUu of a switched-on presence's centre (so a
+    // far presence never pulls the stand away from a marker whose wave spawns at the marker) stands inside that
+    // presence first. c247b295a: the marker C_8 lay 404 uu from C_23's centre but outside its shape, so the old
+    // "marker inside the shape" test skipped this path; nearness alone now decides.
+    constexpr double kC284MarkerInPresenceUu = 1000.0;
+    if (bare_location && host_pawn != nullptr) {
+        void* const pp = c64_find_actor(world, "BP_PlayerPresence_C", s.target);
+        C126Shape sh{};
+        if (pp != nullptr && static_cast<const uint8_t*>(pp)[kC284PresenceEnabled] != 0 &&
+            vec_dist(actor_location(pp), s.target) <= kC284MarkerInPresenceUu && c126_shape_find(pp, sh, nullptr) &&
+            c284_presence_stand(world, host_pawn, s, pp)) {
+            log::line("c284: marker %s lies %s %s; stand in the presence (%s)", object_name(s.actor).text,
+                      c126_capsule_inside(sh, host_pawn, actor_location(s.actor)) ? "inside" : "near",
+                      object_name(pp).text, s.from);
+            s.yaw = c284_yaw_to(s.nav, s.target);
+            return nullptr;
+        }
+    }
     Vec3 want = s.target;
     const bool volume = s.kind == C126Kind::Presence || s.kind == C126Kind::Count;
     if (volume && c126_shape_find(s.actor, s.shape, nullptr)) {
@@ -773,8 +1025,8 @@ const char* c284_stand(const void* world, void* host_pawn, const uint8_t* o, C28
         s.yaw = c284_yaw_to(s.nav, s.target);
         return nullptr;
     } else if (s.kind == C126Kind::Use) {
-        if (!c284_use_stand(world, host_pawn, s, true)) {
-            return "no stand point around the switch projects to the navmesh";
+        if (!c284_use_stand(world, host_pawn, s, true) && !c284_face_stand(host_pawn, s)) {
+            return "no stand point around the switch projects to the navmesh, and no GetActorBounds";
         }
         s.yaw = c284_yaw_to(s.nav, s.target);
         return nullptr;
@@ -789,8 +1041,21 @@ const char* c284_stand(const void* world, void* host_pawn, const uint8_t* o, C28
         if (!marker) {
             return "no navmesh point near the stand point";
         }
-        if (!c284_presence_stand(world, host_pawn, s)) {
-            return "no navmesh point near the marker stand nor at the nearest presence centre";
+        // b274 (c243b273a FED_C3M2 Monorail_SO4: the marker ActorReference_C_9 at (-38208, 51466, 1730) had no
+        // navmesh point; the nearest presence, BP_PlayerPresence_C_51, lay 9014 uu away, so the players stood there
+        // and the wave at the marker that completes Monorail_O1 never met them; c243-c3m2-b6r2 completed it standing
+        // at (-38231, 51499)). Only a presence within kC284PresenceNearUu of the marker stands in for it; otherwise
+        // the players stand on the marker itself, on the static floor under it, off the navmesh (logged).
+        void* const pp = c64_find_actor(world, "BP_PlayerPresence_C", s.target);
+        const double off = pp != nullptr ? vec_dist(actor_location(pp), s.target) : -1.0;
+        if (pp == nullptr || off > kC284PresenceNearUu || !c284_presence_stand(world, host_pawn, s, pp)) {
+            s.nav = s.target;
+            c284_off_mesh_floor(host_pawn, s.nav);
+            s.from = "marker (off the navmesh)";
+            log::line("WARN c284: marker stand: no navmesh point at (%.0f, %.0f, %.0f); nearest presence %s %.0f uu "
+                      "off (near limit %.0f); stand off the navmesh at (%.0f, %.0f, %.0f)", s.target.x, s.target.y,
+                      s.target.z, pp != nullptr ? object_name(pp).text : "none", off, kC284PresenceNearUu, s.nav.x,
+                      s.nav.y, s.nav.z);
         }
     }
     s.yaw = c284_yaw_to(s.nav, s.target);
@@ -899,7 +1164,7 @@ const char* c284_now(void* world, void* pc, uint32_t seq) {
     if (world == nullptr || !c49_objectives(g_c49_get_subsystem(world), v)) {
         return "no objective map";
     }
-    const void* const parent = c126_active_parent(v);
+    const void* const parent = c284_parent(world, v, nullptr);
     if (parent == nullptr) {
         return "no open top-level objective";
     }
@@ -940,9 +1205,9 @@ bool c284_expect_step(void* world, void* /*pc*/, const char* id_text, bool timed
     }
     SparseView v{};
     const bool map = world != nullptr && c49_objectives(g_c49_get_subsystem(world), v);
-    const void* const parent = map ? c126_active_parent(v) : nullptr;
     c284_reset(world);
     const uint8_t* const o = map ? c284_find_text(v, id_text) : nullptr;
+    const void* const parent = map ? c284_parent(world, v, o) : nullptr;
     const bool kept = o != nullptr && read_u64(o, kObjectiveId) == g_c284.current && c284_is_step(world, o, parent);
     if (map && (kept || c284_doable(world, v, o, parent))) { // kept: a marker blink on the current step is no fail
         g_c284.current = read_u64(o, kObjectiveId);
@@ -1004,7 +1269,7 @@ const char* c284_next(void* world, void* pc, uint32_t seq) {
     if (world == nullptr || !c49_objectives(g_c49_get_subsystem(world), v)) {
         return "no objective map";
     }
-    const void* const parent = c126_active_parent(v);
+    const void* const parent = c284_parent(world, v, nullptr);
     if (parent == nullptr) {
         return "no open top-level objective";
     }
@@ -1070,6 +1335,8 @@ void c284_lift(const void* world, void* pawn, const C126Shape& sh, const Vec3& w
 // b237: the presser of a use step moves toward `target` in 2D (z kept), swept so a wall or the panel stops it.
 // b255: it stops where its eye is kC284StepEyeUu from the target in 3D (2D = sqrt(200^2 - dz^2), 0 when the height
 // alone is past it), and a pawn already inside that eye distance does not move. One row with 2D and 3D before/after.
+// b257 gated it on the bounds face instead; card 512 restored the eye gate (reach kC284UseReachUu) and keeps the
+// face distance in the rows only.
 namespace {
 // b257: the 2D distance from `p` to the nearest point of the box (centre c, extent e); `face` gets that point.
 double c284_face_2d(const Vec3& p, const Vec3& c, const Vec3& e, Vec3& face) {
@@ -1094,13 +1361,20 @@ void c284_step_in(void* pawn, const void* actor, const Vec3& target, uint32_t se
     }
     Vec3 face{};
     const double f2 = c284_face_2d(from, centre, extent, face);
-    if (f2 <= kC284StepFaceUu || d3 <= kC284UseReachUu) {
-        log::line("cmd: %u objective go: use step-in none (face 2D %.0f uu from %s, stop %.0f, eye 3D %.0f uu, reach "
-                  "%.0f)", seq, f2, boxed ? "bounds" : "target", kC284StepFaceUu, d3, kC284UseReachUu);
+    // Card 512 (c504k1, FED_C4M1 Stadium_SO1_B-D, BP_PanelSwitch_WithoutScreen_C): the bounds face was 100 uu off in
+    // 2D while the eye was 369 uu from the target point, past the 250 uu reach, so the b257 face gate skipped the
+    // step and every press missed. The eye distance to the target alone decides now: inside the reach, no move;
+    // otherwise the pawn moves in 2D toward the target until its eye is kC284StepEyeUu from it in 3D (swept, so the
+    // panel or a wall stops it first). The face distance stays in the rows.
+    const double d2 = sqrt(dx * dx + dy * dy);
+    const double r2 = fabs(dz) < kC284StepEyeUu ? sqrt(kC284StepEyeUu * kC284StepEyeUu - dz * dz) : 0.0;
+    if (d3 <= kC284UseReachUu || d2 <= r2 || d2 < 1.0) {
+        log::line("cmd: %u objective go: use step-in none (face 2D %.0f uu from %s, eye 3D %.0f uu, reach %.0f, 2D %.0f, "
+                  "stop 2D %.0f)", seq, f2, boxed ? "bounds" : "target", d3, kC284UseReachUu, d2, r2);
         return;
     }
-    const double k = (f2 - kC284StepFaceUu) / f2;
-    const Vec3 to{from.x + (face.x - from.x) * k, from.y + (face.y - from.y) * k, from.z};
+    const double k = (d2 - r2) / d2;
+    const Vec3 to{from.x + dx * k, from.y + dy * k, from.z};
     alignas(16) uint8_t hit[kHitSize] = {};
     const bool moved = g_set_actor_location(pawn, &to, true, hit, kTeleportPhysics);
     const Vec3 at = actor_location(pawn);
@@ -1114,7 +1388,9 @@ void c284_step_in(void* pawn, const void* actor, const Vec3& target, uint32_t se
               sqrt(ax * ax + ay * ay + az * az));
 }
 
-const char* c284_go_start(void* world, void* pc, uint8_t who, uint32_t seq) {
+const char* c284_go_start(void* world, void* pc, uint8_t copy, uint32_t seq) {
+    const uint8_t who = copy & static_cast<uint8_t>(~cmdfile::kGoHome);
+    const bool home = (copy & cmdfile::kGoHome) != 0;
     if (g_client_session) {
         return "host only";
     }
@@ -1124,17 +1400,25 @@ const char* c284_go_start(void* world, void* pc, uint8_t who, uint32_t seq) {
     }
     void* pawns[3] = {};
     c284_pawns(pc, pawns);
-    const uint8_t* const cur = c284_current(world, c126_active_parent(v), pawns[0]);
+    const uint8_t* const cur = c284_current(world, c284_parent(world, v, nullptr), pawns[0]);
     for (int32_t i = 0; i < 3; ++i) {
         g_c284.placed[i] = C284Placed::None;
         g_c284.pawns[i] = nullptr;
+        g_c284.still_from[i] = 0;
     }
     if (cur == nullptr) {
         return "no current step";
     }
     C284Stand& s = g_c284.stand;
-    g_c284.go_n = c284_go_count(g_c284.current);
+    if (cur[kObjectiveMarker] != 0) {
+        c284_note_shown(g_c284.current); // card 516: before the warp; a re-go starts inside the zone, marker hidden
+    }
+    g_c284.go_n = home ? 0 : c284_go_count(g_c284.current);
     const char* const why = c284_stand(world, pawns[0], cur, s, g_c284.go_n);
+    if (home && why == nullptr && s.actor != nullptr) { // card 514 review: the home row names its volume
+        log::line("cmd: %u objective go: home stand at %s (%s)", seq,
+                  prop_name(static_cast<const uint8_t*>(s.actor) + kObjectName, 8).text, s.from);
+    }
     if (why != nullptr) {
         return c284_fail("%s: %s", fname_text(&g_c284.current).text, why);
     }
@@ -1200,6 +1484,40 @@ const char* c284_go_start(void* world, void* pc, uint8_t who, uint32_t seq) {
     return nullptr; // c63_continue calls c284_go_settle once the settle (c.ms) is up
 }
 
+bool c284_go_still(void* world, void* pc, uint64_t now, uint32_t seq) {
+    if (g_c284.world != world) {
+        return true; // c284_go_settle rows the world change
+    }
+    void* pawns[3] = {};
+    c284_pawns(pc, pawns);
+    uint64_t still_ms = UINT64_MAX;
+    int32_t placed = 0;
+    for (int32_t i = 0; i < 3; ++i) {
+        if (g_c284.placed[i] == C284Placed::None) {
+            continue;
+        }
+        ++placed;
+        if (pawns[i] != g_c284.pawns[i]) {
+            return true; // c284_go_settle rows the changed pawn
+        }
+        const Vec3 at = actor_location(pawns[i]);
+        const auto* const cmc = static_cast<const uint8_t*>(read_ptr(pawns[i], kCharacterMovement));
+        const bool walking = cmc != nullptr && cmc[kCmcMovementMode] == kC284MoveWalking;
+        if (g_c284.still_from[i] == 0 || !walking || vec_dist(at, g_c284.still_at[i]) > kC284StillUu) {
+            g_c284.still_at[i] = at;
+            g_c284.still_from[i] = now;
+        }
+        const uint64_t held = now - g_c284.still_from[i];
+        still_ms = held < still_ms ? held : still_ms;
+    }
+    if (placed == 0 || still_ms < kC284StillMs) {
+        return false;
+    }
+    log::line("cmd: %u objective go: settle ended early, %d pawn(s) walking and still %llu ms", seq, placed,
+              static_cast<unsigned long long>(still_ms));
+    return true;
+}
+
 const char* c284_go_settle(void* world, void* pc, uint32_t seq) {
     if (g_c284.world != world) {
         return "the world changed during the settle";
@@ -1250,6 +1568,134 @@ const char* c284_go_settle(void* world, void* pc, uint32_t seq) {
     return first[0] != '\0' ? c284_fail("%s%s", first, "") : nullptr;
 }
 
+// c263e line 46 (also c263b, c263d; FED_C3M2): PowerPlant_Marker and PowerPlant_SO1 share ActorReference_C_1. The
+// level script never completes the marker step: it completes SO1 on entering SO1's presence (15430613, try 2) and
+// about 16 s later hides the marker and shows SO2..SO6 (15446462), so three waits on the marker failed and the group
+// went VOID. A marker step is a guide for the sibling step that shares its actor: it ends when that sibling completes.
+// c247b307a (FED_C5M2): Outpost_SO4 is a marker step on the same actor as Outpost_SO2, but SO2 completed (22499822)
+// before SO4 was added (22500980); SO4 completes later by its own trigger (both players in C_402, the C_5 waves
+// cleared). Ending it on SO2 made every wait on it "done" at once, 121 times. So a marker is a guide only when a wait
+// saw its sibling still open while the marker was open (guide_ids); a sibling complete from the first look is not
+// the step's guide. The sibling that ended it, or null.
+namespace {
+const uint8_t* c284_guide_done_by(const void* world, const SparseView& v, const uint8_t* o) {
+    if (o == nullptr || o[kObjectiveComplete] != 0 || c126_kind_of(world, o) != C126Kind::Marker) {
+        return nullptr;
+    }
+    const void* const actor = c126_actor(o);
+    const void* const up = read_ptr(o, kObjectiveParent);
+    if (actor == nullptr || up == nullptr) {
+        return nullptr;
+    }
+    const uint64_t id = read_u64(o, kObjectiveId);
+    bool seen = false;
+    for (int32_t k = 0; k < g_c284.guide_n; ++k) {
+        seen = seen || g_c284.guide_ids[k] == id;
+    }
+    for (int32_t i = 0; i < v.count; ++i) {
+        const uint8_t* const sib = c284_obj(v, i);
+        if (sib == nullptr || sib == o || read_ptr(sib, kObjectiveParent) != up || c126_actor(sib) != actor) {
+            continue;
+        }
+        if (sib[kObjectiveComplete] == 0) {
+            if (!seen && g_c284.guide_n < kC284GuideIds) {
+                g_c284.guide_ids[g_c284.guide_n++] = id;
+            }
+            return nullptr;
+        }
+        if (seen) {
+            return sib;
+        }
+    }
+    return nullptr;
+}
+
+// Card 516: the other children of o's parent `up`: how many, how many complete, how many open with their marker
+// shown, and the first such.
+struct C284Sibs {
+    int32_t total;
+    int32_t done;
+    int32_t shown;
+    const uint8_t* shown_one;
+};
+
+C284Sibs c284_siblings(const SparseView& v, const uint8_t* o, const void* up) {
+    C284Sibs s{};
+    for (int32_t i = 0; i < v.count; ++i) {
+        const uint8_t* const sib = c284_obj(v, i);
+        if (sib == nullptr || sib == o || read_ptr(sib, kObjectiveParent) != up) {
+            continue;
+        }
+        ++s.total;
+        s.done += sib[kObjectiveComplete] != 0 ? 1 : 0;
+        if (sib[kObjectiveComplete] == 0 && sib[kObjectiveMarker] != 0) {
+            s.shown_one = s.shown == 0 ? sib : s.shown_one;
+            ++s.shown;
+        }
+    }
+    return s;
+}
+
+// Card 516 (c244b319a, FED_C4M1): Bridge_Marker and Stadium_Marker are zone guides. The level script hides the guide
+// and shows its siblings while the players stand in the zone (Bridge_Marker bools 01 with Bridge_SO1 bools 11,
+// 57733895) and flips back when they leave; the guide never completes on its own (it closes with Bridge_O1), so every
+// wait on it failed and Bridge_SO1 started 90 s after the Add. Rule: an open kind-marker step whose own marker is off
+// while an open sibling's marker is on was handed on, if its marker was shown at one of its goes (shown_ids: a step
+// added hidden, Stadium_SO2 bools 01110 at 57910532, has not been handed anything). Held for kC284HandTicks wait
+// ticks: Stadium_SO2 (a real flag step, lesson 18) is hidden and shown again inside 3 ms when the players cross the
+// zone edge (57947014-57947017), and must not end on that. The sibling it was handed on to, or null.
+constexpr int32_t kC284HandTicks = 30; // about half a second of engine ticks
+const uint8_t* c284_handed_on(const void* world, const SparseView& v, const uint8_t* o) {
+    if (o == nullptr || o[kObjectiveComplete] != 0 || o[kObjectiveMarker] != 0 ||
+        c126_kind_of(world, o) != C126Kind::Marker) {
+        g_c284.handed_ticks = 0;
+        return nullptr;
+    }
+    const void* const up = read_ptr(o, kObjectiveParent);
+    const C284Sibs s = up != nullptr ? c284_siblings(v, o, up) : C284Sibs{};
+    const uint64_t id = read_u64(o, kObjectiveId);
+    if (s.shown == 0 || !c284_has(g_c284.shown_ids, g_c284.shown_n, id)) {
+        g_c284.handed_ticks = 0;
+        return nullptr;
+    }
+    g_c284.handed_ticks = g_c284.handed_id == id ? g_c284.handed_ticks + 1 : 1;
+    g_c284.handed_id = id;
+    if (g_c284.handed_ticks < kC284HandTicks) {
+        return nullptr;
+    }
+    const uint64_t to = read_u64(s.shown_one, kObjectiveId);
+    if (s.shown == 1 && !c284_has(g_c284.zone_ids, g_c284.zone_n, to) && g_c284.zone_n < kC284GuideIds) {
+        g_c284.zone_ids[g_c284.zone_n++] = to; // the sole shown sibling is the zone's own guide (Bridge_SO1)
+    }
+    g_c284.handed_ticks = 0;
+    return s.shown_one;
+}
+
+// Card 516 (c244b319a): Bridge_SO1, the guide Bridge_Marker hands on to, never completes on its own either; the
+// zone's real work is hidden (Bridge_SO2, closed by presence _12 at 57840983, lesson 13) and then added (Bridge_SO3 at
+// 57840981). So a zone guide's wait ends when its parent gained a child or a child completed since the first wait
+// tick on it. Only steps recorded as a sole handed-on sibling are zone guides: Stadium_Marker hands on to four shown
+// siblings at once (SO1..SO4), so Stadium_SO2, a real step whose siblings can progress around it, is never one.
+// True when the parent moved on.
+bool c284_zone_moved(const SparseView& v, const uint8_t* o, int32_t* total, int32_t* done) {
+    const uint64_t id = o != nullptr ? read_u64(o, kObjectiveId) : 0;
+    const void* const up = o != nullptr ? read_ptr(o, kObjectiveParent) : nullptr;
+    if (up == nullptr || o[kObjectiveComplete] != 0 || !c284_has(g_c284.zone_ids, g_c284.zone_n, id)) {
+        return false;
+    }
+    const C284Sibs s = c284_siblings(v, o, up);
+    *total = s.total;
+    *done = s.done;
+    if (g_c284.base_id != id) {
+        g_c284.base_id = id;
+        g_c284.base_total = s.total;
+        g_c284.base_done = s.done;
+        return false;
+    }
+    return s.total != g_c284.base_total || s.done != g_c284.base_done;
+}
+} // namespace
+
 // One tick of `objective wait <id>`: true when it ends (*why null: complete; else the failure).
 bool c284_wait_step(void* world, void* pc, const char* id_text, bool timed_out, const char** why) {
     *why = nullptr;
@@ -1266,6 +1712,26 @@ bool c284_wait_step(void* world, void* pc, const char* id_text, bool timed_out, 
     if (found != nullptr && found[kObjectiveComplete] != 0) {
         return true;
     }
+    if (const uint8_t* const by = c284_guide_done_by(world, v, found); by != nullptr) {
+        const uint64_t bid = read_u64(by, kObjectiveId);
+        log::line("c284: objective wait %s: guide marker ended by %s (complete, shares actor %s)", id_text,
+                  fname_text(&bid).text, object_name(c126_actor(found)).text);
+        return true;
+    }
+    // Card 516: distinct rows; drive.py marker_held matches only "guide marker ended by ", so these end the routine.
+    if (const uint8_t* const to = c284_handed_on(world, v, found); to != nullptr) {
+        const uint64_t tid = read_u64(to, kObjectiveId);
+        log::line("c284: objective wait %s: guide marker handed on to %s (own marker hidden, that one shown)",
+                  id_text, fname_text(&tid).text);
+        return true;
+    }
+    int32_t total = 0;
+    int32_t done = 0;
+    if (c284_zone_moved(v, found, &total, &done)) {
+        log::line("c284: objective wait %s: zone guide passed, parent moved on (children %d to %d, complete %d to %d)",
+                  id_text, g_c284.base_total, total, g_c284.base_done, done);
+        return true;
+    }
     if (!timed_out) {
         return false;
     }
@@ -1275,7 +1741,7 @@ bool c284_wait_step(void* world, void* pc, const char* id_text, bool timed_out, 
     }
     void* pawns[3] = {};
     c284_pawns(pc, pawns);
-    const uint8_t* const cur = c284_current(world, c126_active_parent(v), pawns[0]);
+    const uint8_t* const cur = c284_current(world, c284_parent(world, v, nullptr), pawns[0]);
     char state[kNameChars + 64];
     snprintf(state, sizeof(state), "%s, count %s, current %s", found == nullptr ? "not in the map" : "open", cnt,
              cur != nullptr ? fname_text(&g_c284.current).text : "none");

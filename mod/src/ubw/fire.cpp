@@ -1164,11 +1164,52 @@ void c76_client_imc(void* world) {
     }
 }
 
+// Card 508, host: a leaver's down entry goes Up on every other remote PC. The clients' table drops an entry only
+// after its Up (StandUp window), so without this frame a downed leaver stays Downed there to the map's end and holds
+// one of kC43Max rows. Card 509: the guid is the one stored at the entry's last transition; at leave time the
+// leaving connection may be the only one and already closing, so a fresh lookup reads 0.
+void c508_leaver_up(const void* pc, const void* pawn, const C43Entry& e) {
+    const C43Roster r = c43_roster(g_actor_get_world(pawn));
+    void* to[kC43Max] = {};
+    uint32_t n = 0;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        if (r.p[s].pc != nullptr && r.p[s].pc != pc && c26_is_remote_pc(r.p[s].pc)) {
+            to[n++] = r.p[s].pc;
+        }
+    }
+    const char* const was = kC43LifeText[static_cast<size_t>(e.state)];
+    if (n == 0) {
+        log::line("card508: host t=%llu leaver pawn id %d (slot %u) was %s: no other remote PC, no Up sent",
+                  static_cast<unsigned long long>(GetTickCount64()), e.pawn_id, e.slot, was);
+        return;
+    }
+    uint32_t lo = 0;
+    uint32_t hi = 0;
+    if (!c41_guid_args(e.guid, lo, hi)) {
+        log::line("WARN card508: host leaver pawn id %d (slot %u) was %s: stored guid 0x%llx not sendable, no Up sent",
+                  e.pawn_id, e.slot, was, static_cast<unsigned long long>(e.guid));
+        return;
+    }
+    const ChanArgs args{{lo, hi, static_cast<uint32_t>(C43Life::Up), 0u, e.slot}};
+    uint32_t sent = 0;
+    for (uint32_t k = 0; k < n; ++k) {
+        uint32_t ahead = 0;
+        sent += ue::chan::chan_send_client_now(to[k], chan_frame(ChanOp::Down, args), &ahead) ? 1u : 0u;
+    }
+    g_c43.n.down_sent += sent;
+    log::line("card508: host t=%llu leaver pawn id %d (slot %u) was %s: guid 0x%llx, Up sent to %u of %u",
+              static_cast<unsigned long long>(GetTickCount64()), e.pawn_id, e.slot, was,
+              static_cast<unsigned long long>(e.guid), sent, n);
+}
+
 // Logout: the leaving player's entry and holds go.
-void c43_logout(const void* pawn) {
+void c43_logout(const void* pc, const void* pawn) {
     const int32_t id = object_index(pawn);
     const int32_t i = pawn != nullptr ? c43_find(id) : -1;
     if (i >= 0) {
+        if (c43_down_state(g_c43.e[i].state)) {
+            c508_leaver_up(pc, pawn, g_c43.e[i]);
+        }
         c43_remove(i);
     }
     for (int32_t h = g_c43.holds - 1; h >= 0; --h) {

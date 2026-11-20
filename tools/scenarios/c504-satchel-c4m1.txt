@@ -1,0 +1,50 @@
+# Card 504: satchel routine proof on FED_C4M1, one run. Each satchel step is one `host objective do <id>`
+# (tools/drive.py routine_satchel: go, client satchel pickup, go, client to the nearest site front/behind, focus gate
+# SatchelSiteCAC_, key E 3200, card456 "completed 1" gate, step out 1200, objective wait 20 s; at most 3 tries).
+# Order from c244b259a: Park_SO2_E..A (nests) are current first, Park_SO1_A-C are doable beside them, so the satchel
+# steps run first by expect. The nests then run by the proven nest routine. Park_Marker (marker kind, no routine) is a
+# plain go, and its Complete adds LZ_O1 / LZ_SO1 (the Rubble satchel building).
+# Predictions (written before the run):
+#  1. Park_SO1_C, Park_SO1_B, Park_SO1_A and LZ_SO1: "objective do: satchel <id> ... complete on try 1; client
+#     replayed". Each has a client card456 "hold released on SatchelSiteCAC_... completed 1" row before its Complete.
+#  2. Park_SO2_E..A: nest complete on try 1.
+#  3. 0 VOID, FATAL/EXCEPTION 0 on both sides. On LZ_SO1 a "satchel pickup skipped" note is allowed (best effort).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G env LANE=2 SCENARIO=tools/scenarios/c504-satchel-c4m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1" tools/run_pair.sh c504s3 900
+voidsoft
+void unless host dll 4c265abd554c8232
+void unless client dll 4c265abd554c8232
+host wait state map=FED_C4M1 timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C4M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c504-client-ingame
+host shot c504-host-ingame
+host clear 4000 kill
+# SATCHEL routine: the three Park flak bug buildings.
+host objective do Park_SO1_C
+host objective do Park_SO1_B
+host objective do Park_SO1_A
+# NEST routine: the Park nests.
+host objective do Park_SO2_E
+host objective do Park_SO2_D
+host objective do Park_SO2_C
+host objective do Park_SO2_B
+host objective do Park_SO2_A
+# Park_Marker: marker kind, plain go, then its Complete adds LZ_SO1.
+host objective expect Park_Marker
+host clear 1500 kill
+host objective go all
+host objective wait Park_Marker 30
+host wait log "card049: host sent AddSubObjective\(LZ_O1, LZ_SO1\)" timeout=30
+# SATCHEL routine: the LZ Rubble building.
+host objective do LZ_SO1
+host shot c504-end

@@ -1750,7 +1750,7 @@ struct C209Row {
     C209Op op;
 };
 constexpr int32_t kC209Rows = kC43Max * static_cast<int32_t>(C209Op::Count); // one per op and player
-constexpr const char* kC209OpText[] = {"BugForm", "Warp"};
+constexpr const char* kC209OpText[] = {"BugForm", "Warp", "Resupply"};
 static_assert(sizeof(kC209OpText) / sizeof(kC209OpText[0]) == static_cast<size_t>(C209Op::Count));
 struct C209State {
     C209Row row[kC209Rows];
@@ -1795,6 +1795,8 @@ void c209_step(void* pc) {
                   static_cast<unsigned long long>(r.guid), object_name(pawn).text);
         if (r.op == C209Op::BugForm) {
             c208_apply(pc, pawn, r.guid, static_cast<int32_t>(r.value));
+        } else if (r.op == C209Op::Resupply) {
+            c491_level_apply(pawn, r.guid, static_cast<int32_t>(r.value)); // card 502 finding 3
         } else {
             c46_warp_apply(pc, pawn, r.guid, r.value);
         }

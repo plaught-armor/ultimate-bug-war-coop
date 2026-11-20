@@ -10,7 +10,10 @@
 //   N (2)  a name table row: index, the text (components, sockets, owner classes, placed key names; the same rule)
 //   E (3)  an event: id, point, asset, a presence mask, then only the fields present (location, rotation, scale,
 //          attach component, socket, key (a NetGUID or a placed name and location; neither is the world key), owner
-//          class, look, seed, world location, of, flags, physical material, attenuation, concurrency)
+//          class, look, seed, world location, of, flags, physical material, attenuation, concurrency). Card 518: the
+//          id is a zigzag varint delta from the frame's previous E or R row (the first from 0), the asset a varint of
+//          index + 1 (0 none), the location, world location and placed location zigzag varints of whole uu, and
+//          look zigzag varints of thousandths.
 //   R (4)  the same fields: a journal row replayed to a joining PC
 //   X (5)  id: the host's spawn of that event ended (destroyed, garbage collected, or pooled again)
 //   D (6)  point, id, of: a Deactivate of a journal row (one with no row goes as a full E row)
@@ -67,10 +70,14 @@ constexpr int32_t kJournal = 4608;           // live spawns and placed component
 // Rows queued per tick. hb62: a wave start and the map load each activated about 400 placed systems in one tick,
 // past the old 512 with their end rows; a tick's rows are bounded by the journal (kJournal) and its end rows.
 constexpr int32_t kQueue = 4608;
-constexpr int32_t kRowBytes = 160;          // one binary row (the largest E row is about 140 bytes)
+// One binary row. The largest E row is about 140 bytes, but an A or N row carries a string of up to kStrMax bytes:
+// b338 (c263L337) lost 4 A rows of long bark cue paths and 2 E rows whose comp name row overflowed at 160 bytes.
+// An A row at most: tag 1, index 3, object 1, string 1 + kStrMax, set 1, flags 1, physmat/atten/conc/comp 3 each.
+constexpr int32_t kRowBytes = 1 + 3 + 1 + 1 + 255 + 1 + 1 + 4 * 3;
 constexpr int32_t kNames = 4096;            // name table rows per map (card 229: FED_C3M1 needs about 2670)
 constexpr int32_t kNameSlots = 8192;        // the host name table's hash slots (index + 1; 0 free)
 constexpr int32_t kStrMax = 255;            // an asset or name row's string: 1 to 255 bytes
+static_assert(kRowBytes >= 1 + 3 + 1 + 1 + kStrMax + 1 + 1 + 4 * 3, "card 518: the longest A row fits one row");
 constexpr int32_t kSweepPerTick = 64;        // journal rows checked per tick
 constexpr int32_t kClientLive = 4096;
 constexpr int32_t kKeyChars = kC95TargetMax + 80; // card 230: a wire target name, then " x y z"
@@ -82,6 +89,7 @@ constexpr uint8_t kTagEvent = 3;
 constexpr uint8_t kTagReplay = 4;
 constexpr uint8_t kTagEnd = 5;
 constexpr uint8_t kTagStop = 6;
+constexpr uint8_t kTagCount = 7; // card 518: per-tag counts, by tag value
 constexpr uint16_t kBitLoc = 1u << 0;
 constexpr uint16_t kBitRot = 1u << 1;
 constexpr uint16_t kBitScale = 1u << 2;
@@ -98,7 +106,6 @@ constexpr uint16_t kBitFlags = 1u << 12;
 constexpr uint16_t kBitPhysMat = 1u << 13;
 constexpr uint16_t kBitAtten = 1u << 14;
 constexpr uint16_t kBitConc = 1u << 15;
-constexpr uint16_t kNoAsset = 0xFFFF;
 constexpr uint32_t kClientLines = 200000;
 constexpr uint32_t kWarnLines = 8;
 constexpr uint32_t kC304HostLines = 16; // b9: card304 host owner rows per map
@@ -117,6 +124,30 @@ bool is_cue(C136Point p) {
 }
 bool is_stop(C136Point p) {
     return p == C136Point::NiagaraDeactivate || p == C136Point::NiagaraDeactivateImmediate;
+}
+bool is_sound(C136Point p) {
+    return p == C136Point::PlaySound || p == C136Point::SpawnSound || p == C136Point::SoundAttached;
+}
+// Card 518 step g: an attached Niagara spawn or decal reads its world point only when the client misses its key (0 of
+// those in c263L324; all 7 misses were attached sounds), so it is not sent. Activate rows keep it (component miss and
+// host-only plays).
+// Card 518 step k: attached sounds no longer carry it either. The client takes the point from its own parent component
+// (c263L333: 99.9 percent within 200 uu of the host's point, max 458 uu); a key miss plays nothing.
+// A row with no guid and no placed key is keyed by its world point (the client finds the actor near it, and plays
+// there on a miss), so it always keeps the point (c263L334: AI barks keyed by world went silent without it).
+bool world_unsent(C136Point p, uint64_t guid, int32_t placed) {
+    const bool keyed = guid != 0 || placed >= 0;
+    return keyed && (p == C136Point::NiagaraAttached || p == C136Point::NiagaraAttachedScale ||
+                     p == C136Point::NiagaraAttachedParams || p == C136Point::DecalAttached ||
+                     p == C136Point::SoundAttached);
+}
+// Card 518 f: look goes on the wire as the difference from the point's usual value: a sound's volume and pitch
+// multipliers 1 and start 0 (nearly every sound call), else zero (a decal's life span). The usual value sends nothing.
+void look_base(C136Point p, float (&base)[3]) {
+    const float one = is_sound(p) ? 1.0f : 0.0f;
+    base[0] = one;
+    base[1] = one;
+    base[2] = 0.0f;
 }
 
 // The send filter's inputs, kept with each row (compared by address only, never dereferenced).
@@ -175,6 +206,54 @@ bool wound_local(const C136Call& c) {
         wound_name = name;
     }
     return wound_name != 0 && name == wound_name;
+}
+
+// Card 518 step d: bug footsteps (NS_FX_Bugs_WalkGround and the GameplayCue.Impacts.Footsteps.*BugWalk cues) were
+// 1.43 MB of c263L315's 2.04 MB of Fx rows. Both sides animate the same bugs (card 132 pose), so each side's own anim
+// notifies make the footsteps: never sent, kept on the client. A verdict per asset name or cue tag is cached (one name
+// read per new key); past the table, the name is read each call.
+constexpr uint32_t kStepKeys = 128;
+struct StepKeys {
+    uint64_t key[kStepKeys]; // asset: FName comparison index | bit 63; cue: the tag FName
+    bool step[kStepKeys];
+    uint32_t n;
+};
+StepKeys g_step_keys{}; // written on the game thread only; other threads read the name each call
+uint32_t g_steps_kept = 0; // client: own footstep calls kept, per map
+uint32_t g_steps_cue = 0;  // client: of those, cue calls (no asset)
+
+// c263L317: the client's own blocked NS_FX_Bugs_WalkGround calls were 24,620 against the host's 24,738 sent rows (0.5
+// percent apart). c263L318 (b318): host 46,888 footstep calls kept, client 33,961 (game thread only), more than the
+// WalkGround calls alone, so the client runs its own BugWalk cues too; the cue/asset split row settles each kind.
+// Card 518 step h2: trooper footsteps too. c263L322: the host sent 939 AIHumanRun cue rows (24,645 B) while the client
+// blocked 936 of its own NS_FX_Humans_WalkGround calls and 341 own AIHumanRun cues: its trooper animations make them.
+bool step_text(const char* t) {
+    if (strcmp(t, "NS_FX_Bugs_WalkGround") == 0 || strcmp(t, "NS_FX_Humans_WalkGround") == 0) {
+        return true;
+    }
+    return strncmp(t, "GameplayCue.Impacts.Footsteps.", 30) == 0 &&
+           (strstr(t + 30, "BugWalk") != nullptr || strcmp(t + 30, "AIHumanRun") == 0);
+}
+
+bool footstep_local(const C136Call& c) {
+    if (c.asset == nullptr && c.tag == 0) {
+        return false;
+    }
+    const bool game = g_is_in_game_thread != nullptr && g_is_in_game_thread();
+    const uint64_t key = c.asset != nullptr
+                             ? (static_cast<uint64_t>(static_cast<uint32_t>(read_i32(c.asset, kObjectName))) | (1ull << 63))
+                             : c.tag;
+    for (uint32_t i = 0; game && i < g_step_keys.n; ++i) {
+        if (g_step_keys.key[i] == key) {
+            return g_step_keys.step[i];
+        }
+    }
+    const bool step = step_text(c.asset != nullptr ? object_name(c.asset).text : fname_text(&c.tag).text);
+    if (game && g_step_keys.n < kStepKeys) {
+        g_step_keys.key[g_step_keys.n] = key;
+        g_step_keys.step[g_step_keys.n++] = step;
+    }
+    return step;
 }
 
 // The ownerless rule's local case: no owner, no instigator, and no world place (a sound with no location and no
@@ -309,10 +388,42 @@ void put_vec(Bytes& o, const Vec3& v) {
 void put_angle(Bytes& o, double deg) {
     put_u16(o, static_cast<uint16_t>(static_cast<int64_t>(lround(deg * 65536.0 / 360.0)) & 0xFFFF));
 }
-// A cue Normal component: int16 round(v * 32767), clamped to [-1, 1].
-void put_unit(Bytes& o, double v) {
-    const double c = v < -1.0 ? -1.0 : (v > 1.0 ? 1.0 : v);
-    put_u16(o, static_cast<uint16_t>(static_cast<int16_t>(lround(c * 32767.0))));
+// Card 518: a signed value as a zigzag varint (small magnitudes of either sign take 1 or 2 bytes).
+void put_zigzag(Bytes& o, int64_t v) {
+    put_varint(o, (static_cast<uint64_t>(v) << 1) ^ static_cast<uint64_t>(v >> 63));
+}
+// Card 518: a world position in whole uu, 3 zigzag varints (3 bytes per component under 1,048,576 uu, against 4 as
+// f32). An effect spawn 0.5 uu off is not visible. Clamped to +-2^40 uu, so a garbage value cannot overflow.
+void put_pos(Bytes& o, const Vec3& v) {
+    constexpr double kMax = 1099511627776.0;
+    for (const double c : {v.x, v.y, v.z}) {
+        const double k = c != c ? 0.0 : (c < -kMax ? -kMax : (c > kMax ? kMax : c)); // c != c: NaN
+        put_zigzag(o, llround(k));
+    }
+}
+// Card 518 b: a second location in the same body (world, placed) as whole uu from the row's own location (`base`, the
+// whole uu put_pos wrote, or 0 with no location). Near or equal points take 1 B per component. The client adds the
+// same base (get_pos_from), so the journal body stays self-contained.
+void put_pos_from(Bytes& o, const Vec3& v, const Vec3& base) {
+    constexpr double kMax = 1099511627776.0;
+    const double b[3] = {base.x, base.y, base.z};
+    const double c3[3] = {v.x, v.y, v.z};
+    for (int32_t i = 0; i < 3; ++i) {
+        const double c = c3[i];
+        const double k = c != c ? 0.0 : (c < -kMax ? -kMax : (c > kMax ? kMax : c)); // c != c: NaN
+        put_zigzag(o, llround(k) - llround(b[i]));
+    }
+}
+// Card 518: look (a sound's volume and pitch multipliers and start time, a decal's life span) in thousandths, 3 zigzag
+// varints: 1.0 takes 2 bytes and 0 takes 1, against 4 as f32. Clamped to +-2^30 thousandths. Card 518 f: each value
+// less `base` (look_base); the client adds it back.
+void put_milli(Bytes& o, const float (&v)[3], const float (&base)[3]) {
+    constexpr double kMax = 1073741824.0;
+    for (int32_t i = 0; i < 3; ++i) {
+        const double c = static_cast<double>(v[i]) - static_cast<double>(base[i]);
+        const double k = c != c ? 0.0 : c * 1000.0;
+        put_zigzag(o, llround(k < -kMax ? -kMax : (k > kMax ? kMax : k)));
+    }
 }
 void put_string(Bytes& o, const char* text, int32_t len) {
     if (len < 1 || len > kStrMax) {
@@ -375,12 +486,91 @@ Vec3 get_vec(Reader& r) {
     v.z = get_f32(r);
     return v;
 }
+int64_t get_zigzag(Reader& r) {
+    const uint64_t u = get_varint(r);
+    return static_cast<int64_t>(u >> 1) ^ -static_cast<int64_t>(u & 1u);
+}
+Vec3 get_pos(Reader& r) {
+    Vec3 v{};
+    v.x = static_cast<double>(get_zigzag(r));
+    v.y = static_cast<double>(get_zigzag(r));
+    v.z = static_cast<double>(get_zigzag(r));
+    return v;
+}
+Vec3 get_pos_from(Reader& r, const Vec3& base) {
+    const Vec3 d = get_pos(r);
+    return Vec3{base.x + d.x, base.y + d.y, base.z + d.z};
+}
 double get_angle(Reader& r) {
     const double deg = get_u16(r) * 360.0 / 65536.0;
     return deg > 180.0 ? deg - 360.0 : deg;
 }
-double get_unit(Reader& r) {
-    return static_cast<int16_t>(get_u16(r)) / 32767.0;
+
+// Card 518 step i: an E row's field mask as a varint of the mask with its bits reordered by how often they are set
+// (c263L324 host field rows: loc 23101, guid 21733, comp 19078, flags 17994, world 13540, conc 11702, rot 8295, then
+// the rest). A row with only those seven fields takes 1 byte, the others 2 (bit 14 or 15 of the wire mask, seed or
+// owner class, would take 3; seed was 0 rows and owner class is never set). Was always 2 bytes.
+// Card 518 step j: flags, physmat, atten and conc are set only where they differ from the asset's default (c263L331:
+// same as the asset's first value on 89.5, 61.6, 100 and 99.4 percent of their rows), so they move back and of joins
+// the first seven.
+constexpr uint16_t kMaskOrder[16] = {kBitLoc,    kBitGuid,  kBitComp, kBitWorld,  kBitRot,   kBitOf,
+                                     kBitFlags,  kBitPlaced, kBitPhysMat, kBitLook, kBitConc, kBitAtten,
+                                     kBitSocket, kBitScale, kBitSeed,   kBitOwnerClass};
+void put_mask(Bytes& o, uint16_t m) {
+    uint32_t wire = 0;
+    for (int32_t k = 0; k < 16; ++k) {
+        wire |= (m & kMaskOrder[k]) != 0 ? 1u << k : 0u;
+    }
+    put_varint(o, wire);
+}
+uint16_t get_mask(Reader& r) {
+    const uint64_t wire = get_varint(r);
+    r.bad = r.bad || wire > 0xFFFFu;
+    uint16_t m = 0;
+    for (int32_t k = 0; k < 16; ++k) {
+        m |= (wire >> k & 1u) != 0 ? kMaskOrder[k] : 0;
+    }
+    return m;
+}
+
+// Card 518 step i: a cue Normal as an octahedral unit vector in 2 bytes (was 3 int16, 6 bytes). Error up to about
+// 1 degree, which an impact decal or splash does not show. A Normal that is not unit length is sent as its direction;
+// the host counts those (`cue normals not unit`).
+double sign_of(double v) {
+    return v < 0.0 ? -1.0 : 1.0;
+}
+uint8_t octa_byte(double v) {
+    const double c = v < -1.0 ? -1.0 : (v > 1.0 ? 1.0 : v);
+    return static_cast<uint8_t>(lround((c * 0.5 + 0.5) * 255.0));
+}
+void put_normal(Bytes& o, const Vec3& n) {
+    const double l1 = fabs(n.x) + fabs(n.y) + fabs(n.z);
+    double x = l1 > 0.0 ? n.x / l1 : 0.0;
+    double y = l1 > 0.0 ? n.y / l1 : 0.0;
+    if (l1 > 0.0 && n.z < 0.0) {
+        const double fx = (1.0 - fabs(y)) * sign_of(x);
+        y = (1.0 - fabs(x)) * sign_of(y);
+        x = fx;
+    }
+    put_u8(o, octa_byte(x));
+    put_u8(o, octa_byte(y));
+}
+Vec3 octa_decode(uint8_t bx, uint8_t by) {
+    double x = bx / 255.0 * 2.0 - 1.0;
+    double y = by / 255.0 * 2.0 - 1.0;
+    const double z = 1.0 - fabs(x) - fabs(y);
+    if (z < 0.0) {
+        const double fx = (1.0 - fabs(y)) * sign_of(x);
+        y = (1.0 - fabs(x)) * sign_of(y);
+        x = fx;
+    }
+    const double len = sqrt(x * x + y * y + z * z);
+    return len > 0.0 ? Vec3{x / len, y / len, z / len} : Vec3{0.0, 0.0, 1.0};
+}
+Vec3 get_normal(Reader& r) {
+    const uint8_t bx = get_u8(r);
+    const uint8_t by = get_u8(r);
+    return octa_decode(bx, by);
 }
 
 bool is_zero(const Vec3& v) {
@@ -392,11 +582,26 @@ bool is_one(const Vec3& v) {
 
 // --- Host ------------------------------------------------------------------------------------------------------
 
+// Card 518 step j: an asset's defaults for an E row's flags, physmat, atten and conc (asset rows, -1 none). An E row
+// sends one of these only when it differs from its asset's default; the A row carries the defaults.
+struct AssetDefaults {
+    uint8_t flags;
+    int32_t physmat;
+    int32_t atten;
+    int32_t conc;
+    int32_t comp; // card 518 step m: a name row, -1 none
+};
+constexpr AssetDefaults kNoDefaults{0, -1, -1, -1, -1};
+
 struct HostAsset {
     const void* object; // null for a cue tag, or a dead row (object and tag both 0: never matched)
     C31Weak weak;       // the object's index and serial: a reused address is a new object, so a new row
     uint64_t tag;
     char text[kAssetPathChars];
+    // Card 518 step j: set from the first E row whose asset this is, or kNoDefaults when the A row goes out first.
+    // Never changed once frozen: rows already encoded and A rows already sent rely on it.
+    bool frozen;
+    AssetDefaults def;
 };
 struct HostAssets {
     int32_t n;
@@ -438,7 +643,8 @@ constexpr NameRefs kNoNames{{-1, -1, -1, -1}};
 
 // The name rows host_body writes for this event (placed only without a guid, as body_mask).
 NameRefs name_refs(const Pending& p) {
-    return NameRefs{{p.comp, p.socket, p.guid != 0 ? -1 : p.placed, p.owner_class}};
+    // Card 518 f: the owner class is not sent (body_mask), so it needs no name row.
+    return NameRefs{{p.comp, p.socket, p.guid != 0 ? -1 : p.placed, -1}};
 }
 
 // Card 329 B: what a sent row is, for the map-end rows: a one-shot event, an event kept in the journal (and its
@@ -505,8 +711,22 @@ struct Peer {
 struct HostCounts { // per map
     uint32_t queued, rows_sent, frames, frames_failed, off_thread, overflow, assets_full, journal_full, gore, bad_rows,
         ended, replays, replay_rows, replay_skipped, assets_stale, local, fp_remap, fp_drop, fp_miss, finished, too_long,
-        names_full, event_rows, trail, no_asset, c304_lines, attack, wound;
+        names_full, event_rows, trail, no_asset, c304_lines, attack, wound, steps, steps_cue;
     uint64_t event_bytes; // E and R rows sent, tag included (per peer)
+    uint32_t tag_rows[kTagCount];  // card 518: rows sent by tag (A N E R X D), all peers
+    uint64_t tag_bytes[kTagCount]; // card 518: their bytes in the frames
+    uint64_t frame_bytes;          // card 518: blob bytes of the frames sent (rows only, no chan framing)
+    uint32_t bit_rows[16];         // card 518 b: E bodies encoded with each mask bit set (one per event)
+    uint64_t bit_bytes[16];        // card 518 b: the bytes each field took in those bodies
+    uint32_t loc_rows;             // card 518: E and R rows sent with a location (per peer)
+    uint64_t loc_wire_bytes;       // card 518: the bytes those locations took in the frames, as frame-local deltas
+    uint32_t mask_rows[3];         // card 518 step i: E bodies whose mask took 1, 2 and 3 bytes
+    uint32_t normal_not_unit;      // card 518 step i: cue Normals off unit length by over 1 percent (sent as direction)
+    uint32_t normal_rows;          // b330: cue Normals sent, with the decode error in degrees (max and sum)
+    double normal_err_max;
+    double normal_err_sum;
+    uint32_t defaulted[5];         // card 518 steps j, m: flags, physmat, atten, conc, comp left to the asset's default
+    uint32_t world_unsent;         // card 518 step g: attached Niagara spawn and decal bodies sent with no world point
 };
 
 // Card 329 B (diagnostic, host, per map): rows and bytes sent to all PCs by asset, and by kind and distance band from
@@ -591,6 +811,8 @@ int32_t host_asset(const void* object, uint64_t tag) {
     }
     r.tag = object != nullptr ? 0 : tag;
     snprintf(r.text, sizeof(r.text), "%s", object != nullptr ? c74_asset_path(object).text : fname_text(&tag).text);
+    r.frozen = false;
+    r.def = kNoDefaults;
     return a.n++;
 }
 
@@ -877,96 +1099,176 @@ bool journal_apply(const Pending& p, const void* made, const Bytes& body) {
     return false;
 }
 
-// A Deactivate of a placed component names the row of its last Activate, so the client stops the copy it made.
+// A Deactivate of a journaled component names the row of its last Activate or spawn, so the client stops the copy it
+// made (client_live holds both under the row id). Card 518 step h1: spawned rows were excluded and their stops went
+// out as full E rows keyed by component (2224 "stops with no journal row" in c263L322); a D row is a few bytes.
 uint32_t host_stop_of(const Pending& p) {
     if (!is_stop(p.point) || p.of != 0 || p.component == nullptr) {
         return p.of;
     }
     const int32_t at = journal_find_comp(p.component);
-    return at >= 0 && !g_host.journal.rows[at].spawn ? g_host.journal.rows[at].id : 0u;
+    return at >= 0 ? g_host.journal.rows[at].id : 0u;
 }
 
-uint16_t body_mask(const Pending& p, int32_t seed, uint32_t of) {
-    const Vec3 look{p.look[0], p.look[1], p.look[2]};
+uint16_t body_mask(const Pending& p, int32_t seed, uint32_t of, const AssetDefaults& d) {
+    float base[3];
+    look_base(p.point, base);
+    const Vec3 look{static_cast<double>(p.look[0]) - base[0], static_cast<double>(p.look[1]) - base[1],
+                    static_cast<double>(p.look[2]) - base[2]};
     uint16_t m = 0;
     m |= !is_zero(p.at) ? kBitLoc : 0;
     m |= !is_zero(p.rot) ? kBitRot : 0;
     m |= !is_one(p.scale) ? kBitScale : 0;
-    m |= p.comp >= 0 ? kBitComp : 0;
+    m |= p.comp != d.comp ? kBitComp : 0; // card 518 step m: only where it differs from the asset's default
     m |= p.socket >= 0 ? kBitSocket : 0;
     m |= p.guid != 0 ? kBitGuid : (p.placed >= 0 ? kBitPlaced : 0);
-    m |= p.owner_class >= 0 ? kBitOwnerClass : 0;
+    // Card 518 f: kBitOwnerClass is never set. The owner class was read on the client only by its log rows (about
+    // 50 KB a C3M2 map, c263L320); the host keeps it for its own rows.
     m |= !is_zero(look) ? kBitLook : 0;
     m |= seed != 0 ? kBitSeed : 0;
-    m |= p.attached ? kBitWorld : 0;
+    m |= p.attached && !world_unsent(p.point, p.guid, p.placed) ? kBitWorld : 0;
     m |= of != 0 ? kBitOf : 0;
-    m |= p.flags != 0 ? kBitFlags : 0;
-    m |= p.physmat >= 0 ? kBitPhysMat : 0;
-    m |= p.atten >= 0 ? kBitAtten : 0;
-    m |= p.conc >= 0 ? kBitConc : 0;
+    m |= p.flags != d.flags ? kBitFlags : 0; // card 518 step j: only where it differs from the asset's default
+    m |= p.physmat != d.physmat ? kBitPhysMat : 0;
+    m |= p.atten != d.atten ? kBitAtten : 0;
+    m |= p.conc != d.conc ? kBitConc : 0;
     return static_cast<uint16_t>(m);
 }
 
 // An E row's fields after the tag (the card's run 4 wire format): id, point, asset, mask, then the present fields in
 // mask-bit order. False when it does not fit (not expected: the largest is about 140 bytes).
+// Card 518 step j: the defaults an E row is encoded against. The first E row of an asset freezes them from its own
+// values; an asset with no row (or a row frozen by its A row going out first) has kNoDefaults.
+AssetDefaults host_defaults(const Pending& p) {
+    if (p.asset < 0 || p.asset >= g_host.assets.n) {
+        return kNoDefaults;
+    }
+    HostAsset& a = g_host.assets.rows[p.asset];
+    if (!a.frozen) {
+        a.frozen = true;
+        a.def = AssetDefaults{p.flags, p.physmat, p.atten, p.conc, p.comp};
+    }
+    return a.def;
+}
+
+// Card 518 step j: an asset row field (physmat, atten, conc) as row + 1, 0 for none (a row may now send "none" over a
+// default that has one).
+uint32_t asset_field(int32_t row) {
+    return row >= 0 ? static_cast<uint32_t>(row) + 1u : 0u;
+}
+
 bool host_body(const Pending& p, int32_t seed, uint32_t of, Bytes& o) {
     o = Bytes{};
-    const uint16_t m = body_mask(p, seed, of);
-    put_varint(o, p.id);
+    const AssetDefaults d = host_defaults(p);
+    const uint16_t m = body_mask(p, seed, of, d);
+    g_host.counts.defaulted[0] += (m & kBitFlags) == 0 && d.flags != 0 ? 1u : 0u;
+    g_host.counts.defaulted[1] += (m & kBitPhysMat) == 0 && d.physmat >= 0 ? 1u : 0u;
+    g_host.counts.defaulted[2] += (m & kBitAtten) == 0 && d.atten >= 0 ? 1u : 0u;
+    g_host.counts.defaulted[3] += (m & kBitConc) == 0 && d.conc >= 0 ? 1u : 0u;
+    g_host.counts.defaulted[4] += (m & kBitComp) == 0 && d.comp >= 0 ? 1u : 0u;
+    put_varint(o, p.id); // absolute here (the journal keeps this body); frame_add writes it as a delta
     put_u8(o, static_cast<uint8_t>(p.point));
-    put_u16(o, p.asset >= 0 ? static_cast<uint16_t>(p.asset) : kNoAsset);
-    put_u16(o, m);
+    put_varint(o, p.asset >= 0 ? static_cast<uint32_t>(p.asset) + 1u : 0u);
+    const int32_t mask_at = o.n;
+    put_mask(o, m); // card 518 step i
+    const int32_t mask_len = o.n - mask_at;
+    g_host.counts.world_unsent += p.attached && world_unsent(p.point, p.guid, p.placed) ? 1u : 0u;
+    ++g_host.counts.mask_rows[mask_len >= 1 && mask_len <= 3 ? mask_len - 1 : 2];
+    // Card 518 b: per-field byte count. `mark` is the body size before field `bit`; `took` adds what it wrote.
+    int32_t mark = o.n;
+    const auto took = [&o, &mark](int32_t bit) {
+        ++g_host.counts.bit_rows[bit];
+        g_host.counts.bit_bytes[bit] += static_cast<uint64_t>(o.n - mark);
+        mark = o.n;
+    };
+    // The row's own location in whole uu, as the client reads it back: the base of the world and placed deltas.
+    Vec3 base{};
     if ((m & kBitLoc) != 0) {
-        put_vec(o, p.at);
+        put_pos(o, p.at);
+        base = Vec3{static_cast<double>(llround(p.at.x != p.at.x ? 0.0 : p.at.x)),
+                    static_cast<double>(llround(p.at.y != p.at.y ? 0.0 : p.at.y)),
+                    static_cast<double>(llround(p.at.z != p.at.z ? 0.0 : p.at.z))};
+        took(0);
     }
-    if ((m & kBitRot) != 0) {
-        void (*const put)(Bytes&, double) = is_cue(p.point) ? put_unit : put_angle; // a cue carries its Normal
-        put(o, p.rot.x);
-        put(o, p.rot.y);
-        put(o, p.rot.z);
+    if ((m & kBitRot) != 0 && is_cue(p.point)) {
+        put_normal(o, p.rot); // a cue carries its Normal; card 518 step i: 2 bytes
+        const double len = sqrt(p.rot.x * p.rot.x + p.rot.y * p.rot.y + p.rot.z * p.rot.z);
+        g_host.counts.normal_not_unit += fabs(len - 1.0) > 0.01 ? 1u : 0u;
+        // b330: the angle between the sent Normal and what the client decodes from the same 2 bytes (the facing proof
+        // the 640x360 decal shots could not give).
+        if (!o.bad && o.n >= 2 && len > 0.0) {
+            const Vec3 d = octa_decode(o.b[o.n - 2], o.b[o.n - 1]);
+            const double c = (d.x * p.rot.x + d.y * p.rot.y + d.z * p.rot.z) / len;
+            const double deg = acos(c > 1.0 ? 1.0 : (c < -1.0 ? -1.0 : c)) * 57.29577951308232;
+            g_host.counts.normal_err_max = deg > g_host.counts.normal_err_max ? deg : g_host.counts.normal_err_max;
+            g_host.counts.normal_err_sum += deg;
+            ++g_host.counts.normal_rows;
+        }
+        took(1);
+    } else if ((m & kBitRot) != 0) {
+        put_angle(o, p.rot.x);
+        put_angle(o, p.rot.y);
+        put_angle(o, p.rot.z);
+        took(1);
     }
     if ((m & kBitScale) != 0) {
         put_vec(o, p.scale);
+        took(2);
     }
     if ((m & kBitComp) != 0) {
-        put_varint(o, static_cast<uint32_t>(p.comp));
+        put_varint(o, asset_field(p.comp)); // card 518 step m: name row + 1, 0 none (over a default that has one)
+        took(3);
     }
     if ((m & kBitSocket) != 0) {
         put_varint(o, static_cast<uint32_t>(p.socket));
+        took(4);
     }
     if ((m & kBitGuid) != 0) {
         put_varint(o, p.guid);
+        took(5);
     }
     if ((m & kBitPlaced) != 0) {
         put_varint(o, static_cast<uint32_t>(p.placed));
-        put_vec(o, p.placed_at);
+        put_pos_from(o, p.placed_at, base);
+        took(6);
     }
     if ((m & kBitOwnerClass) != 0) {
         put_varint(o, static_cast<uint32_t>(p.owner_class));
+        took(7);
     }
     if ((m & kBitLook) != 0) {
-        put_vec(o, Vec3{p.look[0], p.look[1], p.look[2]});
+        float base[3];
+        look_base(p.point, base);
+        put_milli(o, p.look, base);
+        took(8);
     }
     if ((m & kBitSeed) != 0) {
         put_raw(o, &seed, 4);
+        took(9);
     }
     if ((m & kBitWorld) != 0) {
-        put_vec(o, p.world);
+        put_pos_from(o, p.world, base);
+        took(10);
     }
     if ((m & kBitOf) != 0) {
         put_varint(o, of);
+        took(11);
     }
     if ((m & kBitFlags) != 0) {
         put_u8(o, p.flags);
+        took(12);
     }
     if ((m & kBitPhysMat) != 0) {
-        put_varint(o, static_cast<uint32_t>(p.physmat));
+        put_varint(o, asset_field(p.physmat));
+        took(13);
     }
     if ((m & kBitAtten) != 0) {
-        put_varint(o, static_cast<uint32_t>(p.atten));
+        put_varint(o, asset_field(p.atten));
+        took(14);
     }
     if ((m & kBitConc) != 0) {
-        put_varint(o, static_cast<uint32_t>(p.conc));
+        put_varint(o, asset_field(p.conc));
+        took(15);
     }
     return !o.bad;
 }
@@ -1002,12 +1304,19 @@ void journal_sweep() {
 // One PC's blob frames: whole rows back to back up to kChanBlobBytes.
 // Card 395: the name rows in the frame are marked had by the peer only once the frame went out.
 constexpr int32_t kFrameNames = kChanBlobBytes / 4 + 1; // a name row is at least 4 bytes
+// Card 518: the base of an E or R row's frame-local deltas: the id of the frame's previous E or R row and the location
+// (whole uu) of its previous E or R row that had one. All zero at each frame's start, on host and client alike.
+struct FrameLast {
+    uint32_t id;
+    int64_t loc[3];
+};
 struct Frame {
     void* pc;
     Peer* peer;
     int32_t len;
     int32_t names_n;   // name rows in this frame, not yet marked
     int32_t names_out; // name rows in frames that went out (the join replay line)
+    FrameLast last;    // card 518
     int16_t names[kFrameNames];
     uint32_t names_in[kNames / 32]; // bit per name row in names[]
     uint8_t bytes[kChanBlobBytes];
@@ -1025,6 +1334,7 @@ void frame_send(Frame& fr) {
     const WireString w = chan_blob_frame(static_cast<wchar_t>(ChanOp::Fx), fr.bytes, fr.len, wire);
     const bool sent = w.num > 0 && chan_send_client(fr.pc, w);
     ++(sent ? g_host.counts.frames : g_host.counts.frames_failed);
+    g_host.counts.frame_bytes += sent ? static_cast<uint64_t>(fr.len) : 0u;
     for (int32_t k = 0; k < fr.names_n; ++k) {
         const int32_t i = fr.names[k];
         fr.names_in[i >> 5] &= ~(1u << (i & 31));
@@ -1035,34 +1345,91 @@ void frame_send(Frame& fr) {
     fr.names_out += sent ? fr.names_n : 0;
     fr.names_n = 0;
     fr.len = 0;
+    fr.last = FrameLast{};
 }
 
-bool frame_add(Frame& fr, const Bytes& row) {
-    if (row.bad || row.n == 0 || row.n > kChanBlobBytes) {
-        ++g_host.counts.bad_rows;
+// A delta can take one byte more than the absolute value per varint: id plus 3 loc components.
+static_assert(kRowBytes + 4 <= kChanBlobBytes, "card 518: an event row with its deltas fits an empty frame");
+
+// Card 518: an E or R row with its absolute id, and its absolute location when the mask has one, rewritten as zigzag
+// deltas from `last` into `out`; `now` is the base for the frame's next row and `loc_bytes` what the location took.
+// False for a row whose head or location does not parse (counted bad, not sent).
+bool row_frame_delta(const Bytes& row, const FrameLast& last, Bytes& out, FrameLast& now, int32_t& loc_bytes) {
+    Reader in{row.b, row.n, 1, false};
+    now = last;
+    now.id = static_cast<uint32_t>(get_varint(in));
+    const int32_t head = in.at; // point, asset, mask follow the id
+    get_u8(in);
+    get_varint(in);
+    const uint16_t m = get_mask(in); // card 518 step i
+    const int32_t fields = in.at;
+    for (int32_t i = 0; i < 3 && (m & kBitLoc) != 0; ++i) {
+        now.loc[i] = get_zigzag(in);
+    }
+    if (in.bad) {
         return false;
     }
-    if (fr.len + row.n > kChanBlobBytes) {
+    out = Bytes{};
+    put_u8(out, row.b[0]);
+    put_zigzag(out, static_cast<int64_t>(now.id) - static_cast<int64_t>(last.id));
+    put_raw(out, row.b + head, fields - head);
+    const int32_t mark = out.n;
+    for (int32_t i = 0; i < 3 && (m & kBitLoc) != 0; ++i) {
+        put_zigzag(out, now.loc[i] - last.loc[i]);
+    }
+    loc_bytes = out.n - mark;
+    put_raw(out, row.b + in.at, row.n - in.at);
+    return !out.bad;
+}
+
+// The bytes the row took in the frame (0: not added). An E or R row goes with its id and location as deltas (card
+// 518), so it can be shorter than `row`.
+int32_t frame_add(Frame& fr, const Bytes& row) {
+    if (row.bad || row.n == 0 || row.n > kChanBlobBytes) {
+        ++g_host.counts.bad_rows;
+        return 0;
+    }
+    const uint8_t tag = row.b[0];
+    const bool event = tag == kTagEvent || tag == kTagReplay;
+    static Bytes delta; // game thread only
+    FrameLast now{};
+    int32_t loc_bytes = 0;
+    bool ok = !event || row_frame_delta(row, fr.last, delta, now, loc_bytes);
+    const Bytes& out = event ? delta : row;
+    if (ok && fr.len + out.n > kChanBlobBytes) {
         frame_send(fr);
+        ok = !event || row_frame_delta(row, FrameLast{}, delta, now, loc_bytes); // a new frame's deltas start from 0
     }
-    memcpy(fr.bytes + fr.len, row.b, static_cast<size_t>(row.n));
-    fr.len += row.n;
+    if (!ok) {
+        ++g_host.counts.bad_rows;
+        return 0;
+    }
+    memcpy(fr.bytes + fr.len, out.b, static_cast<size_t>(out.n));
+    fr.len += out.n;
+    fr.last = event ? now : fr.last;
+    g_host.counts.loc_rows += loc_bytes > 0 ? 1u : 0u;
+    g_host.counts.loc_wire_bytes += static_cast<uint64_t>(loc_bytes);
     ++g_host.counts.rows_sent;
-    if (row.b[0] == kTagEvent || row.b[0] == kTagReplay) {
-        ++g_host.counts.event_rows;
-        g_host.counts.event_bytes += static_cast<uint64_t>(row.n);
+    if (tag < kTagCount) {
+        ++g_host.counts.tag_rows[tag];
+        g_host.counts.tag_bytes[tag] += static_cast<uint64_t>(out.n);
     }
-    return true;
+    if (event) {
+        ++g_host.counts.event_rows;
+        g_host.counts.event_bytes += static_cast<uint64_t>(out.n);
+    }
+    return out.n;
 }
 
 // Card 395: `row` behind the name rows it names that this frame's peer has not had. The name rows and the row go into
 // one frame (a fuller frame is sent first), so the row never reaches the peer ahead of its names; a name row is
-// marked had only when its frame went out (frame_send). False, with nothing added, for a row that cannot go.
-bool frame_add_named(Frame& fr, const NameRefs& names, const Bytes& row) {
+// marked had only when its frame went out (frame_send). The row's bytes in the frame; 0, with nothing added, for a
+// row that cannot go.
+int32_t frame_add_named(Frame& fr, const NameRefs& names, const Bytes& row) {
     static Bytes name_rows[kRowNames]; // game thread only
     int32_t idx[kRowNames];
     int32_t n = 0;
-    int32_t total = row.n;
+    int32_t total = row.n + 1; // card 518: the id delta can be 1 byte longer than the absolute id
     bool bad = row.bad || row.n == 0 || fr.peer == nullptr;
     for (int32_t k = 0; k < kRowNames && !bad; ++k) {
         const int32_t i = names.i[k];
@@ -1089,7 +1456,7 @@ bool frame_add_named(Frame& fr, const NameRefs& names, const Bytes& row) {
     if (bad || total > kChanBlobBytes) {
         ++g_host.counts.bad_rows;
         host_warn_once("event row and its name rows do not fit one frame, row not sent", static_cast<uint32_t>(total));
-        return false;
+        return 0;
     }
     if (fr.len + total > kChanBlobBytes || fr.names_n + n > kFrameNames) {
         frame_send(fr);
@@ -1225,14 +1592,37 @@ Peer& host_peer(const void* pc) {
 // The asset rows this peer has not had yet, ahead of the rows that use them (card 395: name rows go with the rows
 // that name them, frame_add_named).
 void frame_assets(Frame& fr, Peer& peer) {
-    const HostAssets& a = g_host.assets;
+    HostAssets& a = g_host.assets;
     for (int32_t i = peer.table_sent; i < a.n; ++i) {
+        HostAsset& h = a.rows[i];
+        h.frozen = true; // card 518 step j: an asset with no E row yet keeps kNoDefaults from here on
         Bytes row{};
         put_u8(row, kTagAsset);
         put_varint(row, static_cast<uint32_t>(i));
-        put_u8(row, a.rows[i].object != nullptr ? 0 : 1);
-        put_string(row, a.rows[i].text, static_cast<int32_t>(strlen(a.rows[i].text)));
-        frame_add(fr, row);
+        put_u8(row, h.object != nullptr ? 0 : 1);
+        put_string(row, h.text, static_cast<int32_t>(strlen(h.text)));
+        // Card 518 step j: the defaults, a byte of which are set (flags, physmat, atten, conc) then those values.
+        const AssetDefaults& d = h.def;
+        const uint8_t set = (d.flags != 0 ? 1u : 0u) | (d.physmat >= 0 ? 2u : 0u) | (d.atten >= 0 ? 4u : 0u) |
+                            (d.conc >= 0 ? 8u : 0u) | (d.comp >= 0 ? 16u : 0u);
+        put_u8(row, set);
+        if ((set & 1u) != 0) {
+            put_u8(row, d.flags);
+        }
+        if ((set & 2u) != 0) {
+            put_varint(row, static_cast<uint32_t>(d.physmat));
+        }
+        if ((set & 4u) != 0) {
+            put_varint(row, static_cast<uint32_t>(d.atten));
+        }
+        if ((set & 8u) != 0) {
+            put_varint(row, static_cast<uint32_t>(d.conc));
+        }
+        if ((set & 16u) != 0) {
+            put_varint(row, static_cast<uint32_t>(d.comp));
+        }
+        // Card 518 step m: a comp default names a name row, so that row goes ahead of the A row (card 395).
+        frame_add_named(fr, NameRefs{{d.comp, -1, -1, -1}}, row);
     }
     peer.table_sent = a.n;
 }
@@ -1257,11 +1647,16 @@ void host_flush(const void* world) {
         fr.len = 0;
         fr.names_n = 0;
         fr.names_out = 0;
+        fr.last = FrameLast{};
         frame_assets(fr, peer);
         const int32_t slot = peer_slot(peer);
         for (int32_t i = 0; i < q.n; ++i) {
-            if (!filter_hits(q.rows[i].filter, pc, pawn) && frame_add_named(fr, q.rows[i].names, q.rows[i].row)) {
-                fx_stat(q.rows[i].meta, q.rows[i].row.n, pawn_at, slot);
+            if (filter_hits(q.rows[i].filter, pc, pawn)) {
+                continue;
+            }
+            const int32_t sent = frame_add_named(fr, q.rows[i].names, q.rows[i].row);
+            if (sent > 0) {
+                fx_stat(q.rows[i].meta, sent, pawn_at, slot);
             }
         }
         frame_send(fr);
@@ -1278,6 +1673,8 @@ struct ClientAsset {
     C31Weak weak;  // guard: a held asset whose weak is dead was freed anyway (counted, should stay 0)
     uint64_t name; // a tag's FName
     char text[kAssetPathChars];
+    bool has_def;      // card 518 step j: the A row's defaults arrived (a zeroed row has none)
+    AssetDefaults def;
 };
 struct ClientLive {
     uint32_t id;
@@ -1289,6 +1686,8 @@ struct ClientCounts { // per map
         bad_frames, asset_lost, asset_unheld;
     uint32_t miss_rows;     // card 325: target-miss rows written (kClientMissRows per map)
     uint32_t host_only;     // NiagaraActivate keyed world: a component of a host-only actor, played at the world point
+    uint32_t key_actor;     // card 518 g: key misses whose key actor was found (only the component was missing)
+    uint32_t key_rows;      // card 518 g: key-miss rows written (kClientKeyMissRows per map)
     uint32_t niagara_rows;  // card 325: placed Niagara count rows written (kClientNiagaraRows per map)
     ULONGLONG replay_ms;    // card 325: when the last frame with replay rows arrived; 0 once its count row ran
 };
@@ -1407,11 +1806,36 @@ bool client_asset_row(Reader& in) {
         strlen(text) >= kAssetPathChars) {
         return false;
     }
+    // Card 518 step j: the asset's E row defaults.
+    const uint8_t set = get_u8(in);
+    AssetDefaults d = kNoDefaults;
+    d.flags = (set & 1u) != 0 ? get_u8(in) : 0;
+    const auto row = [&in](bool present) -> int32_t {
+        if (!present) {
+            return -1;
+        }
+        const uint64_t v = get_varint(in);
+        in.bad = in.bad || v >= static_cast<uint64_t>(kAssets);
+        return in.bad ? -1 : static_cast<int32_t>(v);
+    };
+    d.physmat = row((set & 2u) != 0);
+    d.atten = row((set & 4u) != 0);
+    d.conc = row((set & 8u) != 0);
+    if ((set & 16u) != 0) { // card 518 step m: the comp default, a name row
+        const uint64_t v = get_varint(in);
+        in.bad = in.bad || v >= static_cast<uint64_t>(kNames);
+        d.comp = in.bad ? -1 : static_cast<int32_t>(v);
+    }
+    if (in.bad || set > 31u) {
+        return false;
+    }
     ClientAsset& a = g_client.assets[i];
     client_asset_release(a); // the host reused the index for another asset
     a = ClientAsset{};
     a.tag = kind == 1;
     snprintf(a.text, sizeof(a.text), "%s", text);
+    a.has_def = true;
+    a.def = d;
     return true;
 }
 
@@ -1502,9 +1926,34 @@ void* client_key_actor(const FxRow& r) {
     return nullptr;
 }
 
-void* client_key_component(const FxRow& r) {
-    void* const actor = client_key_actor(r);
+// The row's component on an already resolved key actor (card 263: one resolve per row), or null.
+void* client_key_component_of(void* actor, const FxRow& r) {
     return actor != nullptr && r.comp >= 0 ? c95_component(actor, client_name(r.comp)) : nullptr;
+}
+
+void* client_key_component(const FxRow& r) {
+    return client_key_component_of(client_key_actor(r), r);
+}
+
+// Card 518 g (diagnostic): an attached row whose key component is not here plays at the host's world point, the only
+// reader of that field besides the attenuation and log rows. The split says whether the world point could come from
+// the key actor instead (actor found, component missing) or is the only place the effect can go (actor missing).
+constexpr uint32_t kClientKeyMissRows = 16;
+
+void client_key_miss(const FxRow& r, void* actor) {
+    ++g_client.counts.no_key;
+    g_client.counts.key_actor += actor != nullptr ? 1u : 0u;
+    if (g_client.counts.key_rows >= kClientKeyMissRows) {
+        return;
+    }
+    ++g_client.counts.key_rows;
+    const char* const asset = r.asset >= 0 && r.asset < kAssets ? g_client.assets[r.asset].text : "-";
+    // Card 518 step k: every caller plays a world-keyed miss at the world point and drops any other (no point sent).
+    const bool world_key = r.guid == 0 && r.placed < 0;
+    log::line("card518: client key miss point %d asset %s key %s guid %llu comp %d actor %s, %s", r.point, asset,
+              r.guid != 0 ? "guid" : (r.placed >= 0 ? "placed" : "world"), static_cast<unsigned long long>(r.guid),
+              r.comp, actor != nullptr ? "found" : "missing",
+              world_key ? "played at world (key miss)" : "not played (key miss, no world point)");
 }
 
 int32_t client_live_find(uint32_t id) {
@@ -1626,7 +2075,8 @@ const char* client_play_niagara(const FxRow& r) {
     if (p == C136Point::Niagara || p == C136Point::NiagaraParams) {
         comp = client_niagara_at(r, sys, r.at);
     } else {
-        void* const parent = client_key_component(r);
+        void* const actor = client_key_actor(r);
+        void* const parent = client_key_component_of(actor, r);
         const bool seeded = r.seed != 0 && flag(r, kC136FlagAutoActivate);
         if (parent != nullptr) {
             const uint64_t socket = client_socket(r);
@@ -1641,10 +2091,15 @@ const char* client_play_niagara(const FxRow& r) {
                 *reinterpret_cast<int32_t*>(static_cast<uint8_t*>(comp) + kNiagaraSeedOffset) = r.seed;
                 g_orig_c136_activate(comp, true);
             }
-        } else {
-            ++g_client.counts.no_key;
-            result = "played at world (key miss)";
+        } else if (r.guid == 0 && r.placed < 0) { // world-keyed: the row carries its world point (world_unsent)
+            client_key_miss(r, actor);
             comp = client_niagara_at(r, sys, r.world);
+            result = "played at world (key miss)";
+        } else {
+            // Card 518 step g: no world point comes with this row (its location is relative to the missing
+            // parent), so a miss plays nothing rather than at a wrong place.
+            client_key_miss(r, actor);
+            return "not played (key miss, no world point)";
         }
     }
     client_live_add(r.id, comp);
@@ -1662,44 +2117,59 @@ void* client_setting(int32_t i) {
     return o;
 }
 
+// Card 518 step k: a component's world location (ComponentToWorld, an FTransform of doubles: quat, then translation).
+Vec3 component_world(const void* comp) {
+    constexpr size_t kComponentToWorldTranslation = 0x1E0 + 0x20;
+    return read_vec3(comp, kComponentToWorldTranslation);
+}
+
 const char* client_play_sound(const FxRow& r) {
     void* const sound = client_asset(r.asset, g_sound_base_class());
     if (sound == nullptr) {
         return "no asset";
     }
     const C136Point p = static_cast<C136Point>(r.point);
-    const Vec3& where = p == C136Point::SoundAttached ? r.world : r.at;
+    // Card 263: the key actor once per row. A placed key is a by-name level search (c95_find_nearest); this row
+    // resolved it four times, five when attached (c243-c3m2-b6r2 client: about 5500 rows per 10 s window in the
+    // PowerPlant fight).
+    void* const owner = client_key_actor(r);
+    // Card 518 step k: an attached sound has no world point on the wire; it plays at its parent, or not at all.
+    void* const parent = p == C136Point::SoundAttached ? client_key_component_of(owner, r) : nullptr;
+    const bool world_key = r.guid == 0 && r.placed < 0; // world_unsent: such a row still carries the world point
+    if (p == C136Point::SoundAttached && parent == nullptr && !world_key) {
+        client_key_miss(r, owner);
+        return "not played (key miss, no world point)";
+    }
+    const Vec3 where = parent != nullptr ? component_world(parent) : (p == C136Point::SoundAttached ? r.world : r.at);
     // Card 162: a remote player's sound with no attenuation plays with its fallback, not 2D at full volume.
     const bool player_source = flag(r, kC136FlagPlayerSource); // card 304: the host's word, not the remote list
-    void* const atten =
-        c162_remote_atten(g_client.pc, sound, client_setting(r.atten), client_key_actor(r), where, player_source);
+    void* const atten = c162_remote_atten(g_client.pc, sound, client_setting(r.atten), owner, where, player_source);
     const char* const key = r.guid != 0 ? "guid" : (r.placed >= 0 ? "placed" : "world");
-    c304_row(sound, player_source, key, client_key_actor(r) != nullptr, atten, where);
+    c304_row(sound, player_source, key, owner != nullptr, atten, where);
     void* const conc = client_setting(r.conc);
     // Card 155: the replay plays with the player controller as context, so the engine hooks never see the remote
     // owner; the playlog audio line for a remote player's sound comes from here (pl_sound drops any other owner).
-    pl_sound(client_key_actor(r), sound, where, atten, -1);
-    pl_sound_row(client_key_actor(r), sound, where, atten,
+    pl_sound(owner, sound, where, atten, -1);
+    pl_sound_row(owner, sound, where, atten,
                  p == C136Point::SoundAttached); // card 162: every relayed row, world-keyed ones too
     if (p == C136Point::PlaySound) {
         g_orig_c74_play_sound(g_client.pc, sound, &r.at, &r.rot, r.look[0], r.look[1], r.look[2], atten, conc,
                               nullptr, nullptr);
         return "played";
     }
-    if (p == C136Point::SoundAttached) {
-        void* const parent = client_key_component(r);
-        if (parent != nullptr) {
-            const uint64_t slots[kPassSlots] = {
-                ptr_slot(sound), ptr_slot(parent), client_socket(r), ptr_slot(&r.at), ptr_slot(&r.rot),
-                attach_location(r), flag(r, kC136FlagStopWithParent) ? 1u : 0u, float_slot(r.look[0]),
-                float_slot(r.look[1]), float_slot(r.look[2]), ptr_slot(atten), ptr_slot(conc),
-                flag(r, kC136FlagAutoDestroy) ? 1u : 0u};
-            return c136_pass_play(C136Point::SoundAttached, slots) != nullptr ? "played" : "spawn returned null";
-        }
-        ++g_client.counts.no_key;
+    if (p == C136Point::SoundAttached && parent == nullptr) { // a world-keyed miss plays at the world point
+        client_key_miss(r, owner);
         g_orig_c74_spawn_sound(g_client.pc, sound, &r.world, &r.rot, r.look[0], r.look[1], r.look[2], atten, conc,
                                true);
         return "played at world (key miss)";
+    }
+    if (p == C136Point::SoundAttached) {
+        const uint64_t slots[kPassSlots] = {
+            ptr_slot(sound), ptr_slot(parent), client_socket(r), ptr_slot(&r.at), ptr_slot(&r.rot),
+            attach_location(r), flag(r, kC136FlagStopWithParent) ? 1u : 0u, float_slot(r.look[0]),
+            float_slot(r.look[1]), float_slot(r.look[2]), ptr_slot(atten), ptr_slot(conc),
+            flag(r, kC136FlagAutoDestroy) ? 1u : 0u};
+        return c136_pass_play(C136Point::SoundAttached, slots) != nullptr ? "played" : "spawn returned null";
     }
     void* const made = g_orig_c74_spawn_sound(g_client.pc, sound, &r.at, &r.rot, r.look[0], r.look[1], r.look[2],
                                               atten, conc, flag(r, kC136FlagAutoDestroy));
@@ -1738,15 +2208,19 @@ const char* client_play_decal(const FxRow& r) {
         return mat == nullptr ? "no asset" : "no decal manager";
     }
     if (static_cast<C136Point>(r.point) == C136Point::DecalAttached) {
-        void* const parent = client_key_component(r);
+        void* const actor = client_key_actor(r);
+        void* const parent = client_key_component_of(actor, r);
         if (parent != nullptr) {
             g_orig_spawn_decal_attached(manager, mat, &r.scale, parent, client_socket(r), &r.at, &r.rot,
                                         static_cast<uint8_t>(attach_location(r)), r.look[0]);
             return "played";
         }
-        ++g_client.counts.no_key;
-        g_orig_spawn_decal_at(manager, g_client.pc, mat, &r.scale, &r.world, &r.rot, r.look[0]);
-        return "played at world (key miss)";
+        client_key_miss(r, actor); // card 518 step g: no world point sent, so nothing to place it at
+        if (r.guid == 0 && r.placed < 0) { // world-keyed: the row carries its world point (world_unsent)
+            g_orig_spawn_decal_at(manager, g_client.pc, mat, &r.scale, &r.world, &r.rot, r.look[0]);
+            return "played at world (key miss)";
+        }
+        return "not played (key miss, no world point)";
     }
     g_orig_spawn_decal_at(manager, g_client.pc, mat, &r.scale, &r.at, &r.rot, r.look[0]);
     return "played";
@@ -1821,25 +2295,36 @@ constexpr ClientPlayFn kClientPlay[static_cast<int>(C136Point::Count)] = {
 };
 
 // An E or R row's fields after the tag (the card's run 4 wire format); false when malformed.
+// Card 518: the base of the frame's id and location deltas (zero at each frame's start, as on the host).
+FrameLast g_client_frame{}; // game thread only
+
 bool client_parse(Reader& in, FxRow& r) {
     r = FxRow{};
     r.scale = Vec3{1.0, 1.0, 1.0};
     r.comp = r.socket = r.owner_class = r.placed = -1;
-    r.id = static_cast<uint32_t>(get_varint(in));
+    r.id = static_cast<uint32_t>(static_cast<int64_t>(g_client_frame.id) + get_zigzag(in)); // card 518 delta
+    g_client_frame.id = r.id;
     r.point = get_u8(in);
-    const uint16_t asset = get_u16(in);
-    r.asset = asset != kNoAsset ? asset : -1;
-    const uint16_t m = get_u16(in);
+    const uint64_t asset = get_varint(in);
+    in.bad = in.bad || asset > static_cast<uint64_t>(kAssets);
+    r.asset = asset != 0 && !in.bad ? static_cast<int32_t>(asset - 1) : -1;
+    const uint16_t m = get_mask(in); // card 518 step i
     r.physmat = r.atten = r.conc = -1;
     if (in.bad || r.point >= static_cast<int32_t>(C136Point::Count) || ((m & kBitGuid) != 0 && (m & kBitPlaced) != 0)) {
         return false;
     }
-    r.at = (m & kBitLoc) != 0 ? get_vec(in) : Vec3{};
-    if ((m & kBitRot) != 0) {
-        double (*const get)(Reader&) = is_cue(static_cast<C136Point>(r.point)) ? get_unit : get_angle;
-        r.rot.x = get(in);
-        r.rot.y = get(in);
-        r.rot.z = get(in);
+    for (int32_t i = 0; i < 3 && (m & kBitLoc) != 0; ++i) {
+        g_client_frame.loc[i] += get_zigzag(in); // card 518: a delta from the frame's previous location
+    }
+    r.at = (m & kBitLoc) != 0 ? Vec3{static_cast<double>(g_client_frame.loc[0]), static_cast<double>(g_client_frame.loc[1]),
+                                     static_cast<double>(g_client_frame.loc[2])}
+                              : Vec3{};
+    if ((m & kBitRot) != 0 && is_cue(static_cast<C136Point>(r.point))) {
+        r.rot = get_normal(in); // card 518 step i
+    } else if ((m & kBitRot) != 0) {
+        r.rot.x = get_angle(in);
+        r.rot.y = get_angle(in);
+        r.rot.z = get_angle(in);
     }
     r.scale = (m & kBitScale) != 0 ? get_vec(in) : r.scale;
     const auto name = [&in](uint16_t mask, uint16_t bit) -> int32_t {
@@ -1850,33 +2335,45 @@ bool client_parse(Reader& in, FxRow& r) {
         in.bad = in.bad || i >= static_cast<uint64_t>(kNames);
         return in.bad ? -1 : static_cast<int32_t>(i);
     };
-    r.comp = name(m, kBitComp);
+    // Card 518 steps j, m: a field not in the mask is the asset's default.
+    const AssetDefaults dflt =
+        r.asset >= 0 && g_client.assets[r.asset].has_def ? g_client.assets[r.asset].def : kNoDefaults;
+    if ((m & kBitComp) != 0) { // card 518 step m: name row + 1, 0 none
+        const uint64_t v = get_varint(in);
+        in.bad = in.bad || v > static_cast<uint64_t>(kNames);
+        r.comp = in.bad || v == 0 ? -1 : static_cast<int32_t>(v - 1);
+    } else {
+        r.comp = dflt.comp;
+    }
     r.socket = name(m, kBitSocket);
     r.guid = (m & kBitGuid) != 0 ? get_varint(in) : 0;
     r.placed = name(m, kBitPlaced);
-    r.placed_at = (m & kBitPlaced) != 0 ? get_vec(in) : Vec3{};
+    r.placed_at = (m & kBitPlaced) != 0 ? get_pos_from(in, r.at) : Vec3{}; // card 518 b: from the row's location
     r.owner_class = name(m, kBitOwnerClass);
-    const Vec3 look = (m & kBitLook) != 0 ? get_vec(in) : Vec3{};
-    r.look[0] = static_cast<float>(look.x);
-    r.look[1] = static_cast<float>(look.y);
-    r.look[2] = static_cast<float>(look.z);
+    float base[3];
+    look_base(static_cast<C136Point>(r.point), base); // card 518 f: the wire value is the difference from base
+    for (int32_t i = 0; i < 3; ++i) {
+        const double d = (m & kBitLook) != 0 ? static_cast<double>(get_zigzag(in)) / 1000.0 : 0.0;
+        r.look[i] = static_cast<float>(static_cast<double>(base[i]) + d);
+    }
     if ((m & kBitSeed) != 0) {
         get_raw(in, &r.seed, 4);
     }
-    r.world = (m & kBitWorld) != 0 ? get_vec(in) : r.at;
+    r.world = (m & kBitWorld) != 0 ? get_pos_from(in, r.at) : r.at; // card 518 b: from the row's location
     r.of = (m & kBitOf) != 0 ? static_cast<uint32_t>(get_varint(in)) : 0;
-    r.flags = (m & kBitFlags) != 0 ? get_u8(in) : 0;
-    const auto asset_row = [&in](uint16_t mask, uint16_t bit) -> int32_t {
+    // Card 518 step j: an asset row field in the mask is row + 1 (0 none).
+    r.flags = (m & kBitFlags) != 0 ? get_u8(in) : dflt.flags;
+    const auto asset_row = [&in](uint16_t mask, uint16_t bit, int32_t def) -> int32_t {
         if ((mask & bit) == 0) {
-            return -1;
+            return def;
         }
-        const uint64_t i = get_varint(in);
-        in.bad = in.bad || i >= static_cast<uint64_t>(kAssets);
-        return in.bad ? -1 : static_cast<int32_t>(i);
+        const uint64_t v = get_varint(in);
+        in.bad = in.bad || v > static_cast<uint64_t>(kAssets);
+        return in.bad || v == 0 ? -1 : static_cast<int32_t>(v - 1);
     };
-    r.physmat = asset_row(m, kBitPhysMat);
-    r.atten = asset_row(m, kBitAtten);
-    r.conc = asset_row(m, kBitConc);
+    r.physmat = asset_row(m, kBitPhysMat, dflt.physmat);
+    r.atten = asset_row(m, kBitAtten, dflt.atten);
+    r.conc = asset_row(m, kBitConc, dflt.conc);
     return !in.bad;
 }
 
@@ -2303,6 +2800,11 @@ void c136_net_queue(uint32_t id, const C136Call& c, const void* owner, const voi
         ++g_host.counts.wound; // card 438 step 2: each side runs its own wound shading compute system
         return;
     }
+    if (footstep_local(c)) {
+        ++g_host.counts.steps; // card 518 step d: each side's bug animations make their own footsteps
+        g_host.counts.steps_cue += c.asset == nullptr ? 1u : 0u;
+        return;
+    }
     if (c.asset == nullptr && c.tag == 0 && c.component == nullptr) {
         ++g_host.counts.no_asset; // run 6 fix F: no asset and no cue tag (a decal with no material): draws nothing
         return;
@@ -2456,6 +2958,12 @@ bool c136_client_own(const C136Call& c, const void* owner, const void* instigato
         }
         return true;
     }
+    if (footstep_local(c)) {
+        const uint32_t game = g_is_in_game_thread != nullptr && g_is_in_game_thread() ? 1u : 0u;
+        g_steps_kept += game; // card 518 step d (game thread count)
+        g_steps_cue += c.asset == nullptr ? game : 0u;
+        return true;
+    }
     // Card 137 step 6a: the client's pooled gore parts carry the client pawn as owner or instigator, so their splats
     // (BloodGib Niagara, Splats_MS) passed filter_hits and played beside the host's rows. A gore part's located
     // effects are the host's; its trail ops stay local (trail_local, above).
@@ -2487,7 +2995,16 @@ void c136_step(void* engine) {
     }
     journal_sweep();
     c438_step();
-    host_flush(world);
+    // Card 518: the queue goes out at most every kFlushMs (two 60 fps ticks), so the per-frame chan framing is paid
+    // about half as often. GetTickCount64 steps by about 15.6 ms, so a row waits under 47 ms (latency target 100 ms).
+    // A half-full queue goes at once.
+    constexpr ULONGLONG kFlushMs = 30;
+    static ULONGLONG flushed = 0; // game thread only
+    const ULONGLONG now = GetTickCount64();
+    if (now - flushed >= kFlushMs || g_host.queue.n >= kQueue / 2) {
+        host_flush(world);
+        flushed = now;
+    }
 }
 
 void c136_receive_fx(void* pc, const WireString* s) {
@@ -2504,6 +3021,7 @@ void c136_receive_fx(void* pc, const WireString* s) {
         return;
     }
     Reader in{bytes, n, 0, false};
+    g_client_frame = FrameLast{};
     const uint32_t replayed = g_client.counts.replayed;
     for (int32_t k = 0; k < kChanBlobBytes && in.at < in.n; ++k) {
         if (!client_row(in)) {
@@ -2536,6 +3054,7 @@ void c136_join_replay(void* pc) {
     fr.len = 0;
     fr.names_n = 0;
     fr.names_out = 0;
+    fr.last = FrameLast{};
     frame_assets(fr, peer);
     const Journal& j = g_host.journal;
     uint32_t rows = 0;
@@ -2550,8 +3069,9 @@ void c136_join_replay(void* pc) {
             continue;
         }
         const Bytes& row = tagged(kTagReplay, r.body);
-        if (frame_add_named(fr, r.names, row)) {
-            fx_stat(FxMeta{r.asset, r.at, FxKind::Journal, r.id, 0}, row.n, pawn_at, peer_slot(peer));
+        const int32_t sent = frame_add_named(fr, r.names, row);
+        if (sent > 0) {
+            fx_stat(FxMeta{r.asset, r.at, FxKind::Journal, r.id, 0}, sent, pawn_at, peer_slot(peer));
         }
         ++rows;
     }
@@ -2569,12 +3089,18 @@ void c136_join_replay(void* pc) {
 // keep_state, the host's map arm, only the counts start over). The client keeps its asset table (the host resends each
 // map's rows by index before using them) and drops its live map.
 void c136_net_arm_map(const char* when, bool keep_state) {
+    if (g_client_session) {
+        log::line("card518: client bug footstep calls kept, its own (%s): %u (%u cues)", when, g_steps_kept, g_steps_cue);
+    }
+    g_steps_kept = 0;
+    g_steps_cue = 0;
     if (!g_client_session) {
         c438_report(when);
         const HostCounts& k = g_host.counts;
         if (k.wound != 0) {
             log::line("card438: host wound shading calls kept local, not sent (%s): %u", when, k.wound);
         }
+        log::line("card518: host bug footstep calls kept local, not sent (%s): %u (%u cues)", when, k.steps, k.steps_cue);
         log::line("card136: host fx net map totals (%s): %u rows queued, %u rows sent in %u frames (%u failed), %u assets, "
                   "journal %d (peak %d), %u ended, %u replays (%u rows, %u replay skipped (run-time target)), dropped: %u off thread, %u queue full, %u "
                   "asset table full, %u journal full, %u bad; %u gore decals left to card 132; %u stale asset rows, %u "
@@ -2587,6 +3113,45 @@ void c136_net_arm_map(const char* when, bool keep_state) {
                   k.fp_drop, k.too_long, g_host.names.n, kNames, k.names_full, k.event_rows,
                   static_cast<unsigned long long>(k.event_bytes),
                   k.event_rows != 0 ? static_cast<double>(k.event_bytes) / k.event_rows : 0.0);
+        log::line("card518: host fx bytes by tag (%s): A %u rows %llu B, N %u rows %llu B, E %u rows %llu B, R %u rows "
+                  "%llu B, X %u rows %llu B, D %u rows %llu B; %u frames %llu blob bytes",
+                  when, k.tag_rows[kTagAsset], static_cast<unsigned long long>(k.tag_bytes[kTagAsset]),
+                  k.tag_rows[kTagName], static_cast<unsigned long long>(k.tag_bytes[kTagName]),
+                  k.tag_rows[kTagEvent], static_cast<unsigned long long>(k.tag_bytes[kTagEvent]),
+                  k.tag_rows[kTagReplay], static_cast<unsigned long long>(k.tag_bytes[kTagReplay]),
+                  k.tag_rows[kTagEnd], static_cast<unsigned long long>(k.tag_bytes[kTagEnd]),
+                  k.tag_rows[kTagStop], static_cast<unsigned long long>(k.tag_bytes[kTagStop]), k.frames,
+                  static_cast<unsigned long long>(k.frame_bytes));
+        // Card 518 b: E body bytes by field (rows with the bit, bytes), in mask bit order.
+        log::line("card518: host fx body bytes by field (%s): loc %u/%llu, rot %u/%llu, scale %u/%llu, comp %u/%llu, "
+                  "socket %u/%llu, guid %u/%llu, placed %u/%llu, owner %u/%llu, look %u/%llu, seed %u/%llu, world "
+                  "%u/%llu, of %u/%llu, flags %u/%llu, physmat %u/%llu, atten %u/%llu, conc %u/%llu",
+                  when, k.bit_rows[0], static_cast<unsigned long long>(k.bit_bytes[0]), k.bit_rows[1],
+                  static_cast<unsigned long long>(k.bit_bytes[1]), k.bit_rows[2],
+                  static_cast<unsigned long long>(k.bit_bytes[2]), k.bit_rows[3],
+                  static_cast<unsigned long long>(k.bit_bytes[3]), k.bit_rows[4],
+                  static_cast<unsigned long long>(k.bit_bytes[4]), k.bit_rows[5],
+                  static_cast<unsigned long long>(k.bit_bytes[5]), k.bit_rows[6],
+                  static_cast<unsigned long long>(k.bit_bytes[6]), k.bit_rows[7],
+                  static_cast<unsigned long long>(k.bit_bytes[7]), k.bit_rows[8],
+                  static_cast<unsigned long long>(k.bit_bytes[8]), k.bit_rows[9],
+                  static_cast<unsigned long long>(k.bit_bytes[9]), k.bit_rows[10],
+                  static_cast<unsigned long long>(k.bit_bytes[10]), k.bit_rows[11],
+                  static_cast<unsigned long long>(k.bit_bytes[11]), k.bit_rows[12],
+                  static_cast<unsigned long long>(k.bit_bytes[12]), k.bit_rows[13],
+                  static_cast<unsigned long long>(k.bit_bytes[13]), k.bit_rows[14],
+                  static_cast<unsigned long long>(k.bit_bytes[14]), k.bit_rows[15],
+                  static_cast<unsigned long long>(k.bit_bytes[15]));
+        log::line("card518: host fx loc on the wire (%s): %u rows %llu B (average %.1f), frame-local deltas", when,
+                  k.loc_rows, static_cast<unsigned long long>(k.loc_wire_bytes),
+                  k.loc_rows != 0 ? static_cast<double>(k.loc_wire_bytes) / k.loc_rows : 0.0);
+        log::line("card518: host fx mask bytes (%s): 1 B %u rows, 2 B %u, 3 B %u; cue normals not unit %u; world "
+                  "unsent %u; cue normal decode error over %u rows: max %.2f deg, mean %.2f deg",
+                  when, k.mask_rows[0], k.mask_rows[1], k.mask_rows[2], k.normal_not_unit, k.world_unsent,
+                  k.normal_rows, k.normal_err_max, k.normal_rows != 0 ? k.normal_err_sum / k.normal_rows : 0.0);
+        log::line("card518: host fx asset defaults (%s): rows that left the field to the asset's default: flags %u, "
+                  "physmat %u, atten %u, conc %u, comp %u",
+                  when, k.defaulted[0], k.defaulted[1], k.defaulted[2], k.defaulted[3], k.defaulted[4]);
         fx_stats_rows(when);
         g_host.counts = HostCounts{};
         if (keep_state) {
@@ -2608,13 +3173,12 @@ void c136_net_arm_map(const char* when, bool keep_state) {
     }
     const ClientCounts& k = g_client.counts;
     log::line("card136: client fx net map totals (%s): %u rows, %u replayed, %u played, %u ended, misses: %u asset, %u key, "
-              "%u target, %u sound setting; %u unsupported, %u bad (%u bad frames), %u live full (peak %d); live %d; assets held %d, %u freed while held, %u not held (no game instance); %u host-only components played at world",
-              when, k.rows, k.replayed, k.played, k.ended, k.no_asset, k.no_key, k.no_target, k.no_setting, k.unsupported,
+              "%u target, %u sound setting; %u key misses with the key actor here; %u unsupported, %u bad (%u bad frames), %u live full (peak %d); live %d; assets held %d, %u freed while held, %u not held (no game instance); %u host-only components played at world",
+              when, k.rows, k.replayed, k.played, k.ended, k.no_asset, k.no_key, k.no_target, k.no_setting, k.key_actor, k.unsupported,
               k.bad_rows, k.bad_frames, k.live_full, g_client.live_peak, g_client.live_n, client_assets_held(),
               k.asset_lost, k.asset_unheld, k.host_only);
     const ClientExtras& x = g_client.extras;
-    log::line("card136: client fx extra: %d assets, %u table full, %u off thread", x.n, x.full, x.off_thread);
-    for (int32_t i = 0; i < x.n; ++i) {
+    log::line("card136: client fx extra: %d assets, %u table full, %u off thread", x.n, x.full, x.off_thread);    for (int32_t i = 0; i < x.n; ++i) {
         log::line("card136: client fx extra %u %s", x.rows[i].n, x.rows[i].text);
     }
     for (ClientAsset& a : g_client.assets) { // the map is going: its assets are let go (the table rows stay)
