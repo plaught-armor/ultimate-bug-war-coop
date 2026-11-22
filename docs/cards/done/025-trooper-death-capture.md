@@ -1,6 +1,6 @@
 # Card 025: Capture an NPC trooper's death and corpse in-game (reference for the downed look)
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section and the "Runtime facts" line about `tools/run_pair.sh`. Then read `docs/design/coop-channel-lobby-downed.md` section 3 (the assets paragraph). Repo root: `/path/to/ultimate-bug-war-coop`.
 

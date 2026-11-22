@@ -1,6 +1,6 @@
 # Card 214: The client's Hopper Swoop does not run
 
-Status: queued 2026-11-12, from run c210-r2 (DLL `04264aa86c6b11e0`). Budget: static first, then one run, batched
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from run c210-r2 (DLL `04264aa86c6b11e0`). Budget: static first, then one run, batched
 with card 212 (same map, BUG_C1M1).
 
 Read: docs/cards/done/210-bug-copy-form-look-on-host.md (fix 2, the Swoop grant), `mod/src/ubw/grenades.cpp`

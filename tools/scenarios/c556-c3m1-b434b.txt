@@ -1,0 +1,55 @@
+# Card 556 (+ 552/566 close-range holes) on b434 dwmapi 8c555354aca54373 + ubwperf a8b80a66383cba93, FED_C3M1 FAST,
+# lane 2. The resupply rack block of c590-c3m1-b434.txt only, then quit.
+# c590b434a: the rack looks voided on `focus=` (a rack has no use prompt: aim hit the rack, focus none), so the host
+# fire was gate-skipped, and a Warrior Bug stood in the client's aim. Fix: no focus gate on the rack looks, and a
+# code clear after the warps.
+# Prediction 556: after the host fire, "card556: host simulating rest" rows name the pickup component whose world z
+# drops to the ground; client "rest applied" rows show where the copy's components sit (the floating one stays at
+# the spawn height). Prediction 552/566: c556-552-after-client shows the holes the host shot shows near the rack.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c3m1-b434b.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b434b 600
+# Expected wall: about 2.5 min.
+voidsoft
+void unless host dll 8c555354aca54373
+void unless client dll 8c555354aca54373
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- card 556 (pickup component dump) + 552/566 (close-range holes): the host calls its resupply (tac slot 0, key
+# Four), the client stands next to the rack, the host shoots the rack until it breaks and its pickups fall.
+host mark
+client mark
+host charge 0 20000 1
+host look 0 -35
+host key Four
+sleep 1.5
+host key LeftMouseButton
+host wait log "card098: host t=\d+ world P \S+BP_ResupplyRack_Level\d_C " since-mark timeout=40
+try host wait log "card556: host spawn " since-mark timeout=10
+host warp client BP_ResupplyRack_Level0_C 400 live
+host warp actor BP_ResupplyRack_Level0_C 500 live
+host clear 2000 kill
+host look actor BP_ResupplyRack_Level0_C 0 bounds live
+client look actor BP_ResupplyRack_Level0_C 0 bounds live
+host shot c556-rack-before-host
+client shot c556-rack-before-client
+host mark
+host key LeftMouseButton 2500
+try host wait log "card556: host simulating rest " since-mark timeout=20
+sleep 2
+host shot c556-552-after-host
+client shot c556-552-after-client
+try client wait log "card556: client rest applied " timeout=5
+host quit
+client quit

@@ -1,6 +1,6 @@
 # Card 441: AI round spawn and impact rows are sent as text with full asset paths
 
-Status: open, not coded. Found 2026-11-16 in the wire audit of run `c423b136a` (b136 `7191143d5e2d10f1`, FED_C2M1,
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, not coded. Found 2026-11-16 in the wire audit of run `c423b136a` (b136 `7191143d5e2d10f1`, FED_C2M1,
 165 netbudget windows, about 825 s). Low priority: after the playtest.
 
 ## Numbers (host log, netbudget "chan bytes by op" summed over the run)

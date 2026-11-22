@@ -1,0 +1,86 @@
+# b409 proof run (card 565 client resume after a relayed NPC trooper sequence ends): FED_C1M1 FAST. Preamble and
+# pickups from c373-c1m1.txt; fight block at a ground-level BP_AI_Trooper_SquadLeader_C (the nearest Morita stands on
+# a tower at z 1101, c551b376a). card565 rows are their own capped rows; the card565 totals do not use the card041 cap.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c565-c1m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen UBWCOOP_GOD=1 UBWCOOP_C41_ANIM_TRACE=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C41_ANIM_TRACE=1" tools/run_pair.sh c565b409a 900
+voidsoft
+void unless host dll 97a1005b8797e803
+void unless client dll 97a1005b8797e803
+host wait state map=FED_C1M1 timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c373-hud-start
+host clear 4000 kill
+# FED_C1M1 starts unarmed (c551b378a made no holes): each player takes the range Morita by their own Use press
+# (cards 495, 559), host first, then the client; b11-soak-c1m1.txt recipe, card495 rows from soak5m1b367b.
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+host wait goto timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+host key E
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 \(take\): taken by 1 of 2" since-mark timeout=8
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+client wait goto timeout=30
+client look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+client key E
+host wait log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 by take: taken by 2 of 2" since-mark timeout=8
+# --- card 565: both players near a ground-level SquadLeader trooper; four warrior bugs at the trooper start one fight;
+# about 60 s with the squad in view of both cameras.
+host warp actor BP_AI_Trooper_SquadLeader_C 600
+host warp client BP_AI_Trooper_SquadLeader_C 700
+host mark
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host wait log "cmd: \d+ look: BP_AI_Trooper_SquadLeader_C at (-?\d+) (-?\d+) (-?\d+) from" since-mark timeout=5
+host shot c565-start-host
+client shot c565-start-client
+host mark
+client mark
+try host spawn bug {g1} {g2} {g3} 0
+try host spawn bug {g1} {g2} {g3} 90
+try host spawn bug {g1} {g2} {g3} 180
+try host spawn bug {g1} {g2} {g3} 270
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-10s-host
+client shot c565-10s-client
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-20s-host
+client shot c565-20s-client
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-30s-host
+client shot c565-30s-client
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-40s-host
+client shot c565-40s-client
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-50s-host
+client shot c565-50s-client
+sleep 10
+host look actor BP_AI_Trooper_SquadLeader_C 0
+client look actor BP_AI_Trooper_SquadLeader_C 0
+host shot c565-60s-host
+client shot c565-60s-client
+host clear 4000 kill
+client quit
+host quit

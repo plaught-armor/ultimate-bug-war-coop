@@ -1,6 +1,6 @@
 # Card 381: a client's own level transition leaves it on the loading screen
 
-Status: fix in b67 `cc1d4251720f389d`; static, not proven by a run (hangar computer widgets are outside `ui click`; no test hook added). Watch in the playtest. Found by static audit 2026-11-15 (card 376 sibling).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix in b67 `cc1d4251720f389d`; static, not proven by a run (hangar computer widgets are outside `ui click`; no test hook added). Watch in the playtest. Found by static audit 2026-11-15 (card 376 sibling).
 
 ## Defect (predicted, not yet seen in a run)
 

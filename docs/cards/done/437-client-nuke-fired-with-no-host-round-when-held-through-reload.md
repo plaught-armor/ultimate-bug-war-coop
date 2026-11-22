@@ -1,6 +1,6 @@
 # Card 437: client nuke fired with no host round when fire is held through the reload
 
-Status: open, found 2026-11-16 in run `c423b133a` (b133 `180eb421f35f5a09`, FED_C2M1). It voided the run from
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, found 2026-11-16 in run `c423b133a` (b133 `180eb421f35f5a09`, FED_C2M1). It voided the run from
 line 222. Before b131 the client's auto reload did not run (card 430), so this path was not reachable.
 
 ## Seen (tick ms)

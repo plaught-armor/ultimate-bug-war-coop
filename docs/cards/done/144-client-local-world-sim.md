@@ -1,6 +1,6 @@
 # Card 144: The client runs its own AI spawner and hazard state
 
-Status: queued 2026-11-08, from card 137 run 1 (hb68) step 2a change log. Budget: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from card 137 run 1 (hb68) step 2a change log. Budget: three runs.
 
 Read: card 137 "2a local-sim classes" (hb68), docs/STATE.md "Card scope and investigation rules".
 

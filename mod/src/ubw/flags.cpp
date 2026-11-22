@@ -780,21 +780,19 @@ void read_card_flags() {
     g_c73_log = config::read_c73_log();
     g_c74_log = config::read_c74_log();
     g_c99_log = config::read_c99_log();
+    pe_gate_set(kPeGate_c99_log, g_c99_log); // card 573 b463: detour_process_event reads the mirror bit
     g_c138_hold_ms = config::read_c138_hold_ms();
     g_c103_log = config::read_c103_log();
     g_c122_log = config::read_c122_log();
     g_c125_log = config::read_c125_log();
     g_c76_log = config::read_c76_log();
     g_c132_fx_log = config::read_c132_fx();
-    g_c531_on = !ue::config::read_switch(L"UBWCOOP_C531_OFF", "card 531 GetSaveId cache off (A/B)");
     g_c535_on = !ue::config::read_switch(L"UBWCOOP_C535_OFF", "card 535 client NPC FindFloor skip off (A/B)");
-    g_c536_on = !ue::config::read_switch(L"UBWCOOP_C536_OFF", "card 536 FindComponentByClass cache off (A/B)");
-    g_c538_on = !ue::config::read_switch(L"UBWCOOP_C538_OFF", "card 538 DoesTargetMeetConditions counts off");
-    g_c540_on = !ue::config::read_switch(L"UBWCOOP_C540_OFF", "card 540 DoesTargetMeetConditions memo off (A/B)");
-    g_c539_on = !ue::config::read_switch(L"UBWCOOP_C539_OFF", "card 539 client NPC proxy sweep counts off");
-    g_c544_on = !ue::config::read_switch(L"UBWCOOP_C544_OFF", "card 544 Chaos dynamic tree padding off (A/B)");
-    g_c542_on = !ue::config::read_switch(L"UBWCOOP_C542_OFF", "card 542 client NPC proxy capsules ignore PhysicsBody off (A/B)");
-    g_gate_c461_c539 = g_gate_diag || g_c539_on || g_c542_on; // cards 539 and 542 use the card 461 MoveComponentImpl row
+    g_c569_gate = !ue::config::read_switch(L"UBWCOOP_C569_OFF", "card 569 grenade DoAction gate off (A/B)");
+    g_c575_log = ue::config::read_switch(L"UBWCOOP_C575_LOG", "card 575 crowd agent registration rows");
+    g_c572_on = ue::config::read_switch(L"UBWCOOP_C571", "card 572 detour body cost rows");
+    g_c572_memo_on = !ue::config::read_switch(L"UBWCOOP_C572_MEMO_OFF", "card 572 GetPlayerController memo off (A/B)");
+    g_gate_c461_c539 = g_gate_diag || perf_wants_c461_move(); // ubwperf cards 539 and 542 use the card 461 row (card 578)
     g_c136_log = config::read_c136_log();
     g_c79_log = config::read_c79_log();
     g_c79_kill = config::read_c79_kill();

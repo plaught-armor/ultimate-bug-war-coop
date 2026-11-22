@@ -29,6 +29,9 @@ using AttachParentFn = void* (*)(const void* actor);
 using ConstBoolFn = bool (*)(const void* self);
 using ThreadCheckFn = bool (*)(); // IsInGameThread
 using SetActorLocationFn = bool (*)(void* actor, const Vec3* location, bool sweep, void* out_hit, uint8_t teleport);
+// FVector and FRotator by value: over 8 bytes, so the x64 ABI passes each as a pointer to the caller's copy.
+using SetActorLocationAndRotationFn = bool (*)(void* actor, const Vec3* location, const Vec3* rotation, bool sweep,
+                                               void* out_hit, uint8_t teleport);
 using SetHiddenInGameFn = void (*)(void* component, bool hidden, uint8_t propagation);
 using SplineLengthFn = float (*)(const void* spline);
 using ActorFloatFn = float (*)(const void* actor);
@@ -62,6 +65,7 @@ extern GameInstanceRefFn g_gi_unregister_ref;
 extern ConstBoolFn g_world_is_paused;
 extern ThreadCheckFn g_is_in_game_thread;
 extern SetActorLocationFn g_set_actor_location;
+extern SetActorLocationAndRotationFn g_set_actor_location_rotation;
 extern SetHiddenInGameFn g_set_hidden_in_game;
 extern SetHiddenInGameFn g_scene_set_visibility; // same shape: (component, visible, propagation)
 extern SplineLengthFn g_spline_length; // USplineComponent::GetSplineLength, card 159

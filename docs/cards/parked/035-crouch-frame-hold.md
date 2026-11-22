@@ -1,4 +1,5 @@
 # Card 035: Show a crouch pose on the remote sprite
+Status 2026-11-22: parked, not in the queue. The status below is as first written.
 
 Status: draft (senior, 2026-11-03). Send only after the user says go and the junior has been cleared.
 

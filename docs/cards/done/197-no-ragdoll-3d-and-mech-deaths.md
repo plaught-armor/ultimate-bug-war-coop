@@ -1,6 +1,6 @@
 # Card 197: Every NPC class with no ragdoll start shows the host's corpse state
 
-Status: queued 2026-11-12, from card 177 ("Problems for the senior"). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from card 177 ("Problems for the senior"). Budget: three runs. Static first.
 
 ## Why
 

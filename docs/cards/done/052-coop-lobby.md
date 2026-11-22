@@ -1,6 +1,6 @@
 # Card 052: In-game co-op lobby (host and join from the main menu)
 
-Status: sent 2026-11-04. The user made multiplayer setup UX a priority.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04. The user made multiplayer setup UX a priority.
 
 Read `docs/STATE.md`, the card 031 Report and Senior review (the native UMG overlay), the card 045 Report (Browse URL `listen` in place; the client's reconnect uses `g_travel.url`), and `docs/PLAYTEST.md`. Repo root: `/path/to/ultimate-bug-war-coop`.
 

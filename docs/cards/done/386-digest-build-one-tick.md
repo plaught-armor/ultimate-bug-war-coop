@@ -1,6 +1,6 @@
 # Card 386: the digest round builds the whole world digest in one tick (13 to 20 ms on FED_C2M1)
 
-Status: open, measured, not fixed. Queue: after the playtest (card 329/330 class; not a play blocker). Found
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, measured, not fixed. Queue: after the playtest (card 329/330 class; not a play blocker). Found
 2026-11-15 from `card330` rows.
 
 ## Cost (seen)

@@ -1,6 +1,6 @@
 # Card 057: The client can draw and fire a weapon it picked up
 
-Status: ready 2026-11-04 (senior). Playtest blocker: send before 054. FED_C1M1 starts every player UNARMED, so a client that cannot draw a picked-up weapon has nothing to shoot with.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: ready 2026-11-04 (senior). Playtest blocker: send before 054. FED_C1M1 starts every player UNARMED, so a client that cannot draw a picked-up weapon has nothing to shoot with.
 
 Read `docs/STATE.md`, the card 050 Report and Senior review, and the card 055 Report (step 3, first row). Repo root: `/path/to/ultimate-bug-war-coop`.
 

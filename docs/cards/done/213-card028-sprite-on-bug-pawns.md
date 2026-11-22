@@ -1,6 +1,6 @@
 # Card 213: Card 028's trooper renderer sits on remote bug pawns
 
-Status: queued, batched into card 210's build (run c210-r2). Found in c210-r1 (DLL a6a918954db931f2).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, batched into card 210's build (run c210-r2). Found in c210-r1 (DLL a6a918954db931f2).
 
 Known: card 028 adds its renderer (the FemaleMoritaTrooper sprite) to remote bug pawns on both sides (card 210
 trace). Since card 210 runs the vanilla form switch on every copy, the pawn has no form for about 200 ms per

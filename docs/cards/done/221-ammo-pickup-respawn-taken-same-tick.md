@@ -1,6 +1,6 @@
 # Card 221: A pickup that respawns and is taken in the same tick stays visible on the client
 
-Status: queued 2026-11-12, from c171-r1 (new WARN class). Static first. Budget after that: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c171-r1 (new WARN class). Static first. Budget after that: three runs.
 
 ## Seen
 

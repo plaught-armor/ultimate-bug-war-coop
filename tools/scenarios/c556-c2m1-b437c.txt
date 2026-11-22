@@ -1,0 +1,77 @@
+# Card 556 (C2M1 Morita drops) on b437c dwmapi a7f6f78392eb5ddc, FED_C2M1, FAST, lane 2, one run c556b437ca.
+# Steps: the c504 start block; bugs cleared by code; three times: the host warps 400 uu short of the nearest live
+# AI Morita trooper, kills it by code (`kill actor`, InstaKillTarget), waits for the card107 runtime pickup row and the
+# card256 rest row, the client is warped next to the host, both look at the nearest Morita pickup and take shots.
+# Prediction: each kill gives one `card107: host ... runtime pickup BP_WeaponPickup_*` row (the trooper's weapon), a
+# card256 host rest row with `simulating 1, asleep`, and card556 rows: host rest location equals the client's
+# `rest applied` location within 5 uu. Both shots show the rifle lying on the ground. If the client shot shows it
+# upright or in the air while the rows agree, the gap is rotation (the rest row's rotation), not location.
+# If no card107 row comes after a code kill, the playtest drops need the trooper's own death path (fire), and the
+# run says so.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c2m1-b437c.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b437ca 900
+# Expected wall: about 5 min.
+voidsoft
+void unless host dll a7f6f78392eb5ddc
+void unless client dll a7f6f78392eb5ddc
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+failsoft
+host clear 3000 kill
+# --- drop 1
+host mark
+client mark
+try host warp actor BP_AI_Trooper_Morita_C 400 live
+host kill actor BP_AI_Trooper_Morita_C
+try host wait log "card107: host t=\d+ runtime pickup BP_WeaponPickup_\S+ at" since-mark timeout=10
+try host wait log "card256: host pickup \d+ rest at .*simulating 1" since-mark timeout=15
+host warp client BP_PlayerCharacterMI_C 300
+sleep 1
+host look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+client look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+sleep 1
+host shot c556-drop1-host
+client shot c556-drop1-client
+# --- drop 2
+host mark
+client mark
+try host warp actor BP_AI_Trooper_Morita_C 400 live
+host kill actor BP_AI_Trooper_Morita_C
+try host wait log "card107: host t=\d+ runtime pickup BP_WeaponPickup_\S+ at" since-mark timeout=10
+try host wait log "card256: host pickup \d+ rest at .*simulating 1" since-mark timeout=15
+host warp client BP_PlayerCharacterMI_C 300
+sleep 1
+host look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+client look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+sleep 1
+host shot c556-drop2-host
+client shot c556-drop2-client
+# --- drop 3
+host mark
+client mark
+try host warp actor BP_AI_Trooper_Morita_C 400 live
+host kill actor BP_AI_Trooper_Morita_C
+try host wait log "card107: host t=\d+ runtime pickup BP_WeaponPickup_\S+ at" since-mark timeout=10
+try host wait log "card256: host pickup \d+ rest at .*simulating 1" since-mark timeout=15
+host warp client BP_PlayerCharacterMI_C 300
+sleep 1
+host look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+client look actor BP_WeaponPickup_MoritaMk1_C 0 bounds
+sleep 1
+host shot c556-drop3-host
+client shot c556-drop3-client
+host quit
+client quit

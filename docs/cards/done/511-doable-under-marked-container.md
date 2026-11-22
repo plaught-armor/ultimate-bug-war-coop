@@ -1,6 +1,6 @@
 # 511: A marker-off step under a marked container is not doable
 
-Opened 2026-11-19 by the senior, from the junior's c504b5 trace (DLL 4c265abd554c8232). Test-only code
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from the junior's c504b5 trace (DLL 4c265abd554c8232). Test-only code
 (`objective_c284.cpp`). It goes into the next real-bug build batch with card 510.
 
 ## Finding

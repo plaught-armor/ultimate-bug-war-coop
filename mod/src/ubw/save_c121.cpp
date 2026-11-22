@@ -121,6 +121,8 @@ void detour_c121_perform_save(void* world, void* metadata, void* delegate, bool 
     }
 }
 
+bool g_c121_in_place_load = false;
+
 void detour_c121_load(void* context, void* save_data, void* metadata, bool* file_io_success, bool load_pawns,
                       bool destroy_actors) {
     if (!g_client_session) {
@@ -132,7 +134,9 @@ void detour_c121_load(void* context, void* save_data, void* metadata, bool* file
             c294_host_load(strstr(object_name(context).text, "DeathScreen") != nullptr ? "death-screen load"
                                                                                        : "in-place load");
         }
+        g_c121_in_place_load = load_pawns;
         g_orig_c121_load(context, save_data, metadata, file_io_success, load_pawns, destroy_actors);
+        g_c121_in_place_load = false;
         log::line("card121: %s t=%llu save engine load done (file io success %d)", side(),
                   static_cast<unsigned long long>(GetTickCount64()),
                   file_io_success != nullptr && *file_io_success ? 1 : 0);

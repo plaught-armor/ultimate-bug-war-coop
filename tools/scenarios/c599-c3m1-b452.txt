@@ -1,0 +1,76 @@
+# b452 run (card 599 copy camera manager at the copy's view, card 598 placed re-fire skip): FED_C3M1.
+# Copy of c582-c3m1-b451.txt. Predictions: card 599 "Predictions (b452)", card 598 "b452 follow-up". Lessons 1-88.
+# Card 599 proof: the client melee's card582 trace row starts within 50 uu of "copy camera"; a card582 door hit row
+# has the copy pawn (server-copy) as instigator; one client knife kill on a spawned WarriorBug (trace row hit on
+# BP_AI_WarriorBug_C, then its death), the host not firing.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c599-c3m1-b452.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c599b452a 600
+voidsoft
+void unless host dll 61270761ad74d597
+void unless client dll 61270761ad74d597
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+try host wait log "card599: host t=\d+ copy \S+ camera manager \S+ set to its view" timeout=30
+# --- card 582 G3 / 599: melee on the Gigantic door. Host first (control), then the client.
+host clear 4000 kill
+host mark
+host warp actor point -68543 -668 1266
+host look point -68556 -767 1333
+host key V
+try host wait log "card582: host t=\d+ melee trace GA_HumanMelee" since-mark timeout=5
+try host wait log "card582: host t=\d+ building (?:hit )?BP_Door_Sliding_Gigantic_C(?:_\d+)? " since-mark timeout=5
+host shot c599-melee-host
+sleep 2
+host mark
+client mark
+host warp actor point -68300 -800 1266
+host warp client point -68543 -668 1266
+client wait near -68543 -668 1266 80 timeout=10
+client look point -68556 -767 1333
+client key V
+host wait log "card582: host t=\d+ melee trace GA_HumanMelee.*copy BP_PlayerCharacterMI_C" since-mark timeout=5
+try host wait log "card582: host t=\d+ building hit BP_Door_Sliding_Gigantic_C\S* .*instigator BP_PlayerCharacterMI_C \S+ \(server-copy\)" since-mark timeout=5
+try host wait log "card455: host t=\d+ relayed attached sound MS_EMIT_Human_Building_Generic_Damaged to BP_PlayerController_C \(sent\)" since-mark timeout=5
+try client wait log "card455: client t=\d+ played attached sound .*MS_EMIT_Human_Building_Generic_Damaged" since-mark timeout=6
+client shot c599-melee-client
+# --- card 599: client knife kill. The host stands at its known spot 270 uu off and does not fire. One WarriorBug 250 uu behind the
+# client (+y, inside the base), facing it; the client turns to it and knifes four times.
+host clear 4000 kill
+host warp actor point -68300 -800 1266
+sleep 1
+host mark
+client mark
+host spawn bug -68543 -418 1266 -90
+sleep 1
+client look actor BP_AI_WarriorBug_C 60
+client key V
+sleep 1
+client look actor BP_AI_WarriorBug_C 60
+client key V
+try host wait log "card582: host t=\d+ melee trace GA_HumanMelee.*hit 1 .*actor BP_AI_WarriorBug_C" since-mark timeout=3
+sleep 1
+client look actor BP_AI_WarriorBug_C 60
+client key V
+sleep 1
+client look actor BP_AI_WarriorBug_C 60
+client key V
+try host wait log "(?:card104: host t=\d+ host own StartAnimationSequence\(Death, [\d.]+\) on BP_AI_WarriorBug_C|card\d+: host rest row BP_AI_WarriorBug_C guid \S+ seq Death)" since-mark timeout=10
+client shot c599-knife-client
+host clear 4000 kill
+# --- card 518/598: two 60 s totals rows before the pair ends.
+# --- card 518 b: at least one 60 s totals row with the card 518 a row before the pair ends.
+host mark
+host wait log "card518: host fx keyed sound rows sent to a pc whose pawn is past the 15000 uu net cull from the event \(60 s\)" since-mark timeout=70
+host mark
+host wait log "card518: host fx keyed sound rows sent to a pc whose pawn is past the 15000 uu net cull from the event \(60 s\)" since-mark timeout=70

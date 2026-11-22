@@ -226,6 +226,8 @@ UPrimitiveComponent_SetCollisionProfileName ?SetCollisionProfileName@UPrimitiveC
 UPrimitiveComponent_SetCollisionResponseToChannel ?SetCollisionResponseToChannel@UPrimitiveComponent@@UEAAXW4ECollisionChannel@@W4ECollisionResponse@@@Z
 # void ASTPlayerTransportDropship::EnterDropship()  -- hook (capped log)
 ASTPlayerTransportDropship_EnterDropship ?EnterDropship@ASTPlayerTransportDropship@@AEAAXXZ
+# void ASTPlayerTransportDropship::OnInteraction(UADInteractorComponent*)  -- hook (card 595: this is the interface at dropship+0x708; the host holds boarding until every living player asked)
+ASTPlayerTransportDropship_OnInteraction ?OnInteraction@ASTPlayerTransportDropship@@MEAAXPEAVUADInteractorComponent@@@Z
 # void ASTPlayerTransportDropship::DescendToLandCompleted()  -- hook (capped log)
 ASTPlayerTransportDropship_DescendToLandCompleted ?DescendToLandCompleted@ASTPlayerTransportDropship@@MEAAXXZ
 # void UEnhancedPlayerInput::ProcessActionMappingEvent(TObjectPtr<const UInputAction>, float, bool, FInputActionValue, EKeyEvent, const TArray<UInputModifier*>&, const TArray<UInputTrigger*>&, bool)  -- hook (IA_Look/IA_Move extent)
@@ -241,6 +243,10 @@ FTriggerStateTracker_EvaluateTriggers ?EvaluateTriggers@FTriggerStateTracker@@QE
 ASTPlayerCharacter_PostInitializeComponents ?PostInitializeComponents@ASTPlayerCharacter@@UEAAXXZ
 # void ASTPlayerCharacter::PossessedBy(AController*)  -- hook (collision bit at host PossessedBy, capped)
 ASTPlayerCharacter_PossessedBy ?PossessedBy@ASTPlayerCharacter@@UEAAXPEAVAController@@@Z
+# void APawn::PossessedBy(AController*)  -- hook (card 572 step 8: role/owner/controller change bumps the memo frame)
+APawn_PossessedBy ?PossessedBy@APawn@@UEAAXPEAVAController@@@Z
+# void APawn::UnPossessed()  -- hook (card 572 step 8: role/owner/controller change bumps the memo frame)
+APawn_UnPossessed ?UnPossessed@APawn@@UEAAXXZ
 # void FEnhancedInputActionEventDelegateBinding<TDelegate<void(const FInputActionValue&)>>::Execute(const FInputActionInstance&) const  -- hook (handled count)
 EIBinding_ExecuteValue ?Execute@?$FEnhancedInputActionEventDelegateBinding@V?$TDelegate@$$A6AXAEBUFInputActionValue@@@ZUFDefaultDelegateUserPolicy@@@@@@UEBAXAEBUFInputActionInstance@@@Z
 # void FEnhancedInputActionEventDelegateBinding<TDelegate<void()>>::Execute(const FInputActionInstance&) const  -- hook (handled count)
@@ -444,6 +450,8 @@ UObject_FindFunctionChecked ?FindFunctionChecked@UObject@@QEBAPEAVUFunction@@VFN
 FName_CtorFindName ??0FName@@QEAA@PEB_WW4EFindName@@@Z
 # AADWeapon* USTWeaponInventory::GetWeaponBySlot(uint8) const  -- called (relay: find the held weapon after a weapon change; null for an empty slot)
 USTWeaponInventory_GetWeaponBySlot ?GetWeaponBySlot@USTWeaponInventory@@QEBAPEAVAADWeapon@@E@Z
+# void USTWeaponInventory::BroadcastStatusUpdate()  -- called (card 574: OnEquippedWeaponStatusUpdated(equipped weapon, this); the weapon selector's magazine refresh)
+USTWeaponInventory_BroadcastStatusUpdate ?BroadcastStatusUpdate@USTWeaponInventory@@QEAAXXZ
 # FVector ASTPlayerCharacterMI::GetTargetLocation_Implementation() const  -- hook (rcx = pawn + 0xA30, rdx out; card 024: a server copy aims from its own view)
 ASTPlayerCharacterMI_GetTargetLocation_Implementation ?GetTargetLocation_Implementation@ASTPlayerCharacterMI@@UEBA?AU?$TVector@N@Math@UE@@XZ
 # bool APlayerController::DeprojectScreenPositionToWorld(float, float, FVector&, FVector&) const  -- hook (card 024: zero-threshold branch for a server copy)
@@ -474,6 +482,8 @@ ASTNonPlayableCharacterBase_StartDying ?StartDying@ASTNonPlayableCharacterBase@@
 APlayerController_ConsoleCommand ?ConsoleCommand@APlayerController@@UEAA?AVFString@@AEBV2@_N@Z
 # bool AActor::SetActorLocation(const FVector&, bool bSweep, FHitResult*, ETeleportType)  -- called (card 025 step 6: pawn teleport)
 AActor_SetActorLocation ?SetActorLocation@AActor@@QEAA_NAEBU?$TVector@N@Math@UE@@_NPEAUFHitResult@@W4ETeleportType@@@Z
+# bool AActor::SetActorLocationAndRotation(FVector, FRotator, bool bSweep, FHitResult*, ETeleportType)  -- called (card 599: server copy camera manager at the copy's view)
+AActor_SetActorLocationAndRotation ?SetActorLocationAndRotation@AActor@@QEAA_NU?$TVector@N@Math@UE@@U?$TRotator@N@34@_NPEAUFHitResult@@W4ETeleportType@@@Z
 # void UAbilitySystemComponent::SetNumericAttributeBase(const FGameplayAttribute&, float)  -- called (card 025 step 6: revive)
 UAbilitySystemComponent_SetNumericAttributeBase ?SetNumericAttributeBase@UAbilitySystemComponent@@QEAAXAEBUFGameplayAttribute@@M@Z
 # FGameplayAttribute::FGameplayAttribute(FProperty*)  -- called (card 025 step 6: revive key with owner + Path, which operator== compares)
@@ -569,6 +579,8 @@ UClass_StaticClass ?StaticClass@UClass@@SAPEAV1@XZ
 UAIBlueprintHelperLibrary_SpawnAIFromClass ?SpawnAIFromClass@UAIBlueprintHelperLibrary@@SAPEAVAPawn@@PEAVUObject@@V?$TSubclassOf@VAPawn@@@@PEAVUBehaviorTree@@U?$TVector@N@Math@UE@@U?$TRotator@N@78@_NPEAVAActor@@@Z
 
 # Card 030: player death audit
+# Card 584: virtual void ASTPlayerCharacter::Landed(const FHitResult&)  -- hooked (diagnostic: air time vs the heavy landing threshold)
+ASTPlayerCharacter_Landed ?Landed@ASTPlayerCharacter@@UEAAXAEBUFHitResult@@@Z
 # void ASTPlayerCharacter::HandleDeathEvent(const FADDamageEvent&)  -- hooked (log only)
 ASTPlayerCharacter_HandleDeathEvent ?HandleDeathEvent@ASTPlayerCharacter@@MEAAXAEBUFADDamageEvent@@@Z
 # virtual void ASTPlayerCharacter::StartDeath(const FADDamageEvent&)  -- hooked (log only; vtable +0xA40)
@@ -971,11 +983,19 @@ ASTItemPickup_StaticClass ?StaticClass@ASTItemPickup@@SAPEAVUClass@@XZ
 ASTTacticalSupportPickup_StaticClass ?StaticClass@ASTTacticalSupportPickup@@SAPEAVUClass@@XZ
 # StaticClass() of the card 054 relayed interactables  -- called
 ASTSwitch_StaticClass ?StaticClass@ASTSwitch@@SAPEAVUClass@@XZ
+# Card 602: a host switch press runs each client copy's OnInteraction (OnPressSuccessful on the client).
+ASTSwitch_OnInteraction ?OnInteraction@ASTSwitch@@MEAAXPEAVUADInteractorComponent@@@Z
 ASTZiplinePoint_StaticClass ?StaticClass@ASTZiplinePoint@@SAPEAVUClass@@XZ
 ASTSatchelPlacementSite_StaticClass ?StaticClass@ASTSatchelPlacementSite@@SAPEAVUClass@@XZ
 ASTSecretPickup_StaticClass ?StaticClass@ASTSecretPickup@@SAPEAVUClass@@XZ
 # card 289: the secret take's credit (ASTSecretPickup::Pickup_Implementation before its base call)
 ASTSecretPickup_Pickup_Implementation ?Pickup_Implementation@ASTSecretPickup@@MEAAXXZ
+# card 570: per-player ammo and grenade takes (hooked; the subclass credit runs before its base call)
+ASTAmmoPickup_Pickup_Implementation ?Pickup_Implementation@ASTAmmoPickup@@UEAAXXZ
+ASTItemPickup_Pickup_Implementation ?Pickup_Implementation@ASTItemPickup@@UEAAXXZ
+ASTArmourPickup_Pickup_Implementation ?Pickup_Implementation@ASTArmourPickup@@UEAAXXZ
+ASTHealthPickup_Pickup_Implementation ?Pickup_Implementation@ASTHealthPickup@@UEAAXXZ
+ASTTacticalSupportPickup_Pickup_Implementation ?Pickup_Implementation@ASTTacticalSupportPickup@@UEAAXXZ
 USTMetaGame_SecretFound ?SecretFound@USTMetaGame@@QEAAXXZ
 # card 418: the satchel site fuse start (TriggeredSFX beep, light pulse); the host sends it, the client arms its copy
 ASTSatchelPlacementSite_StartTimer ?StartTimer@ASTSatchelPlacementSite@@AEAAXXZ
@@ -1166,6 +1186,9 @@ ASTGrenadeProjectileBase_Explode ?Explode@ASTGrenadeProjectileBase@@QEAAXXZ
 ASTGrenadeProjectileBase_InitGrenade ?InitGrenade@ASTGrenadeProjectileBase@@UEAAXAEBUFSTGrenadeParams@@@Z
 # static FSTAttackDamageResults USTCombatUtilityLibrary::ApplyDamageFromImpactHitResult(AActor*, AActor*, const FSTDamageTemplate&, const FGameplayTagContainer&, const FHitResult&, const FGameplayTag&)
 USTCombatUtilityLibrary_ApplyDamageFromImpactHitResult ?ApplyDamageFromImpactHitResult@USTCombatUtilityLibrary@@SA?AUFSTAttackDamageResults@@PEAVAActor@@0AEBUFSTDamageTemplate@@AEBUFGameplayTagContainer@@AEBUFHitResult@@AEBUFGameplayTag@@@Z
+# Card 582 G3: the knife's damage (card 102 damage scope, card 136 melee rows)
+# static FSTAttackDamageResults USTCombatUtilityLibrary::ApplyDamageAtLocation(AActor*, AActor*, const FSTDamageTemplate&, const FVector&)
+USTCombatUtilityLibrary_ApplyDamageAtLocation ?ApplyDamageAtLocation@USTCombatUtilityLibrary@@SA?AUFSTAttackDamageResults@@PEAVAActor@@0AEBUFSTDamageTemplate@@AEBU?$TVector@N@Math@UE@@@Z
 # static ASTHazardousZoneBase* USTCombatUtilityLibrary::TrySpawnDamageZone(UObject*, const FSTDamageZoneData&, const FHitResult&)
 USTCombatUtilityLibrary_TrySpawnDamageZone ?TrySpawnDamageZone@USTCombatUtilityLibrary@@SAPEAVASTHazardousZoneBase@@PEAVUObject@@AEBUFSTDamageZoneData@@AEBUFHitResult@@@Z
 # Card 074 step 1 (log only): the throw's animation task; its animator delegates call DoAction and AnimationEnded
@@ -1175,6 +1198,9 @@ USTAbilityTask_PlayAnimation_Activate ?Activate@USTAbilityTask_PlayAnimation@@ME
 USTAbilityTask_PlayAnimation_DoAction ?DoAction@USTAbilityTask_PlayAnimation@@QEAAXXZ
 # void USTAbilityTask_PlayAnimation::AnimationEnded()
 USTAbilityTask_PlayAnimation_AnimationEnded ?AnimationEnded@USTAbilityTask_PlayAnimation@@QEAAXXZ
+# Card 569 (log): every AD anim notify; its inner UADAnimNotify_DoAction broadcasts the actor animator +0xC0
+# void UADAnimNotifyWrapper::Notify(USkeletalMeshComponent*, UAnimSequenceBase*)
+UADAnimNotifyWrapper_Notify ?Notify@UADAnimNotifyWrapper@@UEAAXPEAVUSkeletalMeshComponent@@PEAVUAnimSequenceBase@@@Z
 # Card 074, called: the host reads a projectile's or fire zone's life span left (AActor_GetLifeSpan, above); the
 # client's fire zone copy takes it (SetLifeSpan)
 # void AActor::SetLifeSpan(float)
@@ -1835,3 +1861,81 @@ UKismetSystemLibrary_SphereOverlapComponents ?SphereOverlapComponents@UKismetSys
 UPrimitiveComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@UPrimitiveComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
 USkinnedMeshComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@USkinnedMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
 USkeletalMeshComponent_UpdateOverlapsImpl ?UpdateOverlapsImpl@USkeletalMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
+APlayerCameraManager_execStartCameraFade ?execStartCameraFade@APlayerCameraManager@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+APlayerCameraManager_execSetManualCameraFade ?execSetManualCameraFade@APlayerCameraManager@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+APlayerCameraManager_StartCameraFade ?StartCameraFade@APlayerCameraManager@@UEAAXMMMUFLinearColor@@_N1@Z
+APlayerCameraManager_SetManualCameraFade ?SetManualCameraFade@APlayerCameraManager@@UEAAXMUFLinearColor@@_N@Z
+
+# void USTAnimNotify_ScreenShake::Notify_Implementation(AActor* Owner)  -- card 551: shake notify on a remote player pawn
+USTAnimNotify_ScreenShake_Notify_Implementation ?Notify_Implementation@USTAnimNotify_ScreenShake@@UEAAXPEAVAActor@@@Z
+# Card 551: the impact cue's personal feedback (camera shake, force feedback, screen effect) runs for the cue's Target on
+# every machine; a remote player's landing cue shook the local camera.
+USTImpactGameplayCueNotify_ExecuteImpact ?ExecuteImpact@USTImpactGameplayCueNotify@@UEBAXPEAVAActor@@AEBUFGameplayCueParameters@@@Z
+USTImpactGameplayCueNotify_PlayScreenShake ?PlayScreenShake@USTImpactGameplayCueNotify@@UEBAXAEBUFGameplayCueParameters@@@Z
+USTImpactGameplayCueNotify_PlayForceFeedback ?PlayForceFeedback@USTImpactGameplayCueNotify@@UEBAXAEBUFGameplayCueParameters@@@Z
+USTImpactGameplayCueNotify_ApplyScreenEffect ?ApplyScreenEffect@USTImpactGameplayCueNotify@@QEBAXPEAVAActor@@AEBUFGameplayCueParameters@@@Z
+# Card 551 b378: the landing Fall shake reached the local camera through
+# USTCommonUtilityLibrary::StartCameraShake(WorldContext, ShakeClass, Scale) from a caller outside the b373 gates.
+USTCommonUtilityLibrary_StartCameraShake ?StartCameraShake@USTCommonUtilityLibrary@@SAPEAVUCameraShakeBase@@PEAVUObject@@V?$TSubclassOf@VUCameraShakeBase@@@@M@Z
+# Card 551 b380: the impact cue's Target is the hit surface on a landing; the landing pawn is the cue's instigator or effect causer.
+FGameplayCueParameters_GetEffectCauser ?GetEffectCauser@FGameplayCueParameters@@QEBAPEAVAActor@@XZ
+# Card 566 b378: the client loads a relayed decal material it has not loaded yet (StaticLoadObject class).
+UMaterialInterface_StaticClass ?StaticClass@UMaterialInterface@@SAPEAVUClass@@XZ
+
+# void UCrowdFollowingComponent::RegisterCrowdAgent()  -- card 575 diag: the only UCrowdManager::RegisterAgent caller
+# besides SetCrowdSimulationState (exe scan 2026-11-21)
+UCrowdFollowingComponent_RegisterCrowdAgent ?RegisterCrowdAgent@UCrowdFollowingComponent@@IEAAXXZ
+# void UCrowdManager::RegisterAgent(ICrowdAgentInterface*)  -- hook (card 575 diag b397: every agent registration, caller by RVA)
+UCrowdManager_RegisterAgent ?RegisterAgent@UCrowdManager@@QEAAXPEAVICrowdAgentInterface@@@Z
+# virtual void FRecastNavMeshGenerator::RebuildDirtyAreas(const TArray<FNavigationDirtyArea>&)  -- hook (card 577: client skips runtime tile rebuilds)
+FRecastNavMeshGenerator_RebuildDirtyAreas ?RebuildDirtyAreas@FRecastNavMeshGenerator@@UEAAXAEBV?$TArray@UFNavigationDirtyArea@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+UADTargetComponent_ModifyTargetThreat ?ModifyTargetThreat@UADTargetComponent@@QEAAXPEAVAActor@@M@Z
+UADTargetComponent_execModifyTargetThreat ?execModifyTargetThreat@UADTargetComponent@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+# virtual void AActor::OnRep_ReplicatedMovement()  -- hook (card 588: client own seat motion diag)
+AActor_OnRep_ReplicatedMovement ?OnRep_ReplicatedMovement@AActor@@UEAAXXZ
+# Card 594 (perf_target_c594.cpp, host diag): protected void UADTargetComponent::GatherTargetsInRange()  -- hooked (counts)
+UADTargetComponent_GatherTargetsInRange ?GatherTargetsInRange@UADTargetComponent@@IEAAXXZ
+# Card 594: protected void UADTargetComponent::UpdateTargetData(FADTargetData&, float)  -- hooked (counts; +0x4A faction byte)
+UADTargetComponent_UpdateTargetData ?UpdateTargetData@UADTargetComponent@@IEAAXAEAUFADTargetData@@M@Z
+# Card 594: protected FADTargetData* UADTargetComponent::FindOrAddActor(AActor*)  -- hooked (counts the gather's adds)
+UADTargetComponent_FindOrAddActor ?FindOrAddActor@UADTargetComponent@@IEAAPEAUFADTargetData@@PEAVAActor@@@Z
+# Card 594: void UADGASSubsystem::GetAllAbilitySystemActors(TArray<AActor*>&) const  -- hooked (counts the gather's scan)
+UADGASSubsystem_GetAllAbilitySystemActors ?GetAllAbilitySystemActors@UADGASSubsystem@@QEBAXAEAV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+# virtual const ANavigationData* UNavigationSystemV1::GetNavDataForProps(const FNavAgentProperties&) const  -- hook (card 593 step 4:
+# host counter of nav data resolves by nav data and caller; the non-const and location overloads share one 9-byte
+# thunk at 0x0356F530 that tail-jumps to vtable +0x358, this body)
+UNavigationSystemV1_GetNavDataForPropsConst ?GetNavDataForProps@UNavigationSystemV1@@UEBAPEBVANavigationData@@AEBUFNavAgentProperties@@@Z
+# void ASTNonPlayableCharacterBase::PossessedBy(AController*)  -- hook (card 593 step 4: one row per AI class at first possession)
+ASTNonPlayableCharacterBase_PossessedBy ?PossessedBy@ASTNonPlayableCharacterBase@@MEAAXPEAVAController@@@Z
+# ANavigationData* ASTNonPlayableCharacterBase::GetNavData()  -- called (card 593 step 4 row)
+ASTNonPlayableCharacterBase_GetNavData ?GetNavData@ASTNonPlayableCharacterBase@@QEAAPEAVANavigationData@@XZ
+# void ASTCustomPickupBase::SetPhysicsStateOverride(ESTPhysicsOverrideState)  -- hook (card 556 b441 diag)
+ASTCustomPickupBase_SetPhysicsStateOverride ?SetPhysicsStateOverride@ASTCustomPickupBase@@QEAAXW4ESTPhysicsOverrideState@@@Z
+# static bool UKismetSystemLibrary::BoxTraceSingleByProfile(...)  -- hook (card 556 b441 diag: the rack's TraceBelow)
+UKismetSystemLibrary_BoxTraceSingleByProfile ?BoxTraceSingleByProfile@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@11U?$TRotator@N@45@VFName@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@4UFLinearColor@@8M@Z
+
+# Card 556: AADPickupBase::execOnHit (OnHit inlined: freeze + TryAttachToActor) and the body wake after a rack's
+# Destroy loop override(1).
+AADPickupBase_execOnHit ?execOnHit@AADPickupBase@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+UPrimitiveComponent_WakeRigidBody ?WakeRigidBody@UPrimitiveComponent@@UEAAXVFName@@@Z
+# Card 582 G3 b451 diagnostic: GA_HumanMelee's DealDamage / TraceForTarget sphere trace (execSphereTraceSingleForObjects+0x472 calls it).
+UKismetSystemLibrary_SphereTraceSingleForObjects ?SphereTraceSingleForObjects@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@1MAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@3UFLinearColor@@7M@Z
+# Card 604: placed audio components and level-script music from host-only chains, relayed to clients
+# virtual void UAudioComponent::Play(float StartTime)  -- call (client: a host row's component)
+UAudioComponent_Play ?Play@UAudioComponent@@UEAAXM@Z
+# virtual bool UAudioComponent::IsPlaying() const  -- call (host: a Stop row only for a component that plays)
+UAudioComponent_IsPlaying ?IsPlaying@UAudioComponent@@UEBA_NXZ
+# static void USTCommonUtilityLibrary::TriggerSpecificMusic(UObject*, FName, bool)
+USTCommonUtilityLibrary_TriggerSpecificMusic ?TriggerSpecificMusic@USTCommonUtilityLibrary@@SAXPEAVUObject@@VFName@@_N@Z
+# static void USTCommonUtilityLibrary::EndMusic(UObject*, bool, float)
+USTCommonUtilityLibrary_EndMusic ?EndMusic@USTCommonUtilityLibrary@@SAXPEAVUObject@@_NM@Z
+# static void USTCommonUtilityLibrary::ClearMusicTriggers(UObject*, bool)
+USTCommonUtilityLibrary_ClearMusicTriggers ?ClearMusicTriggers@USTCommonUtilityLibrary@@SAXPEAVUObject@@_N@Z
+# static void USTCommonUtilityLibrary::PlaySound2DFName(UObject*, FName, float, float, float, USoundConcurrency*, AActor*)
+USTCommonUtilityLibrary_PlaySound2DFName ?PlaySound2DFName@USTCommonUtilityLibrary@@SAXPEAVUObject@@VFName@@MMMPEAVUSoundConcurrency@@PEAVAActor@@@Z
+# static void UAudioMixerBlueprintLibrary::SetSubmixEffectChainOverride(const UObject*, USoundSubmix*, TArray<USoundEffectSubmixPreset*>, float)  -- card 604 check log
+UAudioMixerBlueprintLibrary_SetSubmixEffectChainOverride ?SetSubmixEffectChainOverride@UAudioMixerBlueprintLibrary@@SAXPEBVUObject@@PEAVUSoundSubmix@@V?$TArray@PEAVUSoundEffectSubmixPreset@@V?$TSizedDefaultAllocator@$0CA@@@@@M@Z
+# static void UAudioMixerBlueprintLibrary::ClearSubmixEffectChainOverride(const UObject*, USoundSubmix*, float)  -- card 604 check log
+UAudioMixerBlueprintLibrary_ClearSubmixEffectChainOverride ?ClearSubmixEffectChainOverride@UAudioMixerBlueprintLibrary@@SAXPEBVUObject@@PEAVUSoundSubmix@@M@Z
+# void FNiagaraSystemInstance::TickInstanceParameters_GameThread(float)  -- card 573 Niagara counts (callers: Tick_GameThread, ReInitInternal)
+FNiagaraSystemInstance_TickInstanceParameters_GameThread ?TickInstanceParameters_GameThread@FNiagaraSystemInstance@@QEAAXM@Z

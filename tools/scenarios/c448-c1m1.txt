@@ -10,8 +10,8 @@
 #      tools/run_pair.sh c448b186a 720
 # Expected wall: about 7 min.
 voidsoft
-void unless host dll d05e6ac4a87eaec9
-void unless client dll d05e6ac4a87eaec9
+void unless host dll 03df06297887feeb
+void unless client dll 03df06297887feeb
 host wait state map=FED_C1M1 pawn=host-own timeout=240 void
 client wait state map=FED_C1M1 pawn=client-own timeout=180
 host ui continue

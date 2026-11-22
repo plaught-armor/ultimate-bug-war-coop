@@ -1,6 +1,6 @@
 # Card 445: a rejoining client loses its tactical support charge
 
-Status: fix written 2026-11-16 16:32 (`c445_patch.py`, senior scratchpad; `--check` ok on the b144 tree), not built.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix written 2026-11-16 16:32 (`c445_patch.py`, senior scratchpad; `--check` ok on the b144 tree), not built.
 Found in run `c423b144b` (b144 `b09caa0e7c1f80da`, C2M1); the same rows are in b143a and b144a. Sibling of card 440.
 
 ## Defect

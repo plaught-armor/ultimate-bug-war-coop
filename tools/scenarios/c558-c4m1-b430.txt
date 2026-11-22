@@ -1,0 +1,63 @@
+# Card 558 candidate 2 + card 555 quit row (FED_C4M1 mech, FAST=1, lane 2) on b430 dwmapi 961c941ae5a47531 + ubwperf
+# c8ff411af8128028 (= b429 with the card558 remote row listing the mech's "Mech" StaticMeshComponent and every
+# SkeletalMeshComponent; c558b429a showed ACharacter::Mesh null and +0xC20 a hidden SpriteComponent).
+# Steps: c558-c4m1-b429.txt lines 16-57 (host enters, walks off the pod, client watches from 1500 uu while the host
+# walks 2.5 s), then both quit (c558b429a had no quit, so sync_quit never ran and no card555 row printed).
+# Prediction 558: client card558 rows during the walk list the components. If the only shown body is "Mech"
+# (StaticMeshComponent), no leg animation exists on a remote piloted mech (the cause). If a SkeletalMeshComponent
+# lists visible 0 or tick 0 or anim null while velocity is nonzero, that names the cause instead.
+# Prediction 555: both logs have a "card555: <side> radar hide" row after the quit (host enemies added > 0).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c558-c4m1-b430.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C76_LOG=1" tools/run_pair.sh c558b430a 600
+# Expected wall: about 2.5 min.
+voidsoft
+failsoft
+void unless host dll 961c941ae5a47531
+void unless client dll 961c941ae5a47531
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "card098: host spawn BP_BaseMech_C BP_BaseMech_C at " timeout=60
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; own pawn from" since-mark timeout=5
+host clear 4000 kill
+# --- 1. The host enters mech A; the client stands 600 uu off and watches (card 558 candidate 2).
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+# Mech A stands on a raised pod (z about 1347); walk it off and wait for the landing so the client watches on the ground (c558b376a lesson).
+host mark
+& host key W 4000 timeout=10
+try host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 3" since-mark timeout=8
+host mark
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=10
+join host
+host mark
+# 1500 uu so the whole mech is in frame (c558b377a: at 600 uu the shots held only its gun arm).
+host warp client BP_BaseMech_C 1500
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; server copy from" since-mark timeout=5
+client wait near {g1} {g2} {g3} 250 timeout=6
+client look actor BP_BaseMech_C 150
+sleep 1
+client shot 558-host-mech-idle
+# The host walks 2.5 s (a 4 s walk left the mech among walls, and later warps fell back, c558b377a); the client
+# re-aims and shoots at about 0.8 s and 1.8 s into the walk (the leg pose must differ between the two).
+& host key W 2500 timeout=10
+sleep 0.7
+client look actor BP_BaseMech_C 150
+client shot 558-host-mech-walk1
+sleep 0.9
+client look actor BP_BaseMech_C 150
+client shot 558-host-mech-walk2
+join host
+sleep 2
+client quit
+host quit

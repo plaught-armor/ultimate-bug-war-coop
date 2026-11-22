@@ -1,4 +1,5 @@
 # 304 The client hears the host's pulse rifle as if it were close, wherever the host is
+Status 2026-11-22: open only for the hearing check in a playtest.
 
 Playtest 2026-11-13 (user plays as client, now on FED_C3M1): "can hear pulse rifle when host is firing also".
 

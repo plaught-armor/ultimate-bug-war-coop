@@ -1,6 +1,6 @@
 # Card 201: A gib burst does not lose rows or show pieces seconds late on the client
 
-Status: queued 2026-11-12, split from card 148 (c148-r2). Budget: three runs. Static first; the senior reviews the
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 148 (c148-r2). Budget: three runs. Static first; the senior reviews the
 trace before code.
 
 Read: `docs/cards/done/148-gib-sync-client-apply.md` (Report, r2), card 140 (the GibPart budget and why it exists:

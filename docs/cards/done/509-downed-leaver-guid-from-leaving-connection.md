@@ -1,6 +1,6 @@
 # 509: The downed-leaver Up frame reads its guid through the leaving connection
 
-Opened 2026-11-19 by the senior, from the junior's c448b282a finding (b282 1765d1a2dd105abb).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from the junior's c448b282a finding (b282 1765d1a2dd105abb).
 
 ## Finding
 

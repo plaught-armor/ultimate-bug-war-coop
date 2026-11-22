@@ -1,0 +1,72 @@
+# Card 591 fix proof (FED_C4M1 mech, FAST=1, lane 2) on b428 dwmapi 28982ce0c7a6b385 + ubwperf 87ed2db57fe2d130 (= b427 with the
+# card 591 fix: card 560 c560_drop_body only destroys the renderer card 028 attached, never a mech's own sprite body at
+# +0xC20; the diag eject test now reads the weak PC). Steps as c591-c4m1-b427.txt (c591b427a), warp waits take the
+# SetActorLocation fallback row too.
+# c591b427a found it: "DestroyComponent SpriteComponent (STSpriteRenderComponent) ... IS its body +0xC20, caller
+# dwmapi+0x81E83" (c28_step -> c560_drop_body) at mech enter, +0xC20 null 5 s later, DeathComplete at the 60 s eject
+# read it and the host crashed at exe+0x521B7B4.
+# Prediction: no card560 row and no "IS its body" DestroyComponent row; at "LeaveMech (no PC: eject)" and at
+# "DeathComplete before" body +0xC20 is the SpriteComponent (non-null), mech DeathComplete calls 1; no crash; mech B
+# repeats it. The empty mech keeps its sprite body after the normal exit (card075 rows).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c591-c4m1-b428.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C79_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c591b428a 600
+# Expected wall: about 4 min.
+voidsoft
+failsoft
+void unless host dll 28982ce0c7a6b385
+void unless client dll 28982ce0c7a6b385
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "card098: host spawn BP_BaseMech_C BP_BaseMech_C at " timeout=60
+# --- Mech A: enter, walk off the pod, leave normally.
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: (?:landed at .*; own pawn from|own pawn \S+ .* -> .*SetActorLocation 1)" since-mark timeout=5
+host clear 4000 kill
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+host mark
+& host key W 4000 timeout=10
+try host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 3" since-mark timeout=8
+host mark
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=10
+join host
+host mark
+host key E 2500 timeout=15
+host wait log "card591: host t=\d+ LeaveMech \(piloted\): " since-mark timeout=5
+host clear 4000 kill
+# --- Wait for the abandoned-mech eject (60 s after the leave), then DeathComplete (about 3 s) plus 5 s.
+host mark
+host wait log "card591: host t=\d+ LeaveMech \(no PC: eject\): " since-mark timeout=75
+host mark
+try host wait log "card591: host t=\d+ DeathComplete after: " since-mark timeout=8
+sleep 5
+# --- Mech B: the same, for a repeat (only reached if the host lived through mech A).
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: (?:landed at .*; own pawn from|own pawn \S+ .* -> .*SetActorLocation 1)" since-mark timeout=5
+host clear 4000 kill
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+sleep 1
+host mark
+host key E 2500 timeout=15
+host wait log "card591: host t=\d+ LeaveMech \(piloted\): " since-mark timeout=5
+host clear 4000 kill
+host mark
+host wait log "card591: host t=\d+ LeaveMech \(no PC: eject\): " since-mark timeout=75
+host mark
+try host wait log "card591: host t=\d+ DeathComplete after: " since-mark timeout=8
+sleep 5

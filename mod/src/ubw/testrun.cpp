@@ -123,6 +123,7 @@ struct C64Walk {
     const char* trying;       // the recovery under test since the last stuck, or null
     bool running;
     bool w_down;
+    uint32_t w_presses;       // card 590: W presses by the steering since the last 2 s check
     bool sprint;
     bool landing;             // reached the goal: keys up, ends when the pawn stands still on the ground
     uint8_t still_ticks;      // ticks in a row the pawn moved under kC64StillUu while landing
@@ -546,6 +547,7 @@ const char* c64_goto_start(void* world, void* pc, const cmdfile::Cmd& c, ULONGLO
     g_c64.still_ticks = 0;
     g_c64.phase_until = 0;
     g_c64.stucks = 0;
+    g_c64.w_presses = 0;
     g_c64.trying = nullptr;
     g_c64.sprint = c.sprint;
     g_c64.seq = c.seq;
@@ -624,14 +626,74 @@ void c64_blocked(void* pc, const void* pawn, const Vec3& pos, const char* why) {
               g_c64.nav_gap, what, kC64ProbeUu, knee, waist, head, drop);
 }
 
+// Card 590: what stands between a stuck pawn and the point it steers to. c590b431a stuck at point 10/10 with W
+// down and the give-up traces clear, but the give-up row traces along the view yaw at a later spot (after a side
+// step), and its trace keeps no actor. This row traces at knee and waist toward the point itself and names the
+// blocking actor's class (a live bug, a prop, or the level's static mesh), plus the view yaw against that bearing.
+// c590b432a: knee and waist read clear at a spot where host and client both held the pawn still under W, so the
+// probe set adds the ankle (under the knee, over the 25 uu step), the capsule's two sides, a reversed trace (a line
+// that starts inside a shape never hits it; the reverse one finds its far face) and the floor actor under the pawn.
+struct C64Probe {
+    const char* name;
+    double dz;      // over the pawn's centre
+    double side;    // left of the bearing, uu
+    bool reverse;   // traced from the far end back to the pawn
+    bool down;      // straight down 200 uu instead of along the bearing
+};
+constexpr uint32_t kC64Probes = 7;
+constexpr C64Probe kC64ProbeSet[kC64Probes] = {
+    {"ankle", -58.0, 0.0, false, false},  {"knee", -45.0, 0.0, false, false},   {"waist", 0.0, 0.0, false, false},
+    {"waist left", 0.0, 40.0, false, false}, {"waist right", 0.0, -40.0, false, false},
+    {"waist reversed", 0.0, 0.0, true, false}, {"floor", 0.0, 0.0, false, true},
+};
+void c64_stuck_blocker(void* pc, const void* pawn, const Vec3& pos, const Vec3& to) {
+    const double bearing = atan2(to.y - pos.y, to.x - pos.x);
+    const Vec3 f{cos(bearing), sin(bearing), 0.0};
+    const uint64_t prof = fname_cached(g_c64.pawn_profile, L"Pawn");
+    const double yaw = read_vec3(pc, kControllerControlRotation).y;
+    for (uint32_t i = 0; i < kC64Probes; ++i) {
+        const C64Probe& p = kC64ProbeSet[i];
+        const Vec3 o{pos.x - f.y * p.side, pos.y + f.x * p.side, pos.z + p.dz};
+        const Vec3 e = p.down ? Vec3{o.x, o.y, o.z - 200.0}
+                              : Vec3{o.x + f.x * kC64ProbeUu, o.y + f.y * kC64ProbeUu, o.z};
+        const Vec3& a = p.reverse ? e : o;
+        const Vec3& b = p.reverse ? o : e;
+        const double len = vec_dist(a, b);
+        const void* actor = nullptr;
+        const Vec3 hit = trace_profile(pawn, a, b, prof, &actor);
+        const double d = vec_dist(a, hit);
+        const bool blocked = d < len - 0.5;
+        log::line("cmd: %u goto: stuck blocker %s toward the point (bearing %.0f, view yaw %.0f): %s%.0f uu, %s at "
+                  "%.0f %.0f %.0f", g_c64.seq, p.name, bearing * kRadToDeg, yaw, blocked ? "hit at " : "clear past ",
+                  blocked ? d : len, actor != nullptr ? class_name(actor).text : "no actor", hit.x, hit.y, hit.z);
+    }
+    // c590b433a: all six bearing probes clear, the floor Landscape 99 uu below, and the card490 row 0.3 s before the
+    // goto read MovementMode 3 (falling). Falling on a slope too steep to walk would give air control only (the
+    // 75 uu/s crawl); this row names the mode, the floor result and the velocity at each stuck.
+    const auto* const cmc = static_cast<const uint8_t*>(read_ptr(pawn, kCharacterMovement));
+    if (cmc != nullptr) {
+        const Vec3 v = read_vec3(cmc, kMoveVelocity);
+        const Vec3 acc = read_vec3(cmc, kCmcAcceleration);
+        log::line("cmd: %u goto: stuck movement: MovementMode %u, floor flags 0x%X (1 blocking, 2 walkable), velocity "
+                  "(%.0f, %.0f, %.0f), acceleration (%.0f, %.0f, %.0f)", g_c64.seq, cmc[kCmcMovementMode],
+                  cmc[kCmcCurrentFloorFlags], v.x, v.y, v.z, acc.x, acc.y, acc.z);
+    }
+}
+
 constexpr const char* kC64RecoveryNames[kC64Recoveries] = {"re-path", "jump", "side step"};
 
 // The 2 s check: a progress line; a recovery that got the pawn moving again is named; a stuck (under kC64StuckUu
 // travelled while walking) starts the next recovery. Returns "stuck" after kC64MaxStucks, else null.
 const char* c64_check(void* world, void* pc, void* pawn, const Vec3& pos, ULONGLONG now) {
     const double moved = c64_dist2d(pos, g_c64.last);
-    log::line("cmd: %u goto: at %.0f %.0f %.0f, dist %.0f, point %d/%d, moved %.0f, %.1f s", g_c64.seq, pos.x, pos.y,
-              pos.z, g_c64.dist, g_c64.at + 1, g_c64.npts, moved, static_cast<double>(now - g_c64.start_ms) / 1000.0);
+    // Card 590: the point steered to, W, and the steering's W presses in the window (c590b430a crawled 40 uu/s at
+    // point 2/3 for 8 s, moving more than kC64StuckUu each check, so no stuck row named the point).
+    const Vec3& to = g_c64.pts[g_c64.at];
+    log::line("cmd: %u goto: at %.0f %.0f %.0f, dist %.0f, point %d/%d at %.0f %.0f %.0f (%.0f uu 2D), moved %.0f, "
+              "W %s, %u W presses, %.1f s", g_c64.seq, pos.x, pos.y, pos.z, g_c64.dist, g_c64.at + 1, g_c64.npts, to.x,
+              to.y, to.z, c64_dist2d(pos, to), moved, g_c64.w_down ? "down" : "up", g_c64.w_presses,
+              static_cast<double>(now - g_c64.start_ms) / 1000.0);
+    g_c64.w_presses = 0;
     g_c64.last = pos;
     g_c64.next_check = now + kC64CheckMs;
     if (g_c64.phase != C64Phase::Walk) {
@@ -658,8 +720,13 @@ const char* c64_check(void* world, void* pc, void* pawn, const Vec3& pos, ULONGL
     ++g_c64.stucks;
     const int32_t r = (g_c64.stucks - 1) % kC64Recoveries;
     g_c64.trying = kC64RecoveryNames[r];
-    log::line("cmd: %u goto: stuck %d of %d at %.0f %.0f %.0f, point %d/%d, trying %s", g_c64.seq, g_c64.stucks,
-              kC64MaxStucks, pos.x, pos.y, pos.z, g_c64.at + 1, g_c64.npts, g_c64.trying);
+    // Card 590: the point steered to and whether W is held (c587b422b stuck six times at point 2/9 with no blocker
+    // in the forward traces; the row did not say where point 2 was or whether the steering let W go).
+    log::line("cmd: %u goto: stuck %d of %d at %.0f %.0f %.0f, point %d/%d at %.0f %.0f %.0f (%.0f uu 2D), W %s, "
+              "trying %s", g_c64.seq, g_c64.stucks, kC64MaxStucks, pos.x, pos.y, pos.z, g_c64.at + 1, g_c64.npts, to.x,
+              to.y, to.z, c64_dist2d(pos, to), g_c64.w_down ? "down" : "up", g_c64.trying);
+    c64_stuck_blocker(pc, pawn, pos, to);
+    c590_stuck_overlaps(world, pawn, pos, g_c64.seq);
     if (r == 0) {
         c64_replan(world, pawn, "from the stuck spot");
     } else if (r == 1) {
@@ -722,6 +789,7 @@ void c64_steer(void* world, void* pc, void* pawn, const Vec3& pos, ULONGLONG now
         g_c64.w_down = false;
     } else if (!g_c64.w_down && err < (close_in ? kC64NearOnDeg : kC64WalkOnDeg)) {
         g_c64.w_down = autoinput::key_event(pc, L"W", true);
+        g_c64.w_presses += g_c64.w_down ? 1u : 0u;
     }
 }
 
@@ -1021,7 +1089,7 @@ void c264_aim_rows(void* pc, uint32_t seq) {
     if (d < kC264TraceUu - 0.5) {
         c316_muzzle_row(pawn, seq, actor, at); // card 316
     }
-    const void* const interactor = read_ptr(pawn, kCharacterInteractor);
+    const void* const interactor = pawn_interactor(pawn);
     const void* const focus = interact_target(interactor);
     log::line("cmd: %u aim: focus %s", seq, focus != nullptr ? c264_name(focus).text : "none");
 }
@@ -1161,10 +1229,14 @@ void b14_aim(void* pc, const void* pawn, const Vec3& pt, double* yaw_out, double
     *pitch_out = pitch;
 }
 
-// The centre, then the grid on the bounds face the eye sees most of (the axis with the largest offset in extents).
+// The centre, then the grid on the plane through the centre across the axis the eye is furthest out on (in extents).
 // b256 (c245b255a line 66, BP_Switch_C_0): the eye stood inside the bounds on every axis, so the x face was 13 uu
 // behind it and all 26 sweep looks turned away (focus none); a look from there at panel height (cmd 7, pitch -3.6)
 // had focus. When the eye is inside the slab of the chosen axis, the grid is the plane through the centre instead.
+// b367 (soak5m1b367b, Opening_SO3 BP_PanelSwitch_WithoutScreen_C_1): the eye stood 32 uu outside the x face, the
+// face grid was mostly empty space in front of the small interact collider, and 1 of 26 points hit. The grid is now
+// always the plane through the centre: from outside, a line to a centre-plane point still meets the near surface
+// first, and it crosses the body where the collider sits.
 int32_t b14_points(const Vec3& centre, const Vec3& extent, const Vec3& eye, Vec3* pts) {
     const double c[3] = {centre.x, centre.y, centre.z};
     const double e[3] = {extent.x, extent.y, extent.z};
@@ -1185,8 +1257,7 @@ int32_t b14_points(const Vec3& centre, const Vec3& extent, const Vec3& eye, Vec3
     for (int32_t a = 0; a < kB14Grid; ++a) {
         for (int32_t b = 0; b < kB14Grid; ++b) {
             double p[3] = {};
-            const bool inside = fabs(d[axis]) < e[axis];
-            p[axis] = inside ? c[axis] : c[axis] + (d[axis] >= 0.0 ? e[axis] : -e[axis]);
+            p[axis] = c[axis];
             p[u] = c[u] + kB14Frac[a] * e[u];
             p[v] = c[v] + kB14Frac[b] * e[v];
             pts[n++] = Vec3{p[0], p[1], p[2]};
@@ -1392,7 +1463,7 @@ bool b14_step(void* pc, const cmdfile::Cmd& c, ULONGLONG now, const char** why) 
     if (++g_b14.frames < kB14WaitFrames) {
         return false;
     }
-    const void* const interactor = read_ptr(pawn, kCharacterInteractor);
+    const void* const interactor = pawn_interactor(pawn);
     const void* const focus = interact_target(interactor);
     const bool match = focus != nullptr && strncmp(c264_name(focus).text, c.want, strlen(c.want)) == 0;
     if (g_b14.phase == B14Phase::Centroid && !match) {
@@ -2348,6 +2419,7 @@ const char* c243_ammo_fill(void* pc, uint32_t seq) {
 // Blueprint function or custom event, spaces kept: "Toggle Brain Bug Boundary") on the first level script actor of the
 // world's loaded levels (persistent first, then the streamed ones) that has it, by ProcessEvent. The function must take
 // no parameters. Row: `cmd: N levelcall <name> on <actor>: run`; the failure reason otherwise. Null when run.
+constexpr uint16_t kC237ZeroParms = 64; // zeroed parameter block for a debug key event (FKey is 0x18 bytes)
 const char* c237_levelcall(void* world, const cmdfile::Cmd& c) {
     static void* level_script_class = nullptr;
     if (level_script_class == nullptr) {
@@ -2378,13 +2450,16 @@ const char* c237_levelcall(void* world, const cmdfile::Cmd& c) {
                 continue;
             }
             const uint16_t parms = *reinterpret_cast<const uint16_t*>(static_cast<const uint8_t*>(fn) + kFunctionParmsSize);
-            if (parms != 0) {
+            // b446 (card 595 run): a debug key event (InpActEvt_*) takes only its FKey, which it ignores; it runs with
+            // zeroed parameters. Every other function must take none.
+            const bool key_event = strncmp(c.actor, "InpActEvt_", 10) == 0;
+            if (parms != 0 && !(key_event && parms <= kC237ZeroParms)) {
                 log::line("WARN cmd: %u levelcall %s on %s: takes %u bytes of parameters, not run", c.seq, c.actor,
                           object_name(actors[a]).text, static_cast<unsigned>(parms));
                 return "the function takes parameters";
             }
             log::line("cmd: %u levelcall %s on %s: run", c.seq, c.actor, object_name(actors[a]).text);
-            alignas(16) uint8_t none[16] = {};
+            alignas(16) uint8_t none[kC237ZeroParms] = {};
             g_orig_process_event(actors[a], fn, none);
             return nullptr;
         }
@@ -2605,18 +2680,33 @@ const char* c109_down(void* world, const cmdfile::Cmd& c) {
     }
     const C43Roster r = c43_roster(world);
     const uint32_t role = c.at[0] == 2.0 ? 2u : c.at[0] != 0.0 ? 1u : 0u;
-    const void* const want = role != 0 ? c29_server_copy_role(world, role) : r.p[0].pawn;
+    // Card 586: a client in a seat or flying a missile has that as its PC's pawn, so the role lookup finds no
+    // trooper (and logs WARN card502, c586b418a). Its slot is the one whose PC holds a trooper in g_c586 and sent
+    // `role`, tried first; the roster pawn there is the seat or missile, which c43_enter_down's c586_end_hold turns
+    // back into the trooper. With no hold, the role lookup below finds the slot.
     uint32_t slot = static_cast<uint32_t>(kC43Max);
-    for (int32_t s = 0; s < kC43Max && want != nullptr; ++s) {
+    const void* trooper = nullptr;
+    for (uint32_t h = 0; h < g_c586.count && role != 0 && slot == static_cast<uint32_t>(kC43Max); ++h) {
+        const C50Copy* const cp = c50_copy(object_index(g_c586.h[h].pc), false);
+        for (int32_t s = 0; s < kC43Max && cp != nullptr && cp->role == role; ++s) {
+            slot = r.p[s].pc == g_c586.h[h].pc && slot == static_cast<uint32_t>(kC43Max) ? static_cast<uint32_t>(s)
+                                                                                           : slot;
+        }
+        trooper = slot < static_cast<uint32_t>(kC43Max) ? g_c586.h[h].trooper : trooper;
+    }
+    const bool held = slot < static_cast<uint32_t>(kC43Max);
+    const void* const want = held ? trooper : role != 0 ? c29_server_copy_role(world, role) : r.p[0].pawn;
+    for (int32_t s = 0; s < kC43Max && want != nullptr && !held; ++s) {
         slot = r.p[s].pawn == want && slot == static_cast<uint32_t>(kC43Max) ? static_cast<uint32_t>(s) : slot;
     }
+    trooper = want;
     void* const pawn = slot < static_cast<uint32_t>(kC43Max) ? r.p[slot].pawn : nullptr;
-    if (r.players < 2 || pawn == nullptr || c43_is_down(pawn)) {
+    if (r.players < 2 || pawn == nullptr || trooper == nullptr || c43_is_down(trooper)) {
         return "no second player, no pawn in that slot, or already down";
     }
-    log::line("cmd: %u down: slot %u %s", c.seq, slot, object_name(pawn).text);
+    log::line("cmd: %u down: slot %u %s (trooper %s)", c.seq, slot, object_name(pawn).text, object_name(trooper).text);
     c43_enter_down(pawn, r, slot, C43Life::Downed, GetTickCount64());
-    return c43_is_down(pawn) ? nullptr : "not downed (refused by card 043)";
+    return c43_is_down(trooper) ? nullptr : "not downed (refused by card 043)";
 }
 
 // " goal=x,y,z dist=D" while a goto runs, else " goal=- dist=-".
@@ -2710,7 +2800,7 @@ void c67_resolve(ULONGLONG now) {
             g_c67.cls[k] = find_class(kC67Classes[k]);
             if (g_c67.cls[k] != nullptr) {
                 log::line("card067: class %ls at %p", kC67Classes[k], g_c67.cls[k]);
-                g_c67_pe = true;
+                pe_gate_set(kPeGate_c67_pe, true);
             }
         }
     }
@@ -2832,7 +2922,7 @@ bool c67_visit(const void* o) {
     g_c67.visited[g_c67.nvisited++] = o;
     if (g_c67.cls[kC67Cutscenes] == nullptr && strcmp(class_name(o).text, "WB_Cutscenes_C") == 0) {
         g_c67.cls[kC67Cutscenes] = read_ptr(o, kObjectClass);
-        g_c67_pe = true;
+        pe_gate_set(kPeGate_c67_pe, true);
         log::line("card067: class WB_Cutscenes_C at %p (from a live stack element)", g_c67.cls[kC67Cutscenes]);
     }
     return true;
@@ -3418,6 +3508,11 @@ bool c63_start(void* world, void* pc, ULONGLONG now) {
                                    : "no local pawn");
         return true;
     }
+    case cmdfile::Op::ResupplyLevel: { // card 556, test only
+        void* const own = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+        c63_finish(own != nullptr ? c556_set_resupply_level(own, static_cast<int32_t>(c.at[0])) : "no local pawn");
+        return true;
+    }
     case cmdfile::Op::Goto: { // card 124: the walk goes on in the background; its result comes at its end
         if (g_c64.running) {
             c64_end(pc, "replaced", now);
@@ -3513,6 +3608,22 @@ bool c63_start(void* world, void* pc, ULONGLONG now) {
     case cmdfile::Op::LevelCall: // b184
         c63_finish(c237_levelcall(world, c));
         return true;
+    case cmdfile::Op::Console: { // card 573: the words as a console command on the local PC
+        wchar_t wide[cmdfile::kActorChars];
+        size_t i = 0;
+        for (; c.actor[i] != '\0' && i + 1 < cmdfile::kActorChars; ++i) {
+            wide[i] = static_cast<wchar_t>(c.actor[i]);
+        }
+        wide[i] = L'\0';
+        if (pc == nullptr || ue::input::g_pc_console_command == nullptr) {
+            c63_finish("console: no local PC");
+            return true;
+        }
+        ue::input::console_command(pc, wide);
+        log::line("card573: cmd console '%s' sent", c.actor);
+        c63_finish(nullptr);
+        return true;
+    }
     }
     g_c63.started = true;
     g_c63.until = now + c.ms;

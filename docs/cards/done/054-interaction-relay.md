@@ -1,6 +1,6 @@
 # Card 054: The client's interactions happen on the host
 
-Status: sent 2026-11-04 (senior, revised: audit replaced by Addendum 3, key and table decided).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04 (senior, revised: audit replaced by Addendum 3, key and table decided).
 
 Read `docs/STATE.md` ("Client interactions are client-only"), the card 043 Report (`ChanOp::Use`), the card 050 Report and card 050's own Addendum 4, and this card's Addendums 3 and 4 (the symbols and test driver are ready there). Repo root: `/path/to/ultimate-bug-war-coop`.
 

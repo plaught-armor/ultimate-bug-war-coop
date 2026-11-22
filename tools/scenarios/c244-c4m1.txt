@@ -7,9 +7,20 @@
 #      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1
 #      UBWCOOP_C136_LOG=1" CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C136_LOG=1"
 #      tools/run_pair.sh c244<build> 3600
+# c244b443a predictions (b443 da2b501a10253111, written before the run):
+#  530: every client `card518: client key miss ... actor missing` row ends `client pawn found at (x, y, z)`; for each
+#       HopperBug guid in those rows, the host audit point of that guid at the same time is over 15000 uu from that
+#       pawn position (correct net cull, card closes). A guid under 15000 uu keeps the card open as a real desync.
+#  513: 0 host `skipped:` WARN rows for clear; satchel plant rows show `clear: killed`; shots carry the do number
+#       (c504-<step>-d<N>-try<M>) with no overwrite; on level end both sides reach FED_C4M2.
+#  514: Stadium_SO2 tries 1 to 3, then a `go all home` row stands both players at C_5, both card245 C_5 begin overlap
+#       rows follow, and the first 'Add Stadium_SO4' after that completes Stadium_SO2 within 10 s of the gate.
+#  516: Bridge_SO1 try 3 (if reached) logs `nth presence 2: skipped ..., picked ...` with every name different from
+#       tries 1 and 2; Bridge_SO3 is added within 10 s; no VOID on Bridge_SO1.
+#  Gate: rc 0/0, FATAL/ERROR 0, digest mismatches only STAISpawner_1 (card 218), objectives 30 of 33 as on b364.
 voidsoft
-void unless host dll e62e76f63a05d88f
-void unless client dll e62e76f63a05d88f
+void unless host dll da2b501a10253111
+void unless client dll da2b501a10253111
 host wait state map=FED_C4M1 timeout=240 void
 client wait state map=FED_C4M1 pawn=client-own timeout=180
 try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60

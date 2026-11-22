@@ -82,7 +82,11 @@ void* detour_trace_interactable(void* interactor) {
     void* const found = g_orig_trace_interactable(interactor);
     const void* const owner = read_ptr(interactor, kComponentOwner);
     const uint32_t s = sprint_side(owner);
-    if (s != kSideHostOwn && s != kSideClientOwn) {
+    // Card 563: a client's trooper left unpossessed in a seat (Door Gunner, mech, missile) has remote role simulated
+    // on the host and reads host-own. Only the pawn a local PC drives is this machine's own; otherwise the two
+    // troopers flipped g_c81.trace_hidden every frame and the downed host's trace came back live.
+    const void* const ctrl = owner != nullptr ? read_ptr(owner, kPawnController) : nullptr;
+    if ((s != kSideHostOwn && s != kSideClientOwn) || ctrl == nullptr || !is_local_pc(ctrl)) {
         c456_note_trace(interactor, found, found);
         return found;
     }
@@ -184,8 +188,13 @@ void* c50_find_placed(const void* world, const StaticClassFn* const* cls, int32_
 
 // Card 236: the placed actor of any class with this name, or null. Walks every level's actor list directly (no
 // C23List, so no kC23Max cut); bounded by kMaxLevels x kMaxLevelActors. Callers keep it off the per-tick path.
-void* c50_find_placed_any(const void* world, const char* name) {
-    C50NameRef ref = c50_name_ref(name, kChanNameMax); // card 405
+// Card 605: `name` may be a level key (c50_level_key): then only the copy in that level matches (NiagaraActor_<n>
+// names repeat across sublevels).
+void* c50_find_placed_any(const void* world, const char* key) {
+    char name[kChanNameMax + 1];
+    uint32_t level = 0;
+    const bool by_level = c50_key_split(key, name, level);
+    C50NameRef ref = c50_name_ref(by_level ? name : key, kChanNameMax); // card 405
     const auto* const levels = static_cast<void* const*>(world != nullptr ? read_ptr(world, kWorldLevels) : nullptr);
     const int32_t num_levels = levels != nullptr ? read_i32(world, kWorldLevels + kArrayNum) : 0;
     for (int32_t l = 0; l < num_levels && l < kMaxLevels; ++l) {
@@ -193,12 +202,61 @@ void* c50_find_placed_any(const void* world, const char* name) {
             levels[l] != nullptr ? static_cast<void* const*>(read_ptr(levels[l], kLevelActors)) : nullptr;
         const int32_t num = actors != nullptr ? read_i32(levels[l], kLevelActors + kArrayNum) : 0;
         for (int32_t a = 0; a < num && a < kMaxLevelActors; ++a) {
-            if (actors[a] != nullptr && c50_name_match(actors[a], ref) && c50_placed(actors[a])) { // cards 404, 405
+            if (actors[a] != nullptr && c50_name_match(actors[a], ref) && c50_placed(actors[a]) &&
+                (!by_level || c50_level_hash(actors[a]) == level)) { // cards 404, 405, 605
                 return actors[a];
             }
         }
     }
     return nullptr;
+}
+
+// Card 605, client diagnostic for a card604 miss: the first actor of any level with this name, placed or not, as
+// "<level> flags 0x<flags>", or "none in <n> levels". Off the per-tick path (one call per missed host row).
+void c50_name_probe(const void* world, const char* key, char* out, size_t cap) {
+    char name[kChanNameMax + 1];
+    uint32_t level = 0;
+    C50NameRef ref = c50_name_ref(c50_key_split(key, name, level) ? name : key, kChanNameMax);
+    const auto* const levels = static_cast<void* const*>(world != nullptr ? read_ptr(world, kWorldLevels) : nullptr);
+    const int32_t num_levels = levels != nullptr ? read_i32(world, kWorldLevels + kArrayNum) : 0;
+    for (int32_t l = 0; l < num_levels && l < kMaxLevels; ++l) {
+        auto* const* const actors =
+            levels[l] != nullptr ? static_cast<void* const*>(read_ptr(levels[l], kLevelActors)) : nullptr;
+        const int32_t num = actors != nullptr ? read_i32(levels[l], kLevelActors + kArrayNum) : 0;
+        for (int32_t a = 0; a < num && a < kMaxLevelActors; ++a) {
+            if (actors[a] != nullptr && c50_name_match(actors[a], ref)) {
+                snprintf(out, cap, "%s flags 0x%x", object_name(read_ptr(levels[l], kObjectOuter)).text,
+                         static_cast<uint32_t>(read_i32(actors[a], kC50ObjectFlags)));
+                return;
+            }
+        }
+    }
+    snprintf(out, cap, "none in %d levels", num_levels);
+}
+
+// Card 559, host: the live actor of the class named `cls` nearest `at`, or null. A full level walk, bounded by
+// kMaxLevels x kMaxLevelActors; runs once per relayed Use press only.
+static void* c559_nearest_of_class(const void* world, const char* cls, const Vec3& at) {
+    const auto* const levels = static_cast<void* const*>(world != nullptr ? read_ptr(world, kWorldLevels) : nullptr);
+    const int32_t num_levels = levels != nullptr ? read_i32(world, kWorldLevels + kArrayNum) : 0;
+    void* best = nullptr;
+    double best_d = 0.0;
+    for (int32_t l = 0; l < num_levels && l < kMaxLevels; ++l) {
+        auto* const* const actors =
+            levels[l] != nullptr ? static_cast<void* const*>(read_ptr(levels[l], kLevelActors)) : nullptr;
+        const int32_t num = actors != nullptr ? read_i32(levels[l], kLevelActors + kArrayNum) : 0;
+        for (int32_t a = 0; a < num && a < kMaxLevelActors; ++a) {
+            if (actors[a] == nullptr || strcmp(class_name(actors[a]).text, cls) != 0) {
+                continue;
+            }
+            const double d = vec_dist(actor_location(actors[a]), at);
+            if (best == nullptr || d < best_d) {
+                best = actors[a];
+                best_d = d;
+            }
+        }
+    }
+    return best;
 }
 
 // Host: the copy's own trace target when no fresh name came, else the client's target: the placed actor with the
@@ -219,9 +277,11 @@ void* c50_pick_target(void* pawn, void* interactor) {
         return host_t;
     }
     // Card 306: "#id" names a relayed runtime copy by the host's id (c50_send_use_name).
-    void* const found = g_c50.use_name[0] == '#'
-                            ? c104_relayed_by_id(static_cast<uint32_t>(strtoul(g_c50.use_name + 1, nullptr, 10)))
-                            : c95_find_nearest(g_actor_get_world(pawn), g_c50.use_name, g_c50.use_at);
+    // Card 559: "$class" names a client-local pickup by class; the host's own nearest live actor of that class.
+    const char lead = g_c50.use_name[0];
+    void* const found = lead == '#'   ? c104_relayed_by_id(static_cast<uint32_t>(strtoul(g_c50.use_name + 1, nullptr, 10)))
+                        : lead == '$' ? c559_nearest_of_class(g_actor_get_world(pawn), g_c50.use_name + 1, g_c50.use_at)
+                                      : c95_find_nearest(g_actor_get_world(pawn), g_c50.use_name, g_c50.use_at);
     if (found == nullptr && g_c50.use_name[0] == '#') {
         log::line("WARN card306: host t=%llu relay for %s: client copy %s is not a live relayed actor; the copy's own "
                   "target %s is used", static_cast<unsigned long long>(now), object_name(pawn).text, g_c50.use_name,
@@ -241,7 +301,8 @@ void* c50_pick_target(void* pawn, void* interactor) {
               t != nullptr ? "" : "WARN ", static_cast<unsigned long long>(now), object_name(pawn).text,
               host_t != nullptr ? host_name : "(none)", g_c50.use_name, g_c50.use_at.x, g_c50.use_at.y,
               g_c50.use_at.z, dist,
-              t == nullptr ? (found == nullptr ? "refused, no placed actor has the client's name"
+              t == nullptr ? (found == nullptr ? (lead == '$' ? "refused, no live actor of the client's class (card 559)"
+                                                              : "refused, no placed actor has the client's name")
                               : !relayable     ? "refused, the named actor is not a card 054 relay class"
                                                : "refused, farther than 500 uu from the client's location")
               : match ? "match, the copy's own target is used"

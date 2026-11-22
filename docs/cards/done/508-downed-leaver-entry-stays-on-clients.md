@@ -1,6 +1,6 @@
 # 508: A player who leaves while downed stays "Downed" in the other clients' life table
 
-Opened 2026-11-19 by the senior, from c502c1b280a client2 round 12 (b280, FED_C1M1, three games).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from c502c1b280a client2 round 12 (b280, FED_C1M1, three games).
 
 ## Finding
 

@@ -1,0 +1,211 @@
+# Card 606 + 605 proof (b462), FED_C4M2 plaza horde: two players. Steps from c502-c4m2.txt (card 245 generator),
+# client2 and the card 502 split removed, then the card 606 proofs after the horde end.
+# Predictions (written before the run; card 606 "b462 predictions"):
+#  1. Host `card606: host t=<ms> BP_HordeZone_C_1 begin showui=0 sent to 1 of 1 clients` at the Plaza_SO2a switch and
+#     `... end showui=0 sent to 1 of 1` at Plaza_SO2b; client `... begin|end showui=0 from the host: own copy's event
+#     ran` within 100 ms of each; client `own begin refused` once (its level script's begin), no own end.
+#  2. card098 BP_HordeZone_C collision tally equal on host and client after the end (213 and 213).
+#  3. Client card604 'S' row for HordeAudio applied (no WARN card604 "no placed ... HordeAudio").
+#  4. 0 `WARN card604: client ... no placed NiagaraActor_` rows (card 605 level key).
+#  5. Client walks through the former wall line both ways (to the plaza entrance C_7 and back to C_54): both gotos
+#     arrive, and no host `srv: correction` burst (3 or more within 1 s) in the walk window.
+#  6. Client screenshot at the zone after the end shows no fog wall. 0 EXCEPTION; digest mismatches 0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c606-c4m2-b462.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M2?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c606b462a 900
+# Expected wall: about 6 min.
+voidsoft
+void unless host dll b01ad3ed4e0b535b
+void unless client dll b01ad3ed4e0b535b
+host wait state map=FED_C4M2 timeout=240 void
+client wait state map=FED_C4M2 pawn=client-own timeout=180
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+try client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# digest round: map start (shield off branch)
+host mark
+client mark
+host objectives
+client objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# --- Tunnel: BP_PlayerPresence_C_6 completes Tunnel_O1; Tunnel_SO1 cascades; the three islands are added.
+host objective now
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Tunnel_O1\)" count=1 host objective expect Tunnel_SO1
+host clear 1500 kill
+host objective go all
+try host objective wait Tunnel_O1 10
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Tunnel_O1\)" count=1 host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Tunnel_O1\)" count=1 host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Tunnel_O1\)" count=1 host objective go all
+host objective wait Tunnel_O1 60
+try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?Tunnel_O1\)" timeout=8
+host wait log "card049: host t=\d+ Add\w*Objectives?\((\w+, )?Sewers_SO0(, \w+)?\)" timeout=20
+# --- Plaza: presence C_24, switch C_0, three encounter ends, presence C_54 (completes Plaza_O1).
+host objective now
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO1\)" count=1 host objective expect Plaza_SO1
+host clear 1500 kill
+host objective go all
+try host objective wait Plaza_SO1 10
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO1\)" count=1 host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO1\)" count=1 host objective go all
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO1\)" count=1 host objective go all
+host objective wait Plaza_SO1 60
+try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?Plaza_SO1\)" timeout=8
+host objective expect Plaza_SO2a
+host clear 1500 kill
+host mark
+host objective go all
+try host wait log "c284: use stand (?:BP_Switch_C: .* winner \S+|BP_Switch_C from its bounds: )" since-mark timeout=5
+client look actor BP_Switch_C_0 0 bounds focus=BP_Switch_C_0
+client shot c245-plaza_so2a
+client key E
+try host wait log "card492: host t=\d+ switch press BP_Switch_C_0 \(\S+\) by \S+: card 288 trigger set" since-mark timeout=5
+host objective wait Plaza_SO2a 30
+try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?Plaza_SO2a\)" timeout=8
+host objective now
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 host clear 4000 kill max-left=99
+unless host log "card049: host sent Complete\w*Objective\((\w+, )?Plaza_SO2b\)" count=1 try host objective wait Plaza_SO2b 3
+host objective wait Plaza_SO2b 30
+try client wait log "card049: client t=\d+ replayed Complete\w*Objective\((\w+, )?Plaza_SO2b\)" timeout=8
+# --- Card 606 proofs: the end relay, the wall, the fog.
+host wait log "card606: host t=\d+ BP_HordeZone_C\w* end showui=0 sent to 1 of 1 clients" timeout=10
+client wait log "card606: client t=\d+ BP_HordeZone_C_1@\w+ end showui=0 from the host" timeout=10
+try client wait log "card604: client t=\d+ .*HordeAudio" timeout=5
+try client look actor BP_HordeZone_C_1 0 bounds
+client shot c606-zone-after-end
+host mark
+client mark
+client goto -16625 10241 2797 150 timeout=60
+client shot c606-walk-entrance
+client goto -23311 13370 2585 150 timeout=60
+client shot c606-walk-c54
+host objectives
+client objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+host wait log "card098: host tally BP_HordeZone_C collision n=" timeout=90
+client wait log "card098: client tally BP_HordeZone_C collision n=" timeout=30

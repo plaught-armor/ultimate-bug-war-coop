@@ -1,6 +1,6 @@
 # 496: Client crash in UADBarkSubsystem: stale bark class key
 
-Status: open (written 2026-11-18 17:43, senior trace). This is a crash, so it is fixed at once: batch it into b243, or into b244
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-18 17:43, senior trace). This is a crash, so it is fixed at once: batch it into b243, or into b244
 right after b243.
 
 ## Finding (c247b242b, b242 `2d310c1ec05b87fe`, client crash at 856 s)

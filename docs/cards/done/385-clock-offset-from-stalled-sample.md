@@ -1,6 +1,6 @@
 # Card 385: client clock offset taken from a sample that waited out the map load
 
-Status: fix written (senior), built in b70 (`6109d0898f23ed7d`), not proven: no stalled round in `c373b70` or `playb70`. Found in run `c373b69b` (b69), 2026-11-15.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix written (senior), built in b70 (`6109d0898f23ed7d`), not proven: no stalled round in `c373b70` or `playb70`. Found in run `c373b69b` (b69), 2026-11-15.
 
 ## Defect (seen)
 

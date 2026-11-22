@@ -2,7 +2,7 @@
 
 **Closed 2026-11-16 18:55 (senior): fix is in the build (b140 or earlier: `c423b140a` line 506 passed) (host keeps the gone controller's inventory and gives it to the new pawn as a Restore). Proof: run `c423b144b` (b144 `b09caa0e7c1f80da`, FED_C2M1), inventory equal before the leave and after the rejoin, weapons and ammo; `c423b146a` host row `card440: ... takes the kept inventory of the gone controller ... weapons 2`. The status line below is older than the build. Siblings: cards 445 (charge) and 446 (item counts), both done. Limit: health and armour come back full.**
 
-Status: coded as scratchpad patch `c440_patch.py` (senior, 2026-11-16 14:19), not built, proof owed. Found 2026-11-16 in run `c423b135b` (b135 `18be6a2b9157e5d5`). After the playtest unless a
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: coded as scratchpad patch `c440_patch.py` (senior, 2026-11-16 14:19), not built, proof owed. Found 2026-11-16 in run `c423b135b` (b135 `18be6a2b9157e5d5`). After the playtest unless a
 play log shows it.
 
 ## What the logs show

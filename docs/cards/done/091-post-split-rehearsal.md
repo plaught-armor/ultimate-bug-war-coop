@@ -1,6 +1,6 @@
 # Card 091: Post-split rehearsal: one playtest session on the new DLL
 
-Status: sent 2026-11-05 18:20 (senior). This is playtest prep, so no code changes unless a fault is found here.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 18:20 (senior). This is playtest prep, so no code changes unless a fault is found here.
 
 Read:
 

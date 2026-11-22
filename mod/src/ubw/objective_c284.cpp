@@ -1249,7 +1249,7 @@ bool c284_site_ready(void* const pawns[3], const uint8_t* o, char* why, size_t c
                                                             : nullptr;
     snprintf(why, cap, "%s", iface == nullptr ? "no IADInteractableInterface" : "no player interactor");
     for (int32_t i = 0; iface != nullptr && i < 3; ++i) {
-        void* const interactor = pawns[i] != nullptr ? read_ptr(pawns[i], kCharacterInteractor) : nullptr;
+        void* const interactor = pawn_interactor(pawns[i]);
         if (interactor != nullptr && c133_can_interact(iface, interactor, why, cap)) {
             return true;
         }
@@ -1349,16 +1349,21 @@ double c284_face_2d(const Vec3& p, const Vec3& c, const Vec3& e, Vec3& face) {
 
 void c284_step_in(void* pawn, const void* actor, const Vec3& target, uint32_t seq) {
     const Vec3 from = actor_location(pawn);
-    const double dx = target.x - from.x;
-    const double dy = target.y - from.y;
-    const double dz = target.z - (from.z + kC284EyeUu);
-    const double d3 = sqrt(dx * dx + dy * dy + dz * dz);
     Vec3 centre = target;
     Vec3 extent{0.0, 0.0, 0.0};
     const bool boxed = actor != nullptr && g_actor_bounds != nullptr;
     if (boxed) {
         g_actor_bounds(actor, false, &centre, &extent, false);
     }
+    // soak5m1b366a (FED_C5M1 ExcavatorB_SO2, BP_Switch_C_2, BP_PanelSwitch_WithoutScreen_C): the origin sits 99 uu
+    // below the bounds centre, so dz from the origin (-185) left a 76 uu stop radius inside the box; the sweep ran the
+    // pawn to 2 uu from the panel face, the eye looked 40 degrees down onto the body and the focus trace took nothing
+    // (3 of 3 tries, every round). The height comes from the bounds centre, as in the aim scan.
+    const double aim_z = boxed ? centre.z : target.z;
+    const double dx = target.x - from.x;
+    const double dy = target.y - from.y;
+    const double dz = aim_z - (from.z + kC284EyeUu);
+    const double d3 = sqrt(dx * dx + dy * dy + dz * dz);
     Vec3 face{};
     const double f2 = c284_face_2d(from, centre, extent, face);
     // Card 512 (c504k1, FED_C4M1 Stadium_SO1_B-D, BP_PanelSwitch_WithoutScreen_C): the bounds face was 100 uu off in
@@ -1382,7 +1387,7 @@ void c284_step_in(void* pawn, const void* actor, const Vec3& target, uint32_t se
     const double f2_at = c284_face_2d(at, centre, extent, face_at);
     const double ax = target.x - at.x;
     const double ay = target.y - at.y;
-    const double az = target.z - (at.z + kC284EyeUu);
+    const double az = aim_z - (at.z + kC284EyeUu);
     log::line("%scmd: %u objective go: use step-in moved %d, face 2D %.0f -> %.0f uu from %s (eye 3D %.0f -> %.0f uu)",
               moved ? "" : "WARN ", seq, moved ? 1 : 0, f2, f2_at, boxed ? "bounds" : "target", d3,
               sqrt(ax * ax + ay * ay + az * az));

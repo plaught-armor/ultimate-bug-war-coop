@@ -1,6 +1,6 @@
 # Card 085: Split S7: the chan transport to `ue/chan.*`, the op set to `ubw/chan_ops.h`, dispatch by table
 
-Status: sent 2026-11-05 16:25 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 16:25 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
 
 Read the card 084 Review, the S7 row of `docs/split-map.md`, and `hooks.cpp` from the chan header comment (~6200, "Wire string") to `detour_logout` (~6830). Repo root: `/path/to/ultimate-bug-war-coop`.
 

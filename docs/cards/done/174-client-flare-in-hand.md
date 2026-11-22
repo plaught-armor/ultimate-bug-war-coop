@@ -1,6 +1,6 @@
 # Card 174: The client sees the support flare in its own hand during the throw
 
-Status: queued 2026-11-11, from card 172 (run c172-r1) and card 169's open prediction. Budget: static first, one run.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from card 172 (run c172-r1) and card 169's open prediction. Budget: static first, one run.
 
 Read: docs/cards/done/172-client-flare-press.md "Report"; docs/cards/done/169-ability-spawn-visuals.md;
 tools/scenarios/c172-flare.txt (reuse it).

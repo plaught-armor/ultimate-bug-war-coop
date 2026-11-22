@@ -1,0 +1,71 @@
+# b383 proof run 10 (b383 = b381 diag + b382 551 fix + kMaxHooks 1024) (card 569 diag: which notify and sequence fire each grenade DoAction): FED_C1M1 FAST, lane 2.
+# Preamble and weapon pickups from c373-c1m1.txt. The client fires the Morita for 1500 ms, then throws a frag (G) at
+# once at BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 (b13-soak-c1m1.txt lines 226-230), 3 times, with a client
+# shot at each release. Predictions are in docs/cards/569 (b381 section).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c569-c1m1-grenade.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen UBWCOOP_GOD=1 UBWCOOP_C74_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C74_LOG=1" tools/run_pair.sh c569b383a 600
+voidsoft
+void unless host dll 24422c58baea3ff8
+void unless client dll 24422c58baea3ff8
+host wait state map=FED_C1M1 timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c373-hud-start
+host clear 4000 kill
+# FED_C1M1 starts unarmed (c551b378a made no holes): each player takes the range Morita by their own Use press
+# (cards 495, 559), host first, then the client; b11-soak-c1m1.txt recipe, card495 rows from soak5m1b367b.
+host goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+host wait goto timeout=30
+host look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+host key E
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 \(take\): taken by 1 of 2" since-mark timeout=8
+client goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+client wait goto timeout=30
+client look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+client key E
+host wait log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 by take: taken by 2 of 2" since-mark timeout=8
+# --- card 569: fire 1500 ms, then throw at once; 3 rounds.
+host grenade fill 3
+host wait log "cmd: \d+ grenade fill: " timeout=5
+client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_GrenadeRangeTarget_C_1
+client key LeftMouseButton 1500
+host mark
+client mark
+& client key G
+try client wait log "card569: client t=\d+ client own DoAction, task key Grenade_Throw_Frag" since-mark timeout=4
+client shot 569-release-1
+join client
+try host wait log "card104: host t=\d+ server copy AnimationEnded, key Grenade_Throw_Frag" since-mark timeout=5
+sleep 2
+client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_GrenadeRangeTarget_C_1
+client key LeftMouseButton 1500
+host mark
+client mark
+& client key G
+try client wait log "card569: client t=\d+ client own DoAction, task key Grenade_Throw_Frag" since-mark timeout=4
+client shot 569-release-2
+join client
+try host wait log "card104: host t=\d+ server copy AnimationEnded, key Grenade_Throw_Frag" since-mark timeout=5
+sleep 2
+client look actor BP_KillableBuilding_Base_GrenadeRangeTarget_C_1 0 bounds hit=BP_KillableBuilding_Base_GrenadeRangeTarget_C_1
+client key LeftMouseButton 1500
+host mark
+client mark
+& client key G
+try client wait log "card569: client t=\d+ client own DoAction, task key Grenade_Throw_Frag" since-mark timeout=4
+client shot 569-release-3
+join client
+try host wait log "card104: host t=\d+ server copy AnimationEnded, key Grenade_Throw_Frag" since-mark timeout=5
+sleep 2

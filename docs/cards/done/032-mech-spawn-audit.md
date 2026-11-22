@@ -1,6 +1,6 @@
 # Card 032: Mech spawn and enter audit (log only)
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 029. Then read card 029's report and senior review (section 4, mechs), and `docs/design/coop-channel-lobby-downed.md` section 4. Repo root: `/path/to/ultimate-bug-war-coop`.
 

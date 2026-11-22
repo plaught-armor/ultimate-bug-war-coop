@@ -1,6 +1,6 @@
 # 278 A client that is dead or not spawned at a script weapon give keeps its old loadout
 
-Open item of card 267 (senior review, junior's run C report). Not seen in a run. Play-visible when it happens:
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Open item of card 267 (senior review, junior's run C report). Not seen in a run. Play-visible when it happens:
 one player enters the CTF course without the laser rifle.
 
 ## Mechanism (source, `c267_copy_inventories`)

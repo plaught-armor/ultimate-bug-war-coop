@@ -1,0 +1,64 @@
+# Card 556 (resupply rack pickups) on b439 dwmapi 49f59928ea04b534 + ubwperf 13cc472aebdac59c, FED_C2M1, FAST, lane 2,
+# one run c556b439a.
+# Steps: the c504 start block; bugs cleared by code; the host and client are warped to the playtest rack spot (host
+# 173992 23778 7757, client 173530 25080 7860); the host calls Resupply (slot 0: charge, key Four throws the flare
+# at the look point 400 uu ahead), the pod lands, BP_ResupplyRack_Level1_C spawns its six pickups and is
+# destroyed by the game (caller exe+0x37DC6BD). Both look at the rack's destroy point; shots right after the destroy and
+# after the card556 "2 s after" rows.
+# Prediction (card 556, b439 diag): `card556: host ... resupply rack ... destroyed` and the client's row; one
+# `rack pickup ... at the rack destroy` row per rack pickup (6, match owner or attached or near) on each side. On the
+# host, the "2 s after" rows show root z dropped to the ground (about 6900 at the playtest spot, or the floor under the
+# rack here) within 2 s, while the host's `rows` count and `last rest row at z` stay at the spawn values: no 'M' or rest
+# row sent. The client rows stay at rack height (7773-7902 band). If the host z does not drop, the float is vanilla on
+# both screens, and the user's answer covered other items. If root z stays but a component dump row moves, the drawn
+# mesh moves without the root (c104_settle_one does not see it).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c2m1-b439.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b439a 900
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 49f59928ea04b534
+void unless client dll 49f59928ea04b534
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+failsoft
+host warp actor point 173992 23778 7757
+host warp client point 173530 25080 7860
+client wait near 173530 25080 7860 300 timeout=10
+host clear 3000 kill
+host look point 174392 23778 7700
+host shot c556-b439-host-before
+# --- the host calls Resupply (charge, then key Four: the flare throw runs from the key alone, c559b371b)
+host mark
+client mark
+host charge 0 20000 1
+host key Four
+host wait log "card104: host t=\d+ host own DoAction, key Flare_Throw" since-mark timeout=5
+host wait log "card098: host t=\d+ world P \S*ResupplyRack" since-mark timeout=40
+client wait log "card556: client t=\d+ resupply rack \S+ destroyed at" since-mark timeout=40
+host wait log "card556: host t=\d+ resupply rack \S+ destroyed at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+host look point {g1} {g2} {g3}
+client look point {g1} {g2} {g3}
+host shot c556-b439-host-destroy
+client shot c556-b439-client-destroy
+host wait log "card556: host t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+client wait log "card556: client t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+host shot c556-b439-host-2s
+client shot c556-b439-client-2s
+sleep 3
+host shot c556-b439-host-5s
+client shot c556-b439-client-5s
+host quit
+client quit

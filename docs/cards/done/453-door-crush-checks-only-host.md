@@ -1,6 +1,6 @@
 # Card 453: door crush checks only the host player
 
-Status: open, low priority, after playtest. Found by static trace 2026-11-16 (SYNC_AUDIT row `ASTDoor::MoveDoorToNewPostion`).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, low priority, after playtest. Found by static trace 2026-11-16 (SYNC_AUDIT row `ASTDoor::MoveDoorToNewPostion`).
 
 ## Fault
 

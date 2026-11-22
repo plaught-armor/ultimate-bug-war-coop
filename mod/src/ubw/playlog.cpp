@@ -44,6 +44,7 @@ static_assert(std::size(kPlCountText) == kPlCounts);
 constexpr uint32_t kPlGlobalRate = 40;      // lines per second, all classes
 constexpr ULONGLONG kPlSummaryMs = 300000;
 constexpr ULONGLONG kPlClockMs = 60000;     // clock and rtt
+constexpr ULONGLONG kPlRttHitchMs = 250; // card 583 part 2: a Pong read after a frame this long waited in it, so the floor skips it
 constexpr uint32_t kPlRttRing = 5;          // card 159 reopen: round trips the lowest is taken from (card 340) (c165e: one 2056 ms sample)
 constexpr ULONGLONG kPlPawnMs = 500;
 constexpr ULONGLONG kPlAdsFovMs = 500;
@@ -131,6 +132,7 @@ struct PlState {
     uint32_t rtt_last; // card 159: the last card 026 round trip (ms), 0 before the first
     uint32_t rtt_ring[kPlRttRing]; // card 159 reopen: the last kPlRttRing round trips, kept across map loads
     uint32_t rtt_ring_n;           // samples written (the ring holds min(n, kPlRttRing))
+    uint32_t rtt_hitch;            // card 583 part 2: round trips kept out of the ring (read after a long frame), per clock row
     uint64_t rtt_sum;
     int32_t move_at, cache_at, door_at, sound_at, atten_at, volume_at, pitch_at; // reflected offsets, -1 unresolved, -2 absent
     int32_t sound_atten_at; // card 162: USoundBase::AttenuationSettings
@@ -312,10 +314,11 @@ void pl_clock_step() {
 
 void pl_rtt_step() {
     if (g_pl.rtt_n != 0 && pl_allow(PlClass::Rtt)) {
-        log::line("playlog: %s t=%llu rtt %u pings: min %u avg %llu max %u ms", pl_side(), pl_now(), g_pl.rtt_n,
-                  g_pl.rtt_min, static_cast<unsigned long long>(g_pl.rtt_sum / g_pl.rtt_n), g_pl.rtt_max);
+        log::line("playlog: %s t=%llu rtt %u pings: min %u avg %llu max %u ms, %u after a long frame, floor %u", pl_side(),
+                  pl_now(), g_pl.rtt_n, g_pl.rtt_min, static_cast<unsigned long long>(g_pl.rtt_sum / g_pl.rtt_n),
+                  g_pl.rtt_max, g_pl.rtt_hitch, pl_rtt_floor());
     }
-    g_pl.rtt_n = g_pl.rtt_max = 0;
+    g_pl.rtt_n = g_pl.rtt_max = g_pl.rtt_hitch = 0;
     g_pl.rtt_min = UINT32_MAX;
     g_pl.rtt_sum = 0;
 }
@@ -477,10 +480,17 @@ uint32_t pl_rtt_floor() {
     return low;
 }
 
-void pl_rtt(uint32_t ms) {
+// Card 583 part 2: during a long frame (c582b411a: 450+ ms) the Pong waits in the socket until the next net read, so
+// the sample measures the frame, not the link, and the floor read 300-400 ms. Such a sample stays in the stats but not
+// in the floor ring, so the floor keeps its pre-hitch value.
+void pl_rtt(uint32_t ms, ULONGLONG frame_ms) {
     g_pl.rtt_last = ms;
-    g_pl.rtt_ring[g_pl.rtt_ring_n % kPlRttRing] = ms;
-    ++g_pl.rtt_ring_n;
+    if (frame_ms > kPlRttHitchMs) {
+        ++g_pl.rtt_hitch;
+    } else {
+        g_pl.rtt_ring[g_pl.rtt_ring_n % kPlRttRing] = ms;
+        ++g_pl.rtt_ring_n;
+    }
     g_pl.rtt_min = g_pl.rtt_n == 0 || ms < g_pl.rtt_min ? ms : g_pl.rtt_min;
     g_pl.rtt_max = ms > g_pl.rtt_max ? ms : g_pl.rtt_max;
     g_pl.rtt_sum += ms;
@@ -863,6 +873,9 @@ void detour_pl_play_internal(void* comp, const void* data, void* sound_override)
         }
         c136_fx_leave(C136Point::SpawnSound, id, nullptr);
         return;
+    }
+    if (c604_component_play(comp, data, vol_at, snd)) {
+        return; // card 604, client: a host LevelAudio row played this placed component already
     }
     g_orig_pl_play_internal(comp, data, sound_override);
 }

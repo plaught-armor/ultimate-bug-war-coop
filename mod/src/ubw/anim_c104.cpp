@@ -22,6 +22,7 @@ C104FlareTimerFn g_orig_c104_flare_timer = nullptr;
 C104LzFn g_orig_c104_lz = nullptr;
 C104FlareFn g_orig_c104_flare_begin = nullptr; // card 249
 C104UsedFn g_orig_c104_used = nullptr;
+C569WrapperNotifyFn g_orig_c569_wrapper_notify = nullptr; // card 569
 
 namespace {
 
@@ -43,6 +44,16 @@ struct C104State {
     int8_t fix; // -1 unread, 0 off, 1 on
 };
 C104State g_c104{0, {}, {}, {}, 0, {}, -1};
+
+// Card 569: the AD anim notify running now (game thread), so a DoAction can name the sequence that fired it.
+constexpr size_t kC569WrapperInner = 0x38;   // UADAnimNotifyWrapper: its UADAnimNotify (Notify reads it)
+constexpr uint32_t kC569Lines = 48;          // DoAction source rows per run
+struct C569Notify {
+    const void* inner;    // UADAnimNotify, null outside a notify
+    const void* sequence; // UAnimSequenceBase
+    uint32_t lines, outside;
+};
+C569Notify g_c569{nullptr, nullptr, 0, 0};
 
 bool c104_line() {
     return g_c104.lines < kC104Lines && ++g_c104.lines > 0;
@@ -315,8 +326,78 @@ void detour_c104_start_fixed(void* animator, uint64_t key, float total) {
     g_orig_c104_start_fixed(animator, key, total);
 }
 
+// Card 569: which notify and sequence fired this task's DoAction (the animator delegate fires every bound task).
+void c569_note_source(const void* task) {
+    const void* const actor = read_ptr(task, kC104TaskActor);
+    if (g_c569.inner == nullptr) {
+        ++g_c569.outside;
+    }
+    // Only pawn tasks (the grenade ability's avatar). Weapon tasks (fire, pump, swap) have the weapon as actor: on the
+    // client a weapon reads as Authority, so it was labelled "host own", and its rows used up the cap before a throw
+    // (run c569b390b: 48 of 48 rows were Morita weapon tasks).
+    if (actor == nullptr || g_c569.lines >= kC569Lines || g_player_character_class == nullptr ||
+        !is_a(actor, g_player_character_class())) {
+        return;
+    }
+    const uint32_t s = c104_side(actor);
+    if (s == kSideOther) {
+        return;
+    }
+    // Grenade tasks only. On the host the server copy's weapon tasks (MoritaMk1_Fire, MoritaMK1_Underslung_*) carry
+    // the pawn as actor, so the pawn filter keeps them (run c569b392a: 48 of 48 host rows were those).
+    const auto key = fname_text(static_cast<const uint8_t*>(task) + kC104TaskKey);
+    if (strncmp(key.text, "Grenade", 7) != 0) {
+        return;
+    }
+    ++g_c569.lines;
+    log::line("card569: %s t=%llu %s DoAction, task key %s, actor %s: notify %s (%s) in sequence %s; %u outside a "
+              "notify", side(), static_cast<unsigned long long>(GetTickCount64()), kC104SideText[s],
+              key.text, object_name(actor).text,
+              object_name(g_c569.inner).text, class_name(g_c569.inner).text, object_name(g_c569.sequence).text,
+              g_c569.outside);
+}
+
+void detour_c569_wrapper_notify(void* wrapper, void* mesh, void* sequence) {
+    const C569Notify saved = g_c569;
+    g_c569.inner = wrapper != nullptr ? read_ptr(wrapper, kC569WrapperInner) : nullptr;
+    g_c569.sequence = sequence;
+    g_orig_c569_wrapper_notify(wrapper, mesh, sequence);
+    g_c569.inner = saved.inner;
+    g_c569.sequence = saved.sequence;
+}
+
+// Card 569 fix: the animator's +0xC0 DoAction delegate fires every bound task, so a weapon fire task's DoAction (on
+// the host server copy: outside any notify, rows c569b392a) can release a bound grenade throw early, at the start aim.
+// A grenade task's DoAction runs only inside a notify of a grenade sequence; the real one then releases it (7 of 7
+// throws in c569b392a/b came from ADAnimNotify_DoAction in a *Grenade* montage). UBWCOOP_C569_OFF=1 turns it off.
+bool g_c569_gate = true; // written in ubw::init before any hook
+static uint32_t g_c569_skips = 0;
+
+static bool c569_skip(const void* task) {
+    if (!g_c569_gate) {
+        return false;
+    }
+    const auto key = fname_text(static_cast<const uint8_t*>(task) + kC104TaskKey);
+    if (strncmp(key.text, "Grenade", 7) != 0) {
+        return false;
+    }
+    if (g_c569.inner != nullptr && g_c569.sequence != nullptr &&
+        strstr(object_name(g_c569.sequence).text, "Grenade") != nullptr) {
+        return false;
+    }
+    ++g_c569_skips;
+    log::line("card569: %s t=%llu skip %s DoAction (notify %s, sequence %s): not its grenade sequence; %u skips",
+              side(), static_cast<unsigned long long>(GetTickCount64()), key.text, object_name(g_c569.inner).text,
+              object_name(g_c569.sequence).text, g_c569_skips);
+    return true;
+}
+
 void detour_c104_do_action(void* task) {
     c104_note_task(task, g_c104.actions, "DoAction");
+    c569_note_source(task);
+    if (c569_skip(task)) {
+        return;
+    }
     if (g_c74_log || g_c76_log) {
         detour_c74_anim_do(task);
         return;

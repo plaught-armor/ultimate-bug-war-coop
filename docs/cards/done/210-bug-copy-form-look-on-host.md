@@ -1,6 +1,6 @@
 # Card 210: The host sees a client's bug form (body, abilities) as the client has it
 
-Status: queued, static first. Split from card 208 (2026-11-12). One goal: after a client switches form, the
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, static first. Split from card 208 (2026-11-12). One goal: after a client switches form, the
 host's screen shows that client's pawn in the new form.
 
 ## Known (card 208, runs c208-r2 and c208-r3, DLL a8188057ac1b264a)

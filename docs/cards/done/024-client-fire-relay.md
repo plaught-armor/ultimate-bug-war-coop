@@ -1,6 +1,6 @@
 # Card 024: Relay the client's fire to its server copy's weapon, aimed from the client's view
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 020 and 021. Then read card 021: the step 3 addenda (the `GetTargetLocation` and `ApplyDynamicZeroThresholdAdjustment` leads, with their fix sketches), your report, and the senior review. Repo root: `/path/to/ultimate-bug-war-coop`. Run logs: `logs/card021l-{host,client}.log`. Symbols: `tools/symbols.txt`.
 

@@ -1,6 +1,6 @@
 # 451: a bark is ranged from the host's view only
 
-Status: in b151 `7d8087dbc3cee8ab`; hook runs (run c448b151b, one `played 1` row). Client hearing and subtitles are playtest checks.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: in b151 `7d8087dbc3cee8ab`; hook runs (run c448b151b, one `played 1` row). Client hearing and subtitles are playtest checks.
 
 ## Fault (static trace)
 

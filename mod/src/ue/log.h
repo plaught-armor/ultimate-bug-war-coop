@@ -11,11 +11,18 @@ namespace ue::log {
 // Creates UBWCoop-YYYYMMDD-HHMMSS.log, or UBWCoop-<tag>-YYYYMMDD-HHMMSS.log when tag is non-null and non-empty
 // (caller validates the tag; the time is the local launch time, card 130 item 16). Returns false (and logging stays a no-op) on failure.
 // Safe to call under the loader lock (kernel32 only).
-bool open_next_to_exe(const wchar_t* tag);
+bool open_next_to_exe(const wchar_t* tag, const wchar_t* stem = L"UBWCoop");
 
 // Writes the full path of "UBWCoop<ext>" (or "UBWCoop-<tag><ext>") next to the exe into path.
 // False when it does not fit in cap or the exe path cannot be read. Kernel32 only.
 bool path_next_to_exe(const wchar_t* tag, const wchar_t* ext, wchar_t* path, size_t cap);
+
+// Card 578: a line writer that replaces this module's file. ubwperf.dll loaded by the co-op dll sets the co-op
+// dll's write_raw, so both dlls write one log under one lock. Set once, before the first line from that module.
+using SinkFn = void (*)(const char* text, size_t n);
+void set_sink(SinkFn sink);
+// Writes n bytes of an already formatted line (prefix and newline included) to the file, under the log lock.
+void write_raw(const char* text, size_t n);
 
 // printf-style line; a timestamp + thread id prefix and a newline are added.
 void line(const char* fmt, ...)

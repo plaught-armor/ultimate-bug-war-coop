@@ -404,6 +404,31 @@ void c181_receive_round(void* pc, uint32_t weapon_key) {
     c181_round_credit(pc, pawn, weapon_key);
 }
 
+// Card 587 diag, host, log only: a PC's possessed non-trooper pawn and the trooper its Instigator names, with the
+// trooper's roles, controller and equipped weapon. `where` names the calling row. Capped per run.
+static uint32_t g_c587_lines = 0;
+constexpr uint32_t kC587Lines = 16;
+void c587_trooper_diag(const char* where, const void* pc) {
+    if (!note_event_cap(g_c587_lines, kC587Lines, "card587 diag")) {
+        return;
+    }
+    const void* const pawn = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+    const auto* const trooper =
+        pawn != nullptr ? static_cast<const uint8_t*>(read_ptr(pawn, kActorInstigator)) : nullptr;
+    const bool is_trooper = trooper != nullptr && is_a(trooper, g_player_character_class());
+    const void* const ctrl = is_trooper ? read_ptr(trooper, kPawnController) : nullptr;
+    const void* const weapons =
+        is_trooper && is_a(trooper, g_player_mi_class()) ? read_ptr(trooper, kMiWeaponInventory) : nullptr;
+    const void* const weapon = weapons != nullptr && g_get_equipped_weapon != nullptr ? g_get_equipped_weapon(weapons)
+                                                                                       : nullptr;
+    log::line("card587: host t=%llu %s: pc %s pawn %s, instigator %s (trooper %d), LocalRole %d RemoteRole %d, "
+              "controller %s (pc's %d), weapon %s",
+              static_cast<unsigned long long>(GetTickCount64()), where, object_name(pc).text,
+              object_name(pawn).text, object_name(trooper).text, is_trooper ? 1 : 0,
+              is_trooper ? trooper[kActorLocalRole] : -1, is_trooper ? trooper[kActorRemoteRole] : -1,
+              object_name(ctrl).text, ctrl != nullptr && ctrl == pc ? 1 : 0, object_name(weapon).text);
+}
+
 // Host: one reported round for the copy's row.
 void c181_round_credit(void* pc, const void* pawn, uint32_t weapon_key) {
     C181Row* const row = sprint_side(pawn) == kSideServerCopy && c181_soldier(pawn) ? c181_row(pawn) : nullptr;
@@ -413,6 +438,7 @@ void c181_round_credit(void* pc, const void* pawn, uint32_t weapon_key) {
                       static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text,
                       object_name(pawn).text);
         }
+        c587_trooper_diag("card181 no round row", pc); // card 587 diag
         return;
     }
     ++row->client_rounds;

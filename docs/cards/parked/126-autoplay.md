@@ -1,4 +1,5 @@
 # Card 126: Autoplay: both test players play a mission on their own, like a human
+Status 2026-11-22: parked, not in the queue. The status below is as first written.
 
 Status: in progress, partial (2026-11-07). Phase 1 runs c126a-h: autoplay completes Assault_SO0 and SO1; SO2 is open. No play DLL change (play build stays 4b0362a16c4318ad). Next session: see the senior note at the end.
 

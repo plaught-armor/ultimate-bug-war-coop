@@ -1,6 +1,6 @@
 # 457: host crash in the checkpoint save thumbnail (null viewport RHI)
 
-Opened 2026-11-16 19:25 by the senior from run `c423b159a` (C2M1, build `885a2976f01932ac`). One sample.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 19:25 by the senior from run `c423b159a` (C2M1, build `885a2976f01932ac`). One sample.
 
 ## Facts
 

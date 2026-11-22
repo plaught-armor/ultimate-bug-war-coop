@@ -1,6 +1,6 @@
 # Card 060: Prove the host's own weapon switch after the client has switched
 
-Status: sent 2026-11-04 (senior), before the playtest, at the user's request. The Skip section does not apply.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04 (senior), before the playtest, at the user's request. The Skip section does not apply.
 
 ## The play build stays in place (hard rule)
 

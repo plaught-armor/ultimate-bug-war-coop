@@ -1,6 +1,6 @@
 # 456: Satchel timed hold cancels early (cause not logged)
 
-Opened 2026-11-16 from runs c418b157a and c418b157b (b157 `1e6244b6739bbcd0`, C3M1, `tools/scenarios/c418-satchel-c3m1.txt`).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 from runs c418b157a and c418b157b (b157 `1e6244b6739bbcd0`, C3M1, `tools/scenarios/c418-satchel-c3m1.txt`).
 
 ## Seen
 - c418b157b, host's own hold: press 514277761 (`MS_WPN_SatchelCharge_Prime`), `MS_WPN_SatchelCharge_Cancel` at 514278863, 1.1 s into the 2.5 s hold, no `card418 ... fuse` row, objective Resort_SO3_A never completed (scenario line 79).

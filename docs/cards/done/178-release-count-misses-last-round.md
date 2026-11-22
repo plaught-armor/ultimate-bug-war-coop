@@ -1,6 +1,6 @@
 # Card 178: The client's release count misses a round fired after the release
 
-Status: queued 2026-11-11, from run c176-r2 (card 175 class). Budget: three runs, the first shared with card 176's
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from run c176-r2 (card 175 class). Budget: three runs, the first shared with card 176's
 fix run. One goal: every round the client fires in a burst is covered by the release count the host holds for, so no
 miss claim is dropped for want of a round.
 

@@ -1,6 +1,6 @@
 # Card 212: A gib part does not sleep above the ground on the client
 
-Status: queued, static first. New client WARN class in c208-r3 (7 lines):
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, static first. New client WARN class in c208-r3 (7 lines):
 `WARN card148: client gib host part N STGorePartNonSticky_StaticMesh asleep above the ground: nothing within N uu
 below ...`. No earlier log has it. The run was on BUG_C1M1 with NPC Warrior bugs hit near the players.
 

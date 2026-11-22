@@ -1,6 +1,6 @@
 # Card 436: Spawn animation row sent before the client has the NPC
 
-Status: open, fix written (`c436_anim_hold_patch.py`, for b134). Found 2026-11-16 13:1x from the card 434 rows.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, fix written (`c436_anim_hold_patch.py`, for b134). Found 2026-11-16 13:1x from the card 434 rows.
 
 ## Seen
 

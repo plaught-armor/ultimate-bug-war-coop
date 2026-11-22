@@ -1,6 +1,6 @@
 # Card 376: a client's refused map Browse drops it from the session
 
-Status: fix written by the senior (`restart.cpp`, `c45_browse_enter`), syntax-checked; build b61 and run owed.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix written by the senior (`restart.cpp`, `c45_browse_enter`), syntax-checked; build b61 and run owed.
 
 ## Defect (run c376b60, phase C, b60 `a48aa4475e889bf7`)
 

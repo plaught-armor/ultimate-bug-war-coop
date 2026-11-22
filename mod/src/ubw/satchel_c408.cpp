@@ -18,7 +18,6 @@
 
 namespace ubw::hooks {
 
-bool g_c408_pe = false; // a building of the class is on the map: detour_process_event calls c408_pe / c408_after_pe
 
 namespace {
 
@@ -255,7 +254,7 @@ void c408_scan(const void* world) {
     if (g_c408.projectile == nullptr) {
         g_c408.projectile = find_class(kC408ProjectileClass); // loads with the first plasma building's shot
     }
-    if (g_c408.fn[kC408Turn] == nullptr || g_c408_pe) {
+    if (g_c408.fn[kC408Turn] == nullptr || pe_gate(kPeGate_c408_pe)) {
         return; // armed stays armed for the map (the buildings stay placed after a kill)
     }
     static C23List list;
@@ -263,8 +262,8 @@ void c408_scan(const void* world) {
     for (uint32_t i = 0; i < list.count; ++i) {
         c408_note_class(list.e[i].actor);
     }
-    g_c408_pe = list.count > 0;
-    if (g_c408_pe) {
+    pe_gate_set(kPeGate_c408_pe, list.count > 0);
+    if (pe_gate(kPeGate_c408_pe)) {
         log::line("card408: %s t=%llu armed: %u buildings, projectile class %s", side(),
                   static_cast<unsigned long long>(GetTickCount64()), list.count,
                   g_c408.projectile != nullptr ? "loaded" : "not loaded yet");
@@ -442,15 +441,13 @@ void c419_step(ULONGLONG now) {
 
 } // namespace
 
-// Hot path (g_c408_pe). Client: true refuses the timer-fired event (the host's row calls it). Host: notes the actor
+// Hot path (kPeGate_c408_pe). Client: true refuses the timer-fired event (the host's row calls it). Host: notes the actor
 // and its yaw before the call for c408_after_pe.
-bool c408_pe(void* object, const void* function, void* parms) {
-    static uint64_t begin_play = 0;
+bool c408_pe(void* object, const void* function, void* parms, uint64_t name) {
     if (function == g_c408.uber && g_c408.uber != nullptr) {
         return c419_pe(object, parms); // card 419
     }
-    const uint64_t begin_name = fname_cached(begin_play, L"ReceiveBeginPlay");
-    if (begin_name != 0 && read_u64(function, kObjectName) == begin_name) {
+    if (pe_name_is(name, g_pe.names.receive_begin_play)) { // card 573 b463: the detour's one FName read
         c419_begin(object); // card 419
         return false;
     }
@@ -569,18 +566,18 @@ const char* c408_client_row(void* pc, const char* name, const Vec3& at, uint32_t
 
 // Both sides: a building of the class (its TurnInPlace timeline rows are not sent).
 bool c408_building(const void* actor) {
-    return g_c408_pe && actor != nullptr && is_a(actor, g_c408.cls);
+    return pe_gate(kPeGate_c408_pe) && actor != nullptr && is_a(actor, g_c408.cls);
 }
 
 // Both sides: a building of the class or the plasma projectile one spawns (their effects stay local).
 bool c408_attack(const void* actor) {
-    return g_c408_pe && actor != nullptr &&
+    return pe_gate(kPeGate_c408_pe) && actor != nullptr &&
            (is_a(actor, g_c408.cls) || (g_c408.projectile != nullptr && is_a(actor, g_c408.projectile)));
 }
 
 // Both sides: the plasma projectile a building spawns (it is simulated per side, so every effect it owns stays local).
 bool c408_projectile(const void* actor) {
-    return g_c408_pe && actor != nullptr && g_c408.projectile != nullptr && is_a(actor, g_c408.projectile);
+    return pe_gate(kPeGate_c408_pe) && actor != nullptr && g_c408.projectile != nullptr && is_a(actor, g_c408.projectile);
 }
 
 void c408_step(void* engine) {
@@ -600,7 +597,7 @@ void c408_step(void* engine) {
 // are map Blueprints freed with the old map; c419_begin tests rounds of the new map against them during LoadMap,
 // before c408_arm_map runs at LoadMap return (run c419b184a: client crash in IsChildOf at the frontend load).
 void c408_map_end() {
-    if (g_c408_pe) {
+    if (pe_gate(kPeGate_c408_pe)) {
         log::line("card408: %s map totals: %d classes, %u host rows (%u not relayed), %u client refusals, %u client "
                   "rows applied (%u missed, %u direction differs), largest yaw difference at a timeout %.2f (after the "
                   "host yaw set, any row: %.2f), %u turn timelines moved on by the row age (oldest turn row %d ms)",
@@ -613,14 +610,14 @@ void c408_map_end() {
                   g_c408.burst_diff_max, g_c408.burst_age_max, g_c408.fallback, g_c408.untracked, g_c408.round_n);
     }
     g_c408 = C408State{}; // the classes are looked up again: they may unload with the map
-    g_c408_pe = false;
+    pe_gate_set(kPeGate_c408_pe, false);
 }
 
 // The map's own arm: c408_map_end has already printed the totals and dropped the old map's classes; this reset
 // covers the first map of a process, which has no LoadMap enter before it.
 void c408_arm_map() {
     g_c408 = C408State{};
-    g_c408_pe = false;
+    pe_gate_set(kPeGate_c408_pe, false);
 }
 
 } // namespace ubw::hooks

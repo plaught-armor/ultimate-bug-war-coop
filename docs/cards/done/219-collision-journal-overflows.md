@@ -1,6 +1,6 @@
 # Card 219: The collision journal fills and drops rows
 
-Status: queued 2026-11-12, from card 147 (three runs, cards 095, 128 and 147 all patched this journal). Static
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from card 147 (three runs, cards 095, 128 and 147 all patched this journal). Static
 design trace first, no code and no run until the senior accepts the trace. Budget after that: three runs.
 
 Read: `docs/cards/done/147-from-save-start-proof.md` (caller trace, run 3 results), `c95_relay_collision` and

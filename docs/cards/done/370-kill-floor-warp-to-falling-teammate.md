@@ -1,6 +1,6 @@
 # Card 370: kill floor warp picks a teammate who is falling too
 
-Status: open, low, after the playtest. Found 2026-11-15 in run `c143b55d` (b55 `29ad572d08da2d85`).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, low, after the playtest. Found 2026-11-15 in run `c143b55d` (b55 `29ad572d08da2d85`).
 
 ## What happens
 

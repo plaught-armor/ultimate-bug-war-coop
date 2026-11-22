@@ -1,6 +1,6 @@
 # 433 — Client Fx play time by capture point (diagnostic)
 
-Opened 2026-11-16 by the senior from the efficiency audit.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 by the senior from the efficiency audit.
 
 Fx is the largest client recv cost and 47 % of mod bytes on FED_C2M1. c423b127b client `card330` rows: Fx 849
 frames 99.5 ms, 1168 frames 193.7 ms (max 3.69 ms), 1123 frames 155.5 ms (max 4.52 ms), 766 frames 130.4 ms (max

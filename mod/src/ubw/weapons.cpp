@@ -664,6 +664,24 @@ WeaponFromClassFn g_weapon_from_class = nullptr;
 AmmoUsesMagazineFn g_ammo_uses_magazine = nullptr;
 SetEquippedAmmoFn g_set_equipped_ammo = nullptr;
 AddAmmunitionFn g_add_ammunition = nullptr;
+BroadcastWeaponStatusFn g_broadcast_weapon_status = nullptr;
+static uint32_t g_c574_lines = 0;
+constexpr uint32_t kC574Lines = 8; // per process: the refresh rows logged
+
+// Card 574: after a mod magazine set, the weapon selector rewrites the equipped row's magazine from the weapon.
+void c574_weapon_status_refresh(const void* pawn, void* inventory) {
+    if (inventory == nullptr || g_broadcast_weapon_status == nullptr) {
+        log::line("WARN card574: %s weapon status refresh skipped on %s: %s", side(), object_name(pawn).text,
+                  inventory == nullptr ? "no weapon inventory" : "BroadcastStatusUpdate not resolved");
+        return;
+    }
+    g_broadcast_weapon_status(inventory);
+    if (g_c574_lines < kC574Lines) {
+        ++g_c574_lines;
+        log::line("card574: %s weapon status broadcast on %s (selector magazine refresh)", side(),
+                  object_name(pawn).text);
+    }
+}
 WeaponIndexFromTagFn g_weapon_index_from_tag = nullptr;
 
 SetWorldRotationFn g_set_world_rotation = nullptr;
@@ -708,6 +726,7 @@ void c21_grant_ammo(void* pawn, void* inventory, void* cls) {
         log::line("card137: %s grant ammo %s %s %d (%s) to %s", side(), i == 0 ? "primary" : "secondary",
                   fname_text(elems).text, count, magazine ? "magazine" : "reserve", object_name(pawn).text);
     }
+    c574_weapon_status_refresh(pawn, inventory); // the give's equip cached the selector row before these sets
 }
 
 // Grants the row's weapon to `pawn` when its inventory has none with that tag.
@@ -1979,15 +1998,21 @@ static void c245_pickup_row(void* pickup, const char* when) {
 // Not on this table: the satchel pickups (one carried charge per site: C4M2 counts 4 pickups for Bridge_SO2, C2M1
 // completes LOS_O03_SO02a/b/c per pickup, C1M1's CTF satchel is the flag that ends the course) and the other maps'
 // level-bound weapon pickups (their handlers switch off a flare marker or set a flag; no give, no objective step).
+// Card 553: a take that does not cover every living player arms its taker at once with the site's weapon (the
+// script's own AddWeapon(definition default object, equip 1), on the taker's pawn only), as single player does; only
+// the base call (the script's objective step and its give to every player) waits. Before, the first taker had no
+// weapon until the last player took (host log 2026-11-20: 9.5 s and 12.4 s empty-handed).
 struct C495Site {
     const char* pickup_class;
-    const char* level_class; // the OnPickup binding's object class: the site is this map's scripted pickup only
+    const char* level_class;      // the OnPickup binding's object class: the site is this map's scripted pickup only
+    const wchar_t* definition;    // card 553: the weapon definition class the script's AddWeapon gives
 };
 static constexpr C495Site kC495Sites[] = {
-    {"BP_WeaponPickup_LaserMorita_C", "FED_C1M1_Scripting_C"},
-    {"BP_WeaponPickup_MoritaMk1_C", "FED_C1M1_Scripting_C"},
+    {"BP_WeaponPickup_LaserMorita_C", "FED_C1M1_Scripting_C", L"BP_WeaponDefinition_LaserMorita_C"},
+    {"BP_WeaponPickup_MoritaMk1_C", "FED_C1M1_Scripting_C", L"BP_WeaponDefinition_MoritaMk1_C"},
 };
-static constexpr int32_t kC495Max = 4;          // per-player pickups with takers at once (C1M1 has 3)
+static constexpr int32_t kC495Max = 32;         // per-player pickups with takers at once (C1M1: 3 weapons, card 570
+                                                 // ammo and grenade pickups a player has not taken yet)
 static constexpr ULONGLONG kC495RecheckMs = 500; // the held-base re-check period, as card 227's
 static constexpr uint32_t kC495Lines = 60;       // held and released rows
 static constexpr uint32_t kC495RefuseLines = 30; // refused rows: their own cap, so repeated presses never hide a release
@@ -2002,9 +2027,11 @@ struct C495Table {
     C495Entry e[kC495Max];
     int32_t count;
     const void* refused; // the pickup whose PickupWeapon was just refused: its base call is skipped once
+    void* taker;         // card 553: the character PickupWeapon just credited (its base call follows), else null
     ULONGLONG recheck_ms;
     uint32_t lines;
     uint32_t refuse_lines;
+    uint32_t take_lines; // card 570 take rows
 };
 static C495Table g_c495{}; // host, game thread
 
@@ -2099,11 +2126,18 @@ static C495Name c495_name(const void* pickup) {
 
 // detour_c50_pickup_weapon: true when this take is refused (the character's player already took this pickup), so the
 // weapon is not credited again and the base call that follows is skipped. Otherwise the player joins the taker set.
+static bool c495_join(void* pickup, void* character, bool weapon);
+
 static bool c495_refuse(void* pickup, void* character) {
     g_c495.refused = nullptr;
-    if (!c495_site(pickup)) {
-        return false;
-    }
+    g_c495.taker = nullptr;
+    return c495_site(pickup) && c495_join(pickup, character, true);
+}
+
+// A take of a tracked per-player pickup (a card 495 weapon site, or a card 570 ammo or grenade pickup): true when the
+// character's player already took it (refused, logged), else the player joins the taker set. `weapon`: card 553 arms
+// the taker when the base call is held.
+static bool c495_join(void* pickup, void* character, bool weapon) {
     const void* const pc = character != nullptr ? read_ptr(character, kPawnController) : nullptr;
     C495Entry* e = c495_find(pickup);
     if (e == nullptr && pc != nullptr && g_c495.count < kC495Max) { // no entry for an untracked take: it never holds
@@ -2119,8 +2153,9 @@ static bool c495_refuse(void* pickup, void* character) {
     if (c495_has(*e, pc)) {
         g_c495.refused = pickup;
         if (note_event_cap(g_c495.refuse_lines, kC495RefuseLines, "card495 refused take")) {
-            log::line("card495: host t=%llu refused PickupWeapon on %s by %s (%s, %s): this player already took it",
-                      static_cast<unsigned long long>(GetTickCount64()), c495_name(pickup).text,
+            log::line("card495: host t=%llu refused %s on %s by %s (%s, %s): this player already took it",
+                      static_cast<unsigned long long>(GetTickCount64()), weapon ? "PickupWeapon" : "Pickup_Implementation",
+                      c495_name(pickup).text,
                       object_name(character).text, object_name(pc).text, kSprintSideText[sprint_side(character)]);
         }
         return true;
@@ -2128,19 +2163,66 @@ static bool c495_refuse(void* pickup, void* character) {
     if (e->takers_n < kC43Max) {
         c31_weak_set(e->takers[e->takers_n++], const_cast<void*>(pc));
     }
+    g_c495.taker = weapon ? character : nullptr; // card 553: armed by c495_hold when the base call is held
     return false;
+}
+
+// Card 553, host: the held take's taker gets the site's weapon now (AddWeapon, equipped), on its own pawn only. The
+// release's script chain later removes every player's weapons and gives the same weapon to all, so nothing doubles.
+static void c553_arm(const void* pickup, void* character) {
+    const ObjectName cls = class_name(pickup);
+    const wchar_t* definition = nullptr;
+    for (const C495Site& s : kC495Sites) {
+        definition = strcmp(cls.text, s.pickup_class) == 0 ? s.definition : definition;
+    }
+    const void* const def_class = definition != nullptr ? g_find_first_object(nullptr, definition, 0, 0, nullptr) : nullptr;
+    void* const def = def_class != nullptr ? read_ptr(def_class, kClassDefaultObject) : nullptr;
+    const bool added = def != nullptr && character != nullptr && g_orig_add_weapon != nullptr &&
+                       g_orig_add_weapon(character, def, true);
+    // Native PickupWeapon (card021 row) may have added the weapon unequipped in the same ms, so AddWeapon returns 0
+    // (already owned). Then equip the held copy by its definition class (c551b370a: taker stayed unarmed 2.6 s).
+    void* const inventory = !added && def_class != nullptr && character != nullptr
+                                ? const_cast<void*>(c24_inventory(character))
+                                : nullptr;
+    const C50List list = inventory != nullptr ? c50_list(inventory) : C50List{};
+    int32_t held = -1;
+    for (int32_t i = 0; i < list.count; ++i) {
+        const bool match = list.weapon[i] != nullptr && read_ptr(list.weapon[i], kWeaponDefinitionClass) == def_class;
+        held = held < 0 && match ? i : held;
+    }
+    if (held >= 0 && list.equipped != held) {
+        void* cls = const_cast<void*>(def_class);
+        g_orig_c50_equip_by_class(inventory, &cls);
+    }
+    const int32_t now = held >= 0 ? c50_list(inventory).equipped : -1;
+    const bool ok = added || (held >= 0 && now == held);
+    if (ok) {
+        c50_host_nudge(); // the taker's weapon list goes out now
+    }
+    const unsigned long long t = GetTickCount64();
+    if (held >= 0) {
+        log::line("%scard553: host t=%llu held take of %s armed its taker %s (%s): already held, equipped (index %d) = %d",
+                  ok ? "" : "WARN ", t, c495_name(pickup).text, object_name(character).text,
+                  kSprintSideText[sprint_side(character)], held, ok ? 1 : 0);
+        return;
+    }
+    log::line("%scard553: host t=%llu held take of %s armed its taker %s (%s): AddWeapon(%s, equip 1) = %d",
+              ok ? "" : "WARN ", t, c495_name(pickup).text, object_name(character).text,
+              kSprintSideText[sprint_side(character)], object_name(def).text, ok ? 1 : 0);
 }
 
 // detour_c254_pickup_implementation, host: true when the base call is held (or skipped after a refused take).
 // `by` names the caller for the release row: "take" or "re-check".
 static bool c495_hold(void* pickup, const char* by) {
+    void* const taker = g_c495.taker;
+    g_c495.taker = nullptr;
     if (g_c495.refused == pickup) {
         g_c495.refused = nullptr;
         return true; // the refuse row is logged
     }
-    C495Entry* const e = c495_site(pickup) ? c495_find(pickup) : nullptr;
+    C495Entry* const e = c495_find(pickup); // entries are made only by c495_join, for a per-player pickup
     if (e == nullptr) {
-        return false; // not a per-player site, or a take the table does not track (WARN logged)
+        return false; // not a per-player pickup, or a take the table does not track (WARN logged)
     }
     const C495Cover c = c495_cover(*e, g_actor_get_world(pickup));
     const ULONGLONG now = GetTickCount64();
@@ -2159,11 +2241,33 @@ static bool c495_hold(void* pickup, const char* by) {
                   e->takers_n, c.living > 0 && c.taken == c.living ? "; no living taker pawn" : "");
     }
     e->held = true;
+    if (taker != nullptr) {
+        c553_arm(pickup, taker); // card 553: a take only; a re-check has no taker
+    }
     return true;
 }
 
+// Card 570: the ammo or grenade take that detour_c570_ammo/item runs now. `who` is the character the take credits
+// (GetOverlappingCharacter answers it for `pickup` during the call); `base` is set when the subclass reached its base
+// call (the game credited the take: a take with full ammo returns before it).
+struct C570Take {
+    void* pickup;
+    void* who;
+    bool base;
+};
+static C570Take g_c570{};
+static constexpr int32_t kC570ClientMax = 64; // client: the host pickups the own pawn took this map
+struct C570Client {
+    C31Weak taken[kC570ClientMax];
+    int32_t count;
+    uint32_t lines;
+};
+static C570Client g_c570_client{};
+static constexpr uint32_t kC570Lines = 64;
+
 // Host/standalone base call of a placed pickup, unless card 495 holds it. `by` names the caller for the card 495 rows.
 static void c254_host_base(void* pickup, const char* by) {
+    g_c570.base = g_c570.base || (g_c570.pickup != nullptr && pickup == g_c570.pickup);
     if (c495_hold(pickup, by)) {
         return;
     }
@@ -2211,9 +2315,11 @@ void c495_map_end() {
         log::line("card495: host map end: %d per-player pickup(s) still tracked", g_c495.count);
     }
     g_c495 = C495Table{};
+    g_c570_client = C570Client{};
 }
 void detour_c254_pickup_implementation(void* pickup) {
     const void* const who = c50_client_pickup_overlapper(pickup);
+    g_c570.base = g_c570.base || (who != nullptr && g_c570.pickup != nullptr && pickup == g_c570.pickup);
     if (who == nullptr) {
         c254_host_base(pickup, "take");
         return;
@@ -2226,6 +2332,177 @@ void detour_c254_pickup_implementation(void* pickup) {
         log::line("card254: client skipped Pickup_Implementation on %s (%s), overlapper %s (own pawn %d)", name,
                   class_name(pickup).text, object_name(who).text, sprint_side(who) == kSideClientOwn ? 1 : 0);
     }
+}
+
+// Card 570: ammo, grenade, armour, health and tactical support pickups are per player in co-op (user 2026-11-21,
+// "Per player", then "all per player"): each living player gets
+// the pickup's grant once, and the pickup goes only when every living player took it (card 495's hold and re-check).
+// Placed pickups only: a pickup a bug drops stays first come (bounded table). The satchel item pickup stays first come.
+C50SelfFn g_orig_c570_ammo_pickup = nullptr; // ASTAmmoPickup::Pickup_Implementation
+C50SelfFn g_orig_c570_item_pickup = nullptr; // ASTItemPickup::Pickup_Implementation
+C50SelfFn g_orig_c570_armour_pickup = nullptr; // ASTArmourPickup::Pickup_Implementation (user: all per player)
+C50SelfFn g_orig_c570_health_pickup = nullptr; // ASTHealthPickup::Pickup_Implementation
+C50SelfFn g_orig_c570_tactical_pickup = nullptr; // ASTTacticalSupportPickup::Pickup_Implementation
+C50OverlapFn g_orig_c570_overlapping = nullptr; // AADPickupBase::GetOverlappingCharacter (hooked)
+
+void* detour_c570_overlapping(const void* pickup) {
+    if (g_c570.who != nullptr && pickup == g_c570.pickup) {
+        return g_c570.who;
+    }
+    return g_orig_c570_overlapping(pickup);
+}
+
+static bool c570_item_kind(const void* pickup) {
+    return strncmp(class_name(pickup).text, "BP_GrenadeAmmoPickup_", 21) == 0;
+}
+
+// Host: the character this take credits. The game's own answer, unless that player already took this pickup and
+// another living non-taker overlaps it (both players stand on the pickup).
+static void* c570_host_taker(void* pickup, void* first) {
+    const C495Entry* const e = c495_find(pickup);
+    const void* const first_pc = first != nullptr ? read_ptr(first, kPawnController) : nullptr;
+    if (e == nullptr || first_pc == nullptr || !c495_has(*e, first_pc) || g_c227_is_overlapping == nullptr) {
+        return first;
+    }
+    const C43Roster r = c43_roster(g_actor_get_world(pickup));
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        void* const pawn = r.p[s].pawn;
+        if (pawn != nullptr && pawn != first && !c43_is_down(pawn) && !c495_has(*e, r.p[s].pc) &&
+            g_c227_is_overlapping(pickup, pawn)) {
+            return pawn;
+        }
+    }
+    return first;
+}
+
+// Host: undo a join whose take the game did not credit (no base call), so the player can take the pickup later.
+static void c570_unjoin(void* pickup, const void* pc, int32_t takers_before) {
+    C495Entry* const e = c495_find(pickup);
+    if (e == nullptr || e->takers_n != takers_before + 1 || c31_weak_get(e->takers[takers_before]) != pc) {
+        return;
+    }
+    e->takers[--e->takers_n] = C31Weak{};
+    if (e->takers_n == 0 && !e->held) {
+        c495_drop(e);
+    }
+}
+
+static void c570_host_take(C50SelfFn orig, void* pickup) {
+    void* const first = g_orig_c570_overlapping(pickup);
+    if (first == nullptr || g_c570.pickup != nullptr) {
+        orig(pickup); // nothing to credit, or a nested take: the game's own path
+        return;
+    }
+    void* const who = c570_host_taker(pickup, first);
+    const void* const pc = read_ptr(who, kPawnController);
+    const C495Entry* const before = c495_find(pickup);
+    const int32_t takers_before = before != nullptr ? before->takers_n : 0;
+    g_c495.refused = nullptr;
+    g_c495.taker = nullptr;
+    if (c495_join(pickup, who, false)) {
+        g_c495.refused = nullptr; // refused: no credit and no base call
+        return;
+    }
+    g_c570 = C570Take{pickup, who, false};
+    orig(pickup);
+    const bool base = g_c570.base;
+    g_c570 = C570Take{};
+    if (!base) {
+        c570_unjoin(pickup, pc, takers_before);
+    }
+    if (note_event_cap(g_c495.take_lines, kC570Lines, "card570 take")) {
+        log::line("card570: host t=%llu take of %s credited %s (%s)%s, base call %d", static_cast<unsigned long long>(
+                  GetTickCount64()), c495_name(pickup).text, object_name(who).text, kSprintSideText[sprint_side(who)],
+                  who != first ? " instead of the first overlapper" : "", base ? 1 : 0);
+    }
+}
+
+static int32_t c570_client_find(const void* pickup) {
+    for (int32_t i = 0; i < g_c570_client.count && i < kC570ClientMax; ++i) {
+        if (c31_weak_get(g_c570_client.taken[i]) == pickup) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Client: the own pawn when it overlaps the host's pickup, else null (another character's overlap runs as before).
+static void* c570_client_own(void* pickup) {
+    if (c50_client_pickup_overlapper(pickup) == nullptr || g_c227_is_overlapping == nullptr) {
+        return nullptr;
+    }
+    const C43Roster r = c43_roster(g_actor_get_world(pickup));
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        void* const pawn = r.p[s].pawn;
+        if (pawn != nullptr && sprint_side(pawn) == kSideClientOwn && g_c227_is_overlapping(pickup, pawn)) {
+            return pawn;
+        }
+    }
+    return nullptr;
+}
+
+// Client, own pawn on a host pickup: the local subclass run stays for the first take (card 073 binds the grenade
+// input from it, card 384 pairs the local ammo credit with the host frame); a repeat take is skipped whole, as the
+// host refuses it.
+static void c570_client_take(C50SelfFn orig, void* pickup, void* own) {
+    const bool repeat = c570_client_find(pickup) >= 0;
+    if (!repeat && g_c570.pickup == nullptr) {
+        g_c570 = C570Take{pickup, own, false};
+        orig(pickup);
+        const bool base = g_c570.base;
+        g_c570 = C570Take{};
+        if (base && g_c570_client.count < kC570ClientMax) {
+            c31_weak_set(g_c570_client.taken[g_c570_client.count++], pickup);
+        }
+        if (base && g_c570_client.count >= kC570ClientMax) {
+            log::line("WARN card570: client taken set full (%d): later repeat takes are not skipped", kC570ClientMax);
+        }
+        return;
+    }
+    if (repeat && note_event_cap(g_c570_client.lines, kC570Lines, "card570 client repeat")) {
+        log::line("card570: client t=%llu skipped repeat take of %s by own pawn %s", static_cast<unsigned long long>(
+                  GetTickCount64()), c495_name(pickup).text, object_name(own).text);
+    }
+    if (!repeat) {
+        orig(pickup); // nested take: the game's own path
+    }
+}
+
+static void c570_take(C50SelfFn orig, void* pickup) {
+    void* const own = g_client_session ? c570_client_own(pickup) : nullptr;
+    if (own != nullptr) {
+        c570_client_take(orig, pickup, own);
+        return;
+    }
+    if (g_client_session || !c50_placed(pickup)) {
+        orig(pickup);
+        return;
+    }
+    c570_host_take(orig, pickup);
+}
+
+void detour_c570_ammo_pickup(void* pickup) {
+    c570_take(g_orig_c570_ammo_pickup, pickup);
+}
+
+void detour_c570_armour_pickup(void* pickup) {
+    c570_take(g_orig_c570_armour_pickup, pickup);
+}
+
+void detour_c570_health_pickup(void* pickup) {
+    c570_take(g_orig_c570_health_pickup, pickup);
+}
+
+void detour_c570_tactical_pickup(void* pickup) {
+    c570_take(g_orig_c570_tactical_pickup, pickup);
+}
+
+void detour_c570_item_pickup(void* pickup) {
+    if (!c570_item_kind(pickup)) {
+        g_orig_c570_item_pickup(pickup);
+        return;
+    }
+    c570_take(g_orig_c570_item_pickup, pickup);
 }
 
 // The two scene components OnUpdatePickupStatus sets from IsPickupEnabled: the mesh +0x2F0 (SetVisibility at
@@ -3466,8 +3743,7 @@ void c50_test_look(const void* world, const void* own, ULONGLONG now) {
 // Client: aim, press Use through the interact detour (so UseName and Use go to the host), release, next step.
 void c50_test_client(const void* world, void* pc, ULONGLONG now) {
     void* const own = const_cast<void*>(c23_own_pawn(pc));
-    void* const interactor = own != nullptr && is_a(own, g_player_mi_class()) ? read_ptr(own, kCharacterInteractor)
-                                                                             : nullptr;
+    void* const interactor = pawn_interactor(own);
     if (interactor == nullptr || g_c50t.stage == C50Stage::Done) {
         return;
     }

@@ -1,4 +1,4 @@
-// Card 132: gore decals, one world for every player.
+// Card 132: decals (gore, bullet holes, every material; card 566), one world for every player.
 // USTDecalManager (the game instance's +0x1F0) keeps every decal it spawns in one FIFO pool (*(manager+0x40)):
 //   +0x31 enabled byte, +0x34 int cap, +0x38/+0x40/+0x44 free TArray (data, num, max), +0x48/+0x50/+0x54 active TArray,
 //   oldest first. SpawnDecalAttached / SpawnDecalAtLocation (exe+0x5138D60 / +0x5138C40) both end in exe+0x5120C60,
@@ -22,8 +22,8 @@
 //   "R <round> <live> <pool>"         digest round marker: the host's tracked decals and pool active count
 //   "J <rows>"                        start of a journal replay (a joining PC's first Pong): the client ignores D and
 //                                     E rows until it has one, then the replay brings every live decal
-// A decal is gore when its material's name holds "Gore" (MI_FX_Gore_AlienDecal, MI_FX_Gore_Human_Decal in hb34);
-// any other material stays local on each side. The journal is the live set, bounded by the pool cap (+0x34, logged).
+// Card 566: every decal is relayed (gore, bullet holes and every other material), not only the gore materials
+// (MI_FX_Gore_AlienDecal, MI_FX_Gore_Human_Decal in hb34). "gore" in the names and log rows below means relayed. The journal is the live set, bounded by the pool cap (+0x34, logged).
 
 #include <intrin.h>
 #include <stdio.h>
@@ -41,6 +41,7 @@ DecalFadeOutFn g_decal_fade_out = nullptr;
 DecalFadeInFn g_decal_fade_in = nullptr;
 DecalSetFloatFn g_decal_life_span = nullptr;
 int32_t g_c132_decal_cap = 0;
+StaticClassFn g_c566_material_class = nullptr; // UMaterialInterface (card 566 b378: client decal material load)
 
 uint64_t c41_guid(const void* actor);                                    // enemies.cpp
 void* c41_resolve_guid(void* pc, uint64_t guid);                         // enemies.cpp
@@ -197,8 +198,11 @@ struct DecalClient {
 DecalHost g_dh{};
 DecalClient g_dc{};
 
-bool decal_is_gore(const void* material) {
-    return material != nullptr && strstr(object_name(material).text, "Gore") != nullptr;
+// Card 566: every decal is relayed (was gore only). Bullet holes drawn on the host went out as card 136 effect rows
+// (card 552), which no journal keeps, so a checkpoint restart (the client loads a fresh map, the host reloads in
+// place) left the host's holes on the host only. One journal for every decal also keeps the shared FIFO in host order.
+bool decal_relayed(const void* material) {
+    return material != nullptr;
 }
 
 void* decal_pool(const void* manager) {
@@ -310,7 +314,7 @@ int16_t host_material(void* material) {
     if (strcmp(m.path.text, "-") == 0) {
         return -1;
     }
-    log::line("card132: host decal material %d %s: gore, relayed", g_dh.mat_n, m.path.text);
+    log::line("card132: host decal material %d %s: relayed", g_dh.mat_n, m.path.text);
     DecalEvent* const e = host_event('M');
     if (e != nullptr) {
         e->index = g_dh.mat_n;
@@ -462,7 +466,7 @@ void host_caller(const void* material, const Vec3* size, uint64_t rva, bool gore
     g_dh.callers[g_dh.caller_n++] = rva;
     log::line("card132: host decal caller exe+0x%llX: %s size (%.0f, %.0f, %.0f), %s",
               static_cast<unsigned long long>(rva), object_name(material).text, size->x, size->y, size->z,
-              gore ? "gore, relayed" : "not gore, local");
+              gore ? "relayed" : "not relayed, local");
 }
 
 void host_read_fields(DecalRow& r) {
@@ -617,21 +621,39 @@ void host_cap(const void* manager) {
 
 // ---- Client ----
 
-void* client_material(int32_t m) {
+// Card 566 b378: run c551b376a found no MI_FX_BulletGround_Decal on the client (the host relays it, the client never
+// loaded it), so a material the find misses is loaded. A loaded material goes into the game instance's
+// ReferencedObjects so GC keeps it while rows point at it; the few relayed materials stay held for the session.
+void* client_material(void* pc, int32_t m) {
     if (m < 0 || m >= kDecalMats) {
         return nullptr;
     }
     DecalMat& d = g_dc.mats[m];
-    if (d.material == nullptr && !d.tried && d.path.text[0] != '\0') {
-        d.tried = true;
-        wchar_t wide[kAssetPathChars];
-        if (swprintf(wide, kAssetPathChars, L"%hs", d.path.text) > 0) {
-            d.material = g_static_find_object(nullptr, nullptr, wide, false);
-        }
+    if (d.material != nullptr || d.tried || d.path.text[0] == '\0') {
+        return d.material;
+    }
+    d.tried = true;
+    wchar_t wide[kAssetPathChars];
+    if (swprintf(wide, kAssetPathChars, L"%hs", d.path.text) <= 0) {
+        log::line("WARN card132: client decal material %d path does not convert", m);
+        return nullptr;
+    }
+    d.material = g_static_find_object(nullptr, nullptr, wide, false);
+    if (d.material != nullptr || g_c566_material_class == nullptr || g_static_load_object == nullptr) {
         if (d.material == nullptr) {
             log::line("WARN card132: client decal material %d %s not found", m, d.path.text);
         }
+        return d.material;
     }
+    d.material = g_static_load_object(g_c566_material_class(), nullptr, wide, nullptr, kC29LoadFlags, nullptr, true,
+                                      nullptr);
+    void* const world = d.material != nullptr && pc != nullptr ? g_actor_get_world(pc) : nullptr;
+    void* const gi = world != nullptr ? read_ptr(world, kWorldOwningGameInstance) : nullptr;
+    if (gi != nullptr && g_gi_register_ref != nullptr) {
+        g_gi_register_ref(gi, d.material);
+    }
+    log::line("%scard132: client decal material %d %s %s", d.material == nullptr ? "WARN " : "", m, d.path.text,
+              d.material == nullptr ? "not found, load failed" : (gi != nullptr ? "loaded, held" : "loaded, not held"));
     return d.material;
 }
 
@@ -870,7 +892,7 @@ void* client_spawn(void* pc, void* manager, void* material, const DecalRow& r, f
 bool client_place(void* pc, const ClientD& d, ULONGLONG held_ms) {
     const uint64_t age = d.age + held_ms;
     const float age_s = static_cast<float>(age) / 1000.0f;
-    void* const material = client_material(d.r.mat);
+    void* const material = client_material(pc, d.r.mat);
     void* const manager = client_manager(pc);
     if (material == nullptr || manager == nullptr) {
         ++g_dc.no_mat;
@@ -1135,9 +1157,9 @@ void decal_test_cap(void* manager, int32_t& cap_set) {
 
 } // namespace
 
-// Client: its own gore decal spawns are suppressed; the host's rows bring them (c132_receive_decal).
+// Client: its own decal spawns are suppressed (every material, card 566); the host's rows bring them (c132_receive_decal).
 bool c132_decal_suppress(const void* material) {
-    if (!g_client_session || g_dc.applying || !decal_is_gore(material)) {
+    if (!g_client_session || g_dc.applying || !decal_relayed(material)) {
         return false;
     }
     ++g_dc.suppressed;
@@ -1178,7 +1200,7 @@ void c132_decal_spawned(void* manager, void* decal, void* material, const Vec3* 
     if (g_client_session || manager == nullptr) {
         return;
     }
-    const bool gore = decal_is_gore(material);
+    const bool gore = decal_relayed(material);
     host_caller(material, size, exe_rva(caller), gore);
     if (!gore || decal == nullptr) {
         return;
@@ -1325,7 +1347,7 @@ namespace {
 
 // Host: the decal totals row. `when` names the point: "map" at the map end, the respawn in place otherwise.
 void host_totals(const char* when) {
-    log::line("%scard132: host decal %s totals: %u gore decals relayed, %u FIFO releases, %u other releases, %u "
+    log::line("%scard132: host decal %s totals: %u decals relayed, %u FIFO releases, %u other releases, %u "
               "rounds, %u rows dropped, %u not tracked, %u without a target, %u world-space (fixed "
               "geometry), %u with a socket; %u rows, "
               "%u bytes in %u frames, %u sent; %d live, cap %d; card309: %u D rows sent, %u released before "
@@ -1357,7 +1379,7 @@ void c132_decal_map_end() {
         const uint32_t bad = g_dc.no_decal + g_dc.gone_early + g_dc.nulls + g_dc.no_mat + g_dc.no_target +
                              g_dc.full + g_dc.bad + g_dc.round_warn + g_dc.held_dropped + g_dc.held_failed +
                              g_dc.evicted_lost;
-        log::line("%scard132: client decal map totals: %u rows, %u spawned, %u released, %u own gore decals "
+        log::line("%scard132: client decal map totals: %u rows, %u spawned, %u released, %u own decals "
                   "suppressed, %u ignored before the replay, %u duplicates, %u expired on arrival, %u world-position "
                   "fallbacks; %u releases with no decal, %u gone early, %u null, %u without material or "
                   "manager, %u without target, %u past the table, %u bad rows, %u round mismatches of %u; "
@@ -1378,9 +1400,9 @@ int32_t c132_decal_live() {
     return g_dh.live_n;
 }
 
-// Card 136: the effects manager leaves gore decals to this relay (its FIFO eviction, pool order and fade).
-bool c132_decal_gore(const void* material) {
-    return decal_is_gore(material);
+// Card 136: the effects manager leaves every decal to this relay (card 566) (its FIFO eviction, pool order and fade).
+bool c132_decal_relayed(const void* material) {
+    return decal_relayed(material);
 }
 
 // Card 136 step 3, client: the decal manager a host decal row plays through.

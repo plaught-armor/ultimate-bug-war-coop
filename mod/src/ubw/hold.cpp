@@ -288,10 +288,12 @@ void detour_c133_completed(void* iface, void* interactor) {
     if (s == kSideClientOwn && g_client_session) {
         c133_client_done(iface, interactor, target, row);
     }
-    if (interactor != nullptr) {
-        c492_switch_press(target, read_ptr(interactor, kComponentOwner)); // card 492: host only, switches only
-    }
+    const void* const pawn = interactor != nullptr ? read_ptr(interactor, kComponentOwner) : nullptr;
+    const bool press = pawn != nullptr && c492_switch_press(target, pawn); // card 492: host only, switches only
     g_orig_c133_completed(iface, interactor);
+    if (press) {
+        c602_send_press(target, pawn); // card 602: the other clients' copies broadcast too
+    }
 }
 
 // Host: a client's HoldDone ("name x y z"). The checks, then the original completion once with the copy's interactor.
@@ -309,7 +311,7 @@ void c133_host_done(void* pc, const WireString* s) {
     }
     void* const pawn = read_ptr(pc, kControllerPawn);
     void* const interactor = pawn != nullptr && sprint_side(pawn) == kSideServerCopy
-                                 ? read_ptr(pawn, kCharacterInteractor)
+                                 ? pawn_interactor(pawn)
                                  : nullptr;
     void* const target = interactor != nullptr ? c95_find_nearest(g_actor_get_world(pawn), name, at) : nullptr;
     const C54Relay* const row = target != nullptr ? c54_relay_row(target) : nullptr;
@@ -340,8 +342,11 @@ void c133_host_done(void* pc, const WireString* s) {
         c133_refuse(from, text, both);
         return;
     }
-    c492_switch_press(target, pawn); // card 492: a switch close is a player trigger
+    const bool press = c492_switch_press(target, pawn); // card 492: a switch close is a player trigger
     g_orig_c133_completed(iface, interactor);
+    if (press) {
+        c602_send_press(target, pawn); // card 602: the other clients' copies broadcast too
+    }
     ++g_c133.ran;
     const void* const building = row->kind == C54Kind::SatchelSite ? c133_site_building(target) : nullptr;
     log::line("card133: host t=%llu HoldDone from %s: %s; CanInteract 1; OnInteraction run once with %s's interactor "

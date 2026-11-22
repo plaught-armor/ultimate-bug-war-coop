@@ -5,7 +5,7 @@ Tooling in `tools/iostore/` reads cooked packages out of `pakchunk0-Windows.utoc
 ## Use
 
 ```
-python3 -I tools/iostore/utoc_paths.py <utoc> <out.txt>          # every package path (docs/reference/asset-paths.txt came from this)
+python3 -I tools/iostore/utoc_paths.py <utoc> <out.txt>          # every package path (docs/reference/asset-paths.txt, local only, came from this)
 python3 -I tools/iostore/iox.py <utoc> <ucas> '<regex>' <outdir>  # extract raw zen packages whose path matches
 strings -n 5 <outdir>/X.uasset                                    # name map, soft paths, Blueprint node names
 ```

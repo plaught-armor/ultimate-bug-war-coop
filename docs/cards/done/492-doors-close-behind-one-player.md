@@ -1,6 +1,6 @@
 # 492: Script steps close doors behind one player (card 301 class H)
 
-Status: open (written 2026-11-18, senior). Batch into the next build after b232; no run of its own.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-18, senior). Batch into the next build after b232; no run of its own.
 
 ## Finding
 

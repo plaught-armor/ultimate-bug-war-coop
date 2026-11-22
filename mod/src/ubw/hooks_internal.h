@@ -25,6 +25,7 @@
 #include <windows.h>
 #include <MinHook.h>
 #include <array>
+#include <atomic>
 #include <intrin.h>
 #include <iterator>
 #include <math.h>
@@ -48,6 +49,62 @@ using namespace ue::hooktable;
 using namespace ue::net;
 using namespace ue::chan;
 using namespace ubw::chan;
+
+// Card 573 b463: every detour_process_event gate in one word, so a ProcessEvent loads one cache line for its gates
+// (b462 .map: the separate bools sat on about 13 lines). Atomic because some gates are set off the game thread; a plain
+// read-modify-write there could lose a bit. The detour reads with relaxed loads (a gate is a hint, as the bools were).
+// Card 573 b464: every access goes through pe_gates or pe_gate_set, which use the compiler's builtins. Not std::atomic:
+// clang-cl /Ob2 emits its load as a function call, up to 16 per ProcessEvent in b463.
+// Each bit keeps the old bool's name.
+constexpr uint32_t kPeGate_c30_window = 1u << 0;  // card 030 death window open: ProcessEvent lines (one load, one branch while closed)
+constexpr uint32_t kPeGate_c32_pe = 1u << 1;      // ProcessEvent filter open: c32 armed on this map
+constexpr uint32_t kPeGate_c74_pe = 1u << 2;      // card 074 (UBWCOOP_C74_LOG=1): inside a PlayAnimation task DoAction
+constexpr uint32_t kPeGate_c99_log = 1u << 3;     // mirrors g_c99_log (UBWCOOP_C99_LOG), set at its one write in flags.cpp
+constexpr uint32_t kPeGate_c161_pe = 1u << 4;     // a door is tracked: detour_process_event calls c161_pe
+constexpr uint32_t kPeGate_c376_pe = 1u << 5;     // card 376: a client's WB_Stack_C holds the pause in the host's session
+constexpr uint32_t kPeGate_c345b_pe = 1u << 6;    // armed from EndLevel to the map end, both sides
+constexpr uint32_t kPeGate_c408_pe = 1u << 7;     // a flak or plasma building is on the map: c408_pe / c408_after_pe
+constexpr uint32_t kPeGate_c44_pe = 1u << 8;      // ProcessEvent gate: a death screen may construct
+constexpr uint32_t kPeGate_c67_pe = 1u << 9;      // card 067 (UBWCOOP_CMD=1): a mission-brief class is known
+constexpr uint32_t kPeGate_c158_pe = 1u << 10;    // client: a grenade ability is noted: c158_after_pe
+constexpr uint32_t kPeGate_c493_pe = 1u << 11;    // detour_process_event calls c493_after_pe
+constexpr uint32_t kPeGate_client = 1u << 12;     // mirrors g_client_session, set at its one write (set_client_session)
+constexpr uint32_t kPeGateBits = 13;
+static_assert(kPeGate_client == 1u << (kPeGateBits - 1), "kPeGateBits counts every gate bit");
+
+// Card 573 b463: the function FNames the ProcessEvent hooks compare against the detour's one read of the function's
+// FName. An id still 0 (unresolved) matches nothing, as each hook's own cache did.
+struct PeNames {
+    uint64_t exit;               // c600_exit_pe
+    uint64_t player_exit;        // c600_exit_pe
+    uint64_t fed_score_gained;   // c491_pe
+    uint64_t receive_begin_play; // c491_pe, c408_pe
+    uint64_t construct;          // c44_after_pe
+};
+// The gate word and the names share one cache line (48 of 64 bytes).
+struct alignas(64) PeHot {
+    uint32_t gates; // atomic by access: pe_gates, pe_gate_set
+    uint32_t names_ready; // game thread: every id in `names` resolved (pe_names_resolve stops retrying)
+    PeNames names;
+};
+static_assert(sizeof(PeHot) == 64, "one cache line");
+extern PeHot g_pe; // death.cpp
+inline uint32_t pe_gates() {
+    return __atomic_load_n(&g_pe.gates, __ATOMIC_RELAXED);
+}
+inline bool pe_gate(uint32_t bit) {
+    return (pe_gates() & bit) != 0;
+}
+inline void pe_gate_set(uint32_t bit, bool on) {
+    if (on) {
+        __atomic_fetch_or(&g_pe.gates, bit, __ATOMIC_RELAXED);
+    } else {
+        __atomic_fetch_and(&g_pe.gates, ~bit, __ATOMIC_RELAXED);
+    }
+}
+inline bool pe_name_is(uint64_t name, uint64_t id) {
+    return id != 0 && name == id;
+}
 extern ue::config::Travel g_travel;
 extern bool g_travel_armed;
 void clear_pending_starting_mappings();
@@ -158,7 +215,7 @@ using NiagaraBoolFn = bool (*)(const void* component);
 using NiagaraStateFn = uint8_t (*)(const void* component); // ENiagaraExecutionState: 0 Active .. 3 Complete
 extern NiagaraBoolFn g_niagara_is_complete;
 extern NiagaraStateFn g_niagara_requested_state;
-constexpr uint32_t kFxWatchMax = 64;           // effects checked at once; a grenade burst or airstrike spawns a few
+constexpr uint32_t kFxWatchMax = 128;          // effects checked at once; a grenade burst or airstrike spawns a few (c582b411a filled 64)
 constexpr ULONGLONG kFxWatchFirstMs = 100;     // first check: running, active, visible, not hidden
 constexpr ULONGLONG kFxWatchLateMs = 1000;     // second check: visible (complete is the normal end of a burst)
 constexpr size_t kFxWatchWhatChars = 48;
@@ -187,6 +244,7 @@ void c39_arm_map();
 void c39_map_end(); // card 200: at LoadMap enter
 void c42_release_pools(); // card 140: client gore pools out of the game instance's ReferencedObjects (enemies.cpp)
 void c40_arm_map();
+void c582_building_pe(const void* object, const void* function); // card 582 G3 b450, g_c99_log only
 void c41_step(void* engine);
 void c41_arm_map();
 extern bool g_c40_trace;
@@ -215,8 +273,6 @@ extern uint32_t g_c65_shunt_logs;
 constexpr uint32_t kC65ShuntLogs = 8;
 const uint8_t* c21_spec_for(const void* asc, int32_t handle);
 extern bool g_c63_on;
-extern bool g_c67_pe;
-extern bool g_c74_pe;
 void c74_note_pe(const void* object, const void* function);
 void c67_note_pe(void* object, const void* function);
 void c67_note_pause(void* requester, bool pause);
@@ -270,6 +326,7 @@ void c448_logout(const void* pc, const void* pawn); // card 448: Health and Armo
 // one's kept inventory gets those counts set on its new pawn (c446_set_count) once its Restore hold is gone.
 void c446_note_item(void* pc, const void* pawn, void* definition, int32_t count);
 void c446_set_count(void* inventory, void* definition, int32_t want);
+int32_t c73_count(void* inventory, void* definition); // card 570: FindItemByDefinition quantity, 0 when none
 bool c72_seed(void* pc, void* pawn);
 void c72_mirror_apply(void* pc, const char* text, const char* what);
 bool c72_take_set(void* pc, ULONGLONG now);
@@ -295,7 +352,6 @@ void c43_receive_use(void* pawn, uint32_t arg);
 void c43_logout(const void* pc, const void* pawn); // card 508: pc is the leaving one
 void c44_context(const void* context, int32_t priority);
 void c44_host_fire(const void* pawn, uint32_t arg);
-extern bool g_c44_pe;
 extern uint32_t g_c44_fires[4];
 extern bool g_c39_overkill;
 void c30_step(void* engine);
@@ -314,6 +370,7 @@ void c24_aim_end();
 extern config::GrantWeapon g_grant_weapon;
 extern bool g_c21_grant_armed;
 void dropship_watch_step(void* engine);
+int32_t actor_always_relevant(void* actor); // card 554: 1 set now, 0 already set, -1 no reflected bool
 extern bool g_dropship_watch_armed;
 extern bool g_auto_dropship;
 extern bool g_auto_dropship_armed;
@@ -762,6 +819,11 @@ void detour_set_collision_enabled(void* component, uint8_t type);
 void detour_set_collision_profile(void* component, uint64_t profile, bool update_overlaps); // card 237
 extern uint32_t g_dropship_enter_exit_logs;
 void detour_enter_dropship(void* dropship);
+// Card 595, both sides: ASTPlayerTransportDropship::OnInteraction (this = the interface at dropship+0x708). The host
+// holds it until every living, not downed player has asked to board; the last request runs the original once.
+using C595InteractFn = void (*)(void* iface, void* interactor);
+extern C595InteractFn g_orig_c595_interaction;
+void detour_c595_interaction(void* iface, void* interactor);
 void detour_descend_completed(void* dropship);
 constexpr size_t kDropshipState = 0x69B;            // ESTDropshipState; 0 = IsPerformingActions
 using StartActionFn = void (*)(void* dropship, uint8_t startup, uint8_t nav_direction, uint8_t target_point,
@@ -823,10 +885,8 @@ void c260_receive(void* pc, const ChanArgs& args); // client: ChanOp::EndLevel
 void c260_map_end();                                // both sides, at LoadMap enter (ubw_load_map_enter)
 // Card 345b: the level-end Next (WB_TrooperLevelEnd). The client's own Next is not run while it is in the host's
 // session; the host's Next is relayed (ChanOp::EndLevel, value 1) and runs the client's own Next handler.
-extern bool g_c376_pe;                        // card 376: a client's WB_Stack_C holds the pause in the host's session
 void c376_note_pause(void* requester, bool paused); // restart.cpp, from the pause and unpause detours
-bool c376_pe(void* object, void* function);   // restart.cpp, detour_process_event while g_c376_pe; true: not run
-extern bool g_c345b_pe;                       // armed from EndLevel to the map end, both sides
+bool c376_pe(void* object, void* function);   // restart.cpp, detour_process_event while kPeGate_c376_pe; true: not run
 bool c345b_pe(void* object, void* function); // true: the call is not run (detour_process_event)
 void c345b_step(void* pc);                    // both sides, each tick (c50_step)
 const uint8_t* c121_ui_find(const char* prefix, void** widget, int32_t* num, int32_t* index); // testrun.cpp
@@ -1418,6 +1478,7 @@ extern C21Grant g_c21_grant;
 Vec3 camera_location(const void* pawn);
 const void* iface_object(const void* iface);
 const void* interact_target(const void* interactor);
+void* pawn_interactor(const void* pawn);
 void detour_zero_adjust(const void* weapon, double* transform);
 void* detour_fire_projectile(void* ability, const double* transform, void* init_data_class);
 // Card 024/181: the pawn that fires a weapon or pawn ability (the avatar, or its weapon's Owner pawn); the avatar too.
@@ -1427,6 +1488,9 @@ using WeaponFireFn = void (*)(void* ability);
 extern WeaponFireFn g_orig_weapon_fire;
 void detour_weapon_fire(void* ability);
 void c181_receive_round(void* pc, uint32_t weapon_key); // host: ChanOp::Round (c437_weapon_key of the client's weapon)
+void c581_map_end(); // card 581: client attached-character SimulateMovement skip tally row (enemies.cpp)
+void c581_note_reject(const void* presence, const void* body, const void* parent); // card 581: client presence reject
+void c587_trooper_diag(const char* where, const void* pc); // card 587 diag, host, log only (round_c181.cpp)
 void c439_fire_begin();                  // client: the own Fire starts; an Equip sent inside it is held
 void c439_fire_end();                    // client: the own Fire's Round is out; the held Equip goes now
 void c439_before_equip(const void* pawn); // host: a copy about to equip fires one unspent reported round first
@@ -1468,6 +1532,54 @@ extern GiveByInstanceFn g_orig_give_by_instance;
 // diag-gated, so g_orig_give_by_instance is null in a play build (b16, the card 312 crash).
 extern GiveByInstanceFn g_give_by_instance;
 extern AddWeaponFn g_orig_add_weapon;
+// Card 561 (turret_sync.cpp): pawn-graph camera fades only for this machine's own player's pawn.
+using C561ExecFn = void (*)(void* context, void* frame, void* result);
+using C561StartFadeFn = void (*)(void* pcm, float from, float to, float duration, const void* color, bool audio, bool hold);
+using C561ManualFadeFn = void (*)(void* pcm, float amount, const void* color, bool audio);
+extern C561ExecFn g_orig_c561_exec_start_fade;
+extern C561ExecFn g_orig_c561_exec_manual_fade;
+extern C561StartFadeFn g_orig_c561_start_fade;
+extern C561ManualFadeFn g_orig_c561_manual_fade;
+void detour_c561_exec_start_fade(void* context, void* frame, void* result);
+void detour_c561_exec_manual_fade(void* context, void* frame, void* result);
+void detour_c561_start_fade(void* pcm, float from, float to, float duration, const void* color, bool audio, bool hold);
+void detour_c561_manual_fade(void* pcm, float amount, const void* color, bool audio);
+void c561_receive(void* pc, const WireString* s); // client: ChanOp::CamFade (turret_sync.cpp)
+void c601_board_receive(void* pc, const WireString* s); // client: ChanOp::DropshipBoard (dropship.cpp)
+// Card 551 (player_c99.cpp): an animation's screen shake notify shakes only for this machine's own player pawn.
+using C551NotifyFn = void (*)(void* notify, void* owner);
+extern C551NotifyFn g_orig_c551_shake_notify;
+void detour_c551_shake_notify(void* notify, void* owner);
+// Card 584 (player_c99.cpp, diagnostic): ASTPlayerCharacter::Landed(const FHitResult&) on this machine's own trooper
+// logs its air time (+0x9C8) against HeavyLandingTimeThreshold and the Falling enters and leaves since its last
+// Landed (counted in detour_set_movement_mode through c584_note_mode).
+using C584LandedFn = void (*)(void* pawn, const void* hit);
+extern C584LandedFn g_orig_c584_landed;
+void detour_c584_landed(void* pawn, const void* hit);
+void c584_note_mode(const void* cmc, uint8_t from, uint8_t to);
+void c584_map(); // map arm (c99_arm_map): clear the Falling counts and the last Landed time
+using C551ImpactFn = void (*)(const void* notify, void* target, const void* params); // card 551 b373: ExecuteImpact
+using C551CueFn = void (*)(const void* notify, const void* params);    // PlayScreenShake, PlayForceFeedback
+using C551ScreenFn = void (*)(const void* notify, void* actor, const void* params); // ApplyScreenEffect
+extern C551ImpactFn g_orig_c551_execute_impact;
+extern C551CueFn g_orig_c551_cue_shake;
+extern C551CueFn g_orig_c551_cue_feedback;
+extern C551ScreenFn g_orig_c551_cue_screen;
+// Card 551 b384: client, depth of a card 136 cue replay whose row carries kC136FlagPlayerSource (a remote player's
+// cue). While it is over 0 the cue's screen shake, force feedback and screen effect are skipped.
+extern uint32_t g_c551_relayed_player_cue;
+bool c551_is_player(const void* actor); // a trooper or mech, itself or its Owner
+void detour_c551_execute_impact(const void* notify, void* target, const void* params);
+void detour_c551_cue_shake(const void* notify, const void* params);
+void detour_c551_cue_feedback(const void* notify, const void* params);
+void detour_c551_cue_screen(const void* notify, void* actor, const void* params);
+// Card 551 b378: USTCommonUtilityLibrary::StartCameraShake(WorldContext, TSubclassOf (by reference), Scale) shakes
+// this machine's own player camera; skipped when WorldContext (or its Owner) is a remote player pawn.
+using C551StartShakeFn = void* (*)(void* context, void* shake_class_ref, float scale);
+extern C551StartShakeFn g_orig_c551_start_shake;
+void* detour_c551_start_shake(void* context, void* shake_class_ref, float scale);
+// Card 566 b378: UMaterialInterface::StaticClass, the class the client passes to StaticLoadObject for decal materials.
+extern StaticClassFn g_c566_material_class;
 extern LoadInventoryFn g_orig_load_inventory;
 extern ExecFn g_orig_exec_add_weapon;
 extern ExecFn g_orig_exec_add_weapon_by_tag;
@@ -1585,6 +1697,12 @@ extern AmmoUsesMagazineFn g_ammo_uses_magazine;
 extern SetEquippedAmmoFn g_set_equipped_ammo;
 extern AddAmmunitionFn g_add_ammunition;
 extern AddAmmunitionFn g_orig_c310_add_ammo; // card 310: the AddAmmunition hook (script_c310.cpp)
+// Card 574: USTWeaponInventory::BroadcastStatusUpdate broadcasts OnEquippedWeaponStatusUpdated(equipped weapon, this).
+// The weapon selector (WB_Weapon_Switch_Base) caches each row's magazine and rewrites it only on that event or on a
+// weapon equip; SetEquippedAmmunition fires neither. Every mod magazine set on a pawn this machine shows calls it.
+using BroadcastWeaponStatusFn = void (*)(void* inventory);
+extern BroadcastWeaponStatusFn g_broadcast_weapon_status;
+void c574_weapon_status_refresh(const void* pawn, void* inventory);
 // USceneComponent::SetWorldRotation(FRotator, bool bSweep, FHitResult*, ETeleportType): the FRotator (3
 // doubles) goes by hidden pointer in rdx (disassembly 0x03AF7C80 reads [rdx], [rdx+0x10]).
 using SetWorldRotationFn = void (*)(void* component, const double* rotator, bool sweep, void* hit, uint8_t teleport);
@@ -1681,6 +1799,12 @@ void detour_c166_death_caused(void* self, const void* event);
 void c166_host_damage_caused(void* self, const void* event); // host, from detour_c157_damage_caused
 void c166_receive(void* pc, const WireString* s);             // client: ChanOp::Marker
 void c455_receive(void* pc, const WireString* s);             // client: ChanOp::HurtSound (player_c99.cpp)
+// Card 582 G3, host (card 052 detour): true when the attached sound `sound_name` on `component` is a listed sound of a
+// server copy; it was sent to that copy's PC, and the host must not play it. A UBWCOOP_C99_LOG row per call (24 per map).
+bool c455_attached_relay(const void* component, uint64_t sound_name, uint64_t attach_point, Vec3 location,
+                         bool stop_when_destroyed, float volume, float pitch, float start_time, bool auto_destroy,
+                         unsigned long long rva);
+void c455_attached_map_reset();
 void c459_receive(void* pc, const WireString* s);             // client: ChanOp::MechFuel (attributes.cpp)
 void c475_receive(void* pc, const WireString* s);             // client: ChanOp::Score (score_c475.cpp)
 void c475_join_replay(void* pc);                              // host: score rows to one PC (score_c475.cpp)
@@ -1691,7 +1815,8 @@ bool c491_resupply_drop(const void* sub, uint64_t tag);   // client: true for a 
 void c491_resupply_paid(const void* sub, uint64_t tag);   // host: after a ResupplyUpgraded, "U" to every client
 extern bool g_c491_inner_text; // AddFedScore(tag)'s own inner AddFedScoreText is next: the detour passes it (b262)
 void c491_resupply_join_replay(void* pc);                 // host: each bound pawn's level to one PC
-bool c491_pe(void* object, const void* function);         // client, ProcessEvent: true refuses a pawn's FedScoreGained (b262)
+bool c600_exit_pe(const void* object, const void* function, const void* parms, uint64_t name); // objectives.cpp, host: true holds the exit
+bool c491_pe(void* object, const void* function, uint64_t name); // client, ProcessEvent: true refuses a pawn's FedScoreGained (b262)
 void c491_level_watch(const void* sub);                   // client, every tick: a ResupplyLevel change no U row made (b262)
 void c475_map_end(void* old_world);                           // both: drops a replay cut by the map change
 int32_t c475_digest_total(const void* world);                 // the digest's Score: value, -1 when none
@@ -2164,6 +2289,26 @@ const void* c29_controller(const void* vehicle);
 double c29_gun_yaw(const void* vehicle);
 void detour_mount_turret(void* turret, void* pawn);
 void detour_leave_turret(void* turret);
+// Card 586 (vehicles.cpp): a trooper held by a seat or a guided missile its player possesses instead.
+enum class C586Kind : uint8_t { Seat, Missile };
+struct C586Hold {
+    const void* trooper; // compared only, never read through (it may be freed before the next frame's rebuild)
+    void* pc;
+    void* holder;
+    C586Kind kind;
+};
+constexpr uint32_t kC586Max = static_cast<uint32_t>(kC17Slots);
+struct C586Holds {
+    C586Hold h[kC586Max];
+    uint32_t count; // sprint_side's early out: 0 while no connected client's player sits or flies a missile
+};
+extern C586Holds g_c586;
+void c586_frame(const void* world);         // host, each frame (c24_step): rebuilds g_c586
+void* c586_holder_pc(const void* trooper);  // the connected client's PC holding `trooper`, or null
+// Host, before a down: `pawn` a seat or missile holding a trooper → the hold ends (the game's own path) and the
+// trooper is returned; otherwise `pawn`. c586_end_hold_of does the same from the trooper side.
+void* c586_end_hold(void* pawn, const char* why);
+void c586_end_hold_of(const void* trooper, const void* world, const char* why);
 extern C29SelfFn g_orig_c447_pawn_leaving; // card 447: APlayerController::PawnLeavingGame
 void detour_c447_pawn_leaving(void* pc);
 void* c29_server_copy(const void* own);
@@ -2213,6 +2358,8 @@ struct C28Slot {
     Vec3 step_loc;      // host: the server copy's location at the last speed sample
     ULONGLONG step_ms;  // host: time of that sample, 0 none
     double speed;       // last speed used for the key (2D, units per second)
+    double speed_avg;   // card 564: smoothed speed the locomotion key reads (units per second), 0 at slot start
+    ULONGLONG key_ms;   // card 564: time the current key started, 0 none
     int32_t renderer;   // card 034: UObject index of the renderer card 028 added, -1 none
     C28Key starting;    // card 034: key passed to the StartAnimationSequence call in progress (its size change)
     uint32_t fit_keys;  // card 034: bit per key whose first refit was logged
@@ -2241,6 +2388,8 @@ struct C28State {
     uint32_t warn_lines;
     uint32_t npc_lines;
     uint32_t z_lines;
+    int32_t own_trooper;   // card 560: UObject index of the local player's last on-foot pawn, 0 none (never a pawn)
+    uint32_t drop_lines;   // card 560
 };
 extern C28State g_c28;
 extern bool g_c28_shots;
@@ -2561,6 +2710,9 @@ struct C38State {
     uint32_t held;       // card 132: client NPC copies' local switches to Falling held at the host's mode
     uint32_t drift;      // card 132: client NPC copies set back to the host's z (c132_drift_clamp)
     uint32_t drift_skipped; // card 328: set-backs not written because the place encroaches another body
+    uint32_t drift_adjusted; // card 603: set-backs written at the engine's small encroachment adjustment
+    uint32_t floor_forced;   // card 603: copies at rest on a stale line-trace floor given bForceNextFloorCheck
+    uint32_t floor_repeats;  // card 603 (b460): forces skipped, the copy's floor state is the one already forced
     const void* trace_owner; // card 328 step 3: the copy traced after its set-back (identity only)
     uint32_t trace_left;     // card 328 step 3: frames of that trace still to log; 0 = none armed
     uint32_t traces;         // card 328 step 3: traces armed this map (cap kC328TraceMax)
@@ -2676,6 +2828,22 @@ bool detour_bark_near_player(void* context, void* bark);
 using C451BarkFn = bool (*)(void* subsystem, void* speaker, void* const* bark, void* const* voice);
 extern C451BarkFn g_orig_c451_request_bark;
 bool detour_c451_request_bark(void* subsystem, void* speaker, void* const* bark, void* const* voice);
+// Card 582 G2 (player_c99.cpp, host, always on): BP_EM_Dropship and BP_EM_1FactionSetWaves add marker threat
+// (UADTargetComponent::ModifyTargetThreat, +2000 on show, -2000/+2000 on a pawn change) for player 0's pawn only. The
+// exec thunk notes the calling Blueprint object; the native call made for the host's pawn from one of those classes is
+// repeated, same delta, for every other player pawn, so marked enemies weigh every player the same.
+using C582ThreatFn = void (*)(void* component, void* actor, float delta);
+using C582ExecFn = void (*)(void* context, void* stack, void* result);
+extern C582ThreatFn g_orig_c582_threat;
+extern C582ExecFn g_orig_c582_exec_threat;
+void detour_c582_threat(void* component, void* actor, float delta);
+void detour_c582_exec_threat(void* context, void* stack, void* result);
+void c582_tracker_begin_play(void* actor);                 // host, BeginPlay detour: notes a BP_PickupTracker
+void c582_tracker_local(void* context, const void* node);   // host, card 507 detour: Enable/Disable Delegates fan-out
+bool c582_tracker_armed();                                  // a tracker is noted this map
+void c582_tracker_step(ULONGLONG now);                      // host, per tick: rebinds a changed pawn every 0.5 s
+void c582_tracker_totals(const char* when);                 // card 582: tracker tally, print only
+void c582_tracker_map();                                    // map arm: clear (c99_map_totals printed the tally)
 // Card 451 part 2 (bark_c451.cpp): FBarkDelegate::Broadcast(const FADActiveBark&) relayed host to client for subtitles.
 using C451BroadcastFn = void (*)(void* delegate, const void* bark);
 extern C451BroadcastFn g_orig_c451_broadcast;
@@ -2685,7 +2853,6 @@ void detour_c451_broadcast(void* delegate, const void* bark);
 using C493DelayFn = void (*)(void* self, float delay, void* fstring);
 extern C493DelayFn g_orig_c493_delay;
 void detour_c493_delay(void* self, float delay, void* fstring);
-extern bool g_c493_pe; // detour_process_event calls c493_after_pe
 void c493_after_pe(void* object, const void* function);
 void c493_arm_map();
 bool c98_dead_now(const void* actor, bool& killable); // world_c98.cpp
@@ -2770,7 +2937,6 @@ extern TryThrowFlareFn g_orig_try_throw_flare;
 extern EquipTacSuppFn g_orig_equip_tac_supp;
 extern BlockingVolumeFn g_in_blocking_volume;
 extern C29InteractFn g_orig_mech_on_interaction;
-extern bool g_c32_pe;
 constexpr uint32_t kC32Tracked = 48;
 constexpr uint32_t kC32PeLines = 400;
 constexpr uint32_t kC32PeCalls = 3;            // lines per UFunction
@@ -2832,6 +2998,14 @@ void detour_c104_start(void* animator, uint64_t key, float rate);
 void detour_c104_start_fixed(void* animator, uint64_t key, float total);
 void detour_c104_do_action(void* task);
 void detour_c104_anim_ended(void* task);
+// Card 569 (log): UADAnimNotifyWrapper::Notify(mesh, sequence) (0x04A241F0) runs every AD anim notify; the inner
+// UADAnimNotify_DoAction (0x04A24210) broadcasts the actor animator's shared +0xC0 delegate, which fires every bound
+// PlayAnimation task whatever its key. The detour notes the emitting sequence for the DoAction row.
+using C569WrapperNotifyFn = void (*)(void* wrapper, void* mesh, void* sequence);
+extern C569WrapperNotifyFn g_orig_c569_wrapper_notify;
+void detour_c569_wrapper_notify(void* wrapper, void* mesh, void* sequence);
+extern bool g_c569_gate; // card 569 grenade DoAction gate, on unless UBWCOOP_C569_OFF=1
+void c576_patch_worker_spin(uint8_t* base); // card 576: WorkerLoop SpinCycles imm, before MH_Initialize
 void c104_dump();
 struct C104Policy {
     uint8_t* addr[64];
@@ -2879,6 +3053,9 @@ extern C121PerformSaveFn g_orig_c121_perform_save;
 extern C121LoadFn g_orig_c121_load;
 void detour_c121_perform_save(void* world, void* metadata, void* delegate, bool flag);
 int c375_host_pc_first(void* world); // hooks_ubw.cpp: host PC to PC list slot 0; returns its old slot, -1 = not found
+// Host: true while an in-place load with pawns runs (the card 290 travel row went first, so every client reloads the
+// map and runs its own BeginPlay plays; card 604 sends no rows in this window).
+extern bool g_c121_in_place_load;
 void detour_c121_load(void* context, void* save_data, void* metadata, bool* file_io_success, bool load_pawns,
                       bool destroy_actors);
 void c121_arm_map(); // per-map line cap (save_c121.cpp)
@@ -2967,7 +3144,6 @@ extern SetAutoSaveFn g_orig_set_auto_save;
 extern ProcessEventFn g_orig_process_event;
 extern HealthChangedFn g_orig_health_changed;
 extern config::KillPlayer g_c30_mode;
-extern bool g_c30_window;
 constexpr uint32_t kC30EventLines = 300; // ProcessEvent lines per map
 constexpr uint32_t kC30MaxPlayers = 8;
 struct C30Seen {
@@ -3194,6 +3370,7 @@ struct C41State {
 extern C41State g_c41;
 void c41_relay_arm_map();
 void c41_relay_totals(const char* when); // card 041/436: the Anim relay totals rows (map totals, quit totals)
+void c565_totals(const char* when); // card 565: client relayed-sequence resume totals
 void detour_c41_try_play(void* npc, uint64_t name, bool force);
 void detour_c41_try_timed(void* npc, uint64_t name, float time);
 void detour_c41_frame(void* npc);
@@ -3320,6 +3497,9 @@ void c43_stand_all(void* pc);
 void c43_broadcast(const C43Roster& r, C43Entry& e);
 void c43_transition(const C43Roster& r, C43Entry& e, const void* pawn, const char* why);
 void c43_enter_down(void* pawn, const C43Roster& r, uint32_t slot, C43Life state, ULONGLONG now);
+// Card 586 (b): false, with one WARN card043 row naming the class and callers, when `pawn` is not a trooper (a
+// possessed turret or seat in the roster). c43_enter_down and c43_own_view refuse such a pawn.
+bool c43_is_trooper(const void* pawn, const char* where);
 void c43_all_down(const C43Roster& r, const void* host, const char* why);
 void c43_use_edge(void* reviver, bool pressed);
 void c43_totals(const char* what);
@@ -3354,7 +3534,6 @@ struct C44State {
     ULONGLONG complete_ms; // this machine's last CompleteDeath
     ULONGLONG window_ms;   // UI input contexts are logged for kC44WindowMs from here
     ULONGLONG done_ms;     // client test: the run ends
-    uint64_t construct;    // FName "Construct"
     uint64_t screen_weak;  // FWeakObjectPtr: the last death screen
     uint64_t restart_fn;   // FName: the RestartMission button's OnClicked function on the screen
     uint64_t checkpoint_fn; // FName (card 045): the LoadLastSave button's OnClicked function on the screen
@@ -3423,6 +3602,7 @@ enum class C209Op : uint8_t { BugForm, Warp, Resupply, Count }; // Resupply: car
 void c209_hold(C209Op op, uint64_t guid, uint32_t value);
 // Card 502 finding 3 (b263), client: a held card491 U row's level, applied once its pawn resolves (score_c475.cpp).
 void c491_level_apply(void* pawn, uint64_t guid, int32_t level);
+const char* c556_set_resupply_level(void* pawn, int32_t level); // card 556 test command: own pawn's ResupplyLevel
 void c209_step(void* pc);
 void c209_arm_map();
 double c44_aim(void* pc, const Vec3& eye, const Vec3& target);
@@ -3562,6 +3742,7 @@ extern SignificanceGetFn g_significance_get;
 using AddSignificanceLocationFn = bool (*)(void* pc, const Vec3* location);
 extern AddSignificanceLocationFn g_add_significance_location;
 void client_significance_step(void* engine);
+extern bool g_c568_on; // card 568: UpdateSignificanceManager at 30 Hz on both sides (UBWCOOP_C568_OFF=1: every frame)
 // Host: the same function, hooked. Its significance views are the host PC's camera and AddSignificanceLocation
 // entries only, so NPCs near a client but far from the host ran at low significance (longer actor and movement tick
 // intervals, static mesh animation). The detour adds each remote pawn's location for the call.
@@ -3584,6 +3765,7 @@ extern MusicTriggerFn g_c321_trigger_music; // card 321 b228
 void c321_level_send(void* pc);                    // host: the combat level to one client PC (join replay)
 void c321_level_receive(void* pc, uint32_t level); // client: ChanOp::CombatLevel
 extern uint32_t g_c491_window; // card 491 b227: depth of the subsystem ObjectiveComplete score window
+bool c579_drop_award(uint64_t tag, int32_t amount); // objectives.cpp: client, award inside a replayed snapshot/join completion
 // Diagnostic (UBWCOOP_C41_ANIM_TRACE): ASTNonPlayableCharacterBase::HandleDamageEvent (0x05192430), the path to
 // USTGoreComponent::OnDamage and UADWoundWorldSubsystem::AddWound. One line per call: time, NPC, caller.
 using NpcDamageFn = void (*)(void* npc, const void* damage_event);
@@ -3818,6 +4000,7 @@ void c294_client_travel(const char* reason, ULONGLONG now); // death.cpp: client
 bool c294_skip_complete_death(const void* pawn, unsigned long long caller); // death.cpp: client, true = skip
 bool c294_hold_respawn(const void* pawn, const void* old, ULONGLONG now);    // death.cpp: client, true = held
 void c294_shown(ULONGLONG now);                                              // death.cpp: client, respawn ran
+bool c294_restart_pending(); // death.cpp: client, restart row seen, new map's first pawn not yet
 // Card 295: a revive's MaxWalkSpeed from USTAttributeSet_Movement::WalkSpeed on both machines (death.cpp); the
 // host's Up frame carries its speed in v3; the client counts ClientAdjustPosition for 10 s after its revive.
 float c295_restore_walk(void* pawn, float saved, float host, const char* why); // -1 = no value, nothing written
@@ -3834,11 +4017,12 @@ void c52_join(const wchar_t (&address)[lobby::kAddrChars]); // card 374: the `tr
 // movement-updated handler called this with a null USceneComponent. The function reads component+0x1E0 with
 // no check (EXCEPTION_ACCESS_VIOLATION reading 0x1E0). With no component there is nothing to attach a sound
 // to, so the guard returns null: the Blueprint gets None, as for any sound that did not spawn.
-using SpawnSoundAttachedFn = void* (*)(void* component, uint64_t attach_point, uint64_t tag, Vec3 location,
+// Card 582 G3: the first FName is the sound table row name (ToComponent+0x175 looks it up), the second the attach point.
+using SpawnSoundAttachedFn = void* (*)(void* component, uint64_t sound_name, uint64_t attach_point, Vec3 location,
                                        bool stop_when_destroyed, float volume, float pitch, float start_time,
                                        void* attenuation, void* concurrency, bool auto_destroy);
 extern SpawnSoundAttachedFn g_orig_spawn_sound_attached;
-void* detour_spawn_sound_attached(void* component, uint64_t attach_point, uint64_t tag, Vec3 location,
+void* detour_spawn_sound_attached(void* component, uint64_t sound_name, uint64_t attach_point, Vec3 location,
                                   bool stop_when_destroyed, float volume, float pitch, float start_time,
                                   void* attenuation, void* concurrency, bool auto_destroy);
 
@@ -3957,6 +4141,8 @@ void c46_warp(void* pawn, void* target, const C43Roster& r, int32_t slot, ULONGL
 // Card 399, host, every tick (acts every 100 ms): while the host rides its transport dropship every other player's
 // pawn rides it too; when the host is off it, each is detached and warped beside the host.
 void c399_step(void* world, ULONGLONG now);
+// Card 595, host (from c399_step): a held boarding runs once no living player is left to ask; a gone dropship drops it.
+void c595_step(const C43Roster& r, ULONGLONG now);
 // Card 399, client, every tick: its own pawn attached to a transport dropship rides (gravity, collision, input and
 // camera); returns whether it rides.
 bool c399_client_step(uint8_t* pawn, void* pc);
@@ -4012,6 +4198,9 @@ using EncroachingFn = bool (*)(void* world, const void* actor, const Vec3* locat
                                Vec3* adjustment);
 // bool UWorld::FindTeleportSpot(const AActor*, FVector& TestLocation, FRotator)  -- called
 using TeleportSpotFn = bool (*)(void* world, const void* actor, Vec3* location, const Vec3* rotation);
+// Card 590: logs the pawn's overlaps at its goto stuck spot (EncroachingBlockingGeometry with the card 046 detour
+// listing them), capped rows and calls.
+void c590_stuck_overlaps(void* world, const void* pawn, const Vec3& at, uint32_t seq);
 extern OverlapMultiFn g_orig_c46_overlap_multi;
 extern EncroachingFn g_c46_encroaching;
 extern TeleportSpotFn g_c46_teleport_spot;
@@ -4359,7 +4548,7 @@ extern C103SetFn g_orig_c103_set;
 extern C103FindFn g_c103_find;
 void detour_c103_select(void* component);
 bool detour_c103_set(void* component, void* actor);
-void* c103_enemy_pc(const void* ctx, unsigned long long rva);
+void* c103_enemy_pc(const void* ctx, unsigned long long rva); // game thread only (the caller checks)
 void c103_arm_map();
 // Card 532 (target_c532.cpp, always on): client target ticks stop; the host's primary target per NPC is sent
 // (ChanOp::NpcTarget) and returned by the client's GetPrimaryTarget.
@@ -4381,7 +4570,6 @@ extern GetSaveIdFn g_orig_c531_save_id;
 extern StaticClassFn g_c531_static_class; // USTSaveComponent::StaticClass
 extern bool g_c531_on;
 uint32_t* detour_c531_save_id(uint32_t* out, const void* actor);
-void c531_tick(ULONGLONG now); // game thread, c42_step: totals every 60 s
 // Card 535 (floor_c535.cpp, performance mod family): client NavWalking NPC proxies get FindFloor's no-floor result
 // without the sweep. On by default; UBWCOOP_C535_OFF=1 leaves the detour out.
 using FindFloorFn = void (*)(const void* cmc, const void* location, void* out, bool can_use_cached,
@@ -4418,6 +4606,59 @@ void c538_tick(ULONGLONG now); // game thread, c42_step: advances the frame, tot
 // MoveComponentImpl row. UBWCOOP_C539_OFF=1 turns the counts off.
 extern bool g_c539_on;
 extern bool g_gate_c461_c539;
+// Card 578: the co-op side of ubwperf.dll (ubw/perf_link.cpp). With no ubwperf.dll each site runs the original.
+void perf_link_init();          // init_after_resolve, before read_card_flags
+void perf_link_install();       // after ue::install succeeded
+bool perf_wants_c461_move();    // cards 539/542 on in ubwperf: the card 461 row installs
+void set_client_session(bool on); // writes g_client_session and ubwperf's copy
+void perf_link_tick(void* engine, ULONGLONG now); // c42_step
+bool perf_link_c461_move(void* comp, const void* delta, const void* rotation, bool sweep, void* hit, int32_t flags,
+                         uint8_t teleport);
+bool perf_link_c568_due(int32_t slot, const void* world); // card 568 sites: slot 0 host game mode, 1 client step
+// Card 575 diag (diag_crowd_c575.cpp): UCrowdManager::RegisterAgent(ICrowdAgentInterface*), UBWCOOP_C575_LOG=1 only.
+using C575RegisterFn = void (*)(void* manager, void* agent);
+extern C575RegisterFn g_orig_c575_register;
+extern bool g_c575_log;
+void detour_c575_register(void* manager, void* agent);
+// Card 577 (perf_navgen_c577.cpp, performance mod family): FRecastNavMeshGenerator::RebuildDirtyAreas(const
+// TArray<FNavigationDirtyArea>&). The client skips it (no client code paths on a rebuilt navmesh); the host runs it
+// and counts. UBWCOOP_C577_OFF=1: not installed.
+using C577RebuildFn = void (*)(void* generator, const void* dirty_areas);
+extern C577RebuildFn g_orig_c577_rebuild;
+extern bool g_c577_on;
+void detour_c577_rebuild(void* generator, const void* dirty_areas);
+// Card 593 step 4 (perf_navdata_c593.cpp, performance mod family, host diag, with card 577's switch): one row per AI
+// class at first ASTNonPlayableCharacterBase::PossessedBy (capsule, NavAgentProps, GetNavData), and a whole-run count
+// of UNavigationSystemV1::GetNavDataForProps(const FNavAgentProperties&) const results by nav data and caller.
+using C593ResolveFn = const void* (*)(const void* navsys, const void* props);
+using C593PossessFn = void (*)(void* pawn, void* controller);
+using C593GetNavDataFn = const void* (*)(void* pawn);
+extern C593ResolveFn g_orig_c593_resolve;
+extern C593PossessFn g_orig_c593_possess;
+const void* detour_c593_resolve(const void* navsys, const void* props);
+void detour_c593_possess(void* pawn, void* controller);
+void c593_resolve_rows(); // host, from the card577 row
+// Card 593 step 5 (perf_navgen_c577.cpp): held navmesh rebuilds; the resolve hook marks each resolved nav data used.
+extern bool g_c593_hold_on;
+void c593_hold_use(const void* nav); // any thread; replays a held box when on the rebuild thread
+// Card 594 (perf_target_c594.cpp, performance mod family, host diag): UADTargetComponent gather and update counts,
+// one `card594:` row every 600 frames. UBWCOOP_C594_OFF=1: not installed.
+using C594GatherFn = void (*)(void* self);
+using C594UpdateFn = void (*)(void* self, void* data, float delta_seconds);
+using C594FindOrAddFn = void* (*)(void* self, void* actor);
+using C594GasActorsFn = void (*)(const void* subsystem, void* out_actors);
+extern C594GatherFn g_orig_c594_gather;
+extern C594UpdateFn g_orig_c594_update;
+extern C594FindOrAddFn g_orig_c594_find_or_add;
+extern C594GasActorsFn g_orig_c594_gas_actors;
+extern bool g_c594_on;
+void detour_c594_gather(void* self);
+void detour_c594_update(void* self, void* data, float delta_seconds);
+void* detour_c594_find_or_add(void* self, void* actor);
+void detour_c594_gas_actors(const void* subsystem, void* out_actors);
+void c594_note_save_id(); // card 531 detour: one in-range GetSaveId while a gather runs on this thread
+void c594_tick();         // perf_tick, game thread
+uint32_t perf_frame(); // ubwperf: perf_tick calls since load (game thread writes, any thread reads)
 extern bool g_c542_on;
 extern bool g_c544_on; // card 544: dynamic tree padding (UBWCOOP_C544_OFF=1 turns it off)
 bool c539_move(void* comp, const void* delta, const void* rotation, bool sweep, void* hit, int32_t flags,
@@ -4462,6 +4703,18 @@ bool detour_c548_prim(void* comp, const void* pending, bool notify, const void* 
 bool detour_c548_skinned(void* comp, const void* pending, bool notify, const void* at_end);
 bool detour_c548_skeletal(void* comp, const void* pending, bool notify, const void* at_end);
 void c548_tick(ULONGLONG now); // game thread, c42_step
+// Card 573 (perf_kinematic_c573.cpp, performance mod family, counts): USkeletalMeshComponent::
+// UpdateKinematicBonesToAnim per owner class per 10 s (calls, bodies, dead, ragdoll, hidden, collision off, SkipAllBones).
+extern bool g_c573_on; // UBWCOOP_C573_OFF=1 removes the hook
+extern KinematicBonesFn g_orig_c573_bones;
+void detour_c573_bones(void* mesh, const void* transforms, uint8_t teleport, bool needs_skinning, int32_t deferral);
+void c573_tick(ULONGLONG now); // game thread, perf_tick
+// Card 573 rank 2 (perf_niagara_c573.cpp, counts): FNiagaraSystemInstance::TickInstanceParameters_GameThread per
+// Niagara system asset per 10 s (calls per frame, time, no component, hidden, dead owner). Same gate as the bone counts.
+using NiagaraParamsFn = void (*)(void* instance, float dt);
+extern NiagaraParamsFn g_orig_c573_niagara;
+void detour_c573_niagara(void* instance, float dt);
+void c573_niagara_tick(ULONGLONG now); // game thread, perf_tick
 
 // Card 111: wave budget and ticket limits scaled by player count (bug_scale.cpp).
 using C111FactorFn = int32_t (*)(const void* wave, void* const* data, int32_t budget);
@@ -4588,6 +4841,30 @@ extern C317MoveCallFn g_c317_deactivate;    // UMovementComponent::Deactivate (c
 extern PrimBodySleepFn g_prim_sleep;      // UPrimitiveComponent::PutRigidBodyToSleep
 void c104_settle_step(); // host, per tick
 void c287_client_step(); // card 287: client, per tick (relayed bodies' motion between host rows)
+void c556_rack_destroy(const void* world, const void* rack); // card 556 b439 diag: a resupply rack's destroy
+void c556_rack_step(); // card 556 b439 diag: both sides, per tick (the rack pickups' rows 2 s later)
+// Card 556 b441 diag (rack_c556.cpp, both sides, log only): SetPhysicsStateOverride before/after rows, the rack's
+// TraceBelow box trace rows, and the rack end path row (from c556_rack_destroy).
+using C556OverrideFn = void (*)(void* pickup, uint8_t state);
+using C556BoxTraceFn = bool (*)(const void* ctx, const Vec3* start, const Vec3* end, const Vec3* half,
+                                const void* orient, uint64_t profile, bool complex, const void* ignore, uint8_t draw,
+                                void* out_hit, bool ignore_self, const void* color, const void* hit_color, float time);
+extern C556OverrideFn g_orig_c556_override;
+extern C556BoxTraceFn g_orig_c556_box_trace;
+void detour_c556_override(void* pickup, uint8_t state);
+bool detour_c556_box_trace(const void* ctx, const Vec3* start, const Vec3* end, const Vec3* half, const void* orient,
+                           uint64_t profile, bool complex, const void* ignore, uint8_t draw, void* out_hit,
+                           bool ignore_self, const void* color, const void* hit_color, float time);
+void c556_rack_end_row(const void* rack); // the end path of a rack, at its destroy
+// Card 556 fix (rack_c556.cpp): host, AADPickupBase::execOnHit skips the freeze and attach when the other actor is a
+// holder that is destroyed later (resupply rack, tac-support pod, killable crate) or a pickup still simulating or
+// attached to one; the Destroy loop's override(1) wakes a simulating, sleeping body; rack damage rows (from
+// detour_c163_broadcast) feed the end row; per map caps reset from c98_arm_map.
+extern void (*g_orig_c556_on_hit)(void* ctx, void* frame, void* result); // ExecThunkFn (declared below)
+extern PrimBodySleepFn g_prim_wake; // UPrimitiveComponent::WakeRigidBody (same parameters as PutRigidBodyToSleep)
+void detour_c556_on_hit(void* ctx, void* frame, void* result);
+void c556_rack_damage(const void* event); // both sides, every UADHealthComponent damage broadcast
+void c556_arm_map();
 const void* c140_attach_parent(const void* root); // card 140: a scene component's AttachParent, null when not attached
 // Card 140: host, from the card 132 ext sweep, per level actor. full: also look at a root that is not Movable.
 void c140_placed_visit(const void* actor, bool full);
@@ -4688,6 +4965,7 @@ extern HealthDamageBroadcastFn g_orig_c163_broadcast;
 void detour_c163_broadcast(const void* delegate, const void* event);
 void c125_client_turret(void* pc, const char* name, const Vec3& at, uint32_t value);
 void c467_map_end(); // card 467: the client's held turret rows start over
+void c467_client_forget(const void* actor); // card 467: a destroyed spawned turret copy's rows go
 void c125_host_aim(void* pc, const WireString*, const ChanArgs& args);
 extern SetBoolFn g_set_arms_visibility; // card 125: ASTPlayerCharacterMI::SetArmsVisbility
 extern SetWorldRotationFn g_set_rel_rotation; // USceneComponent::SetRelativeRotation (same parameters)
@@ -4730,10 +5008,11 @@ extern C112SetProceduralFn g_c112_set_procedural;
 extern C112ActivateFn g_orig_c112_activate;
 void detour_c112_activate(void* wave);
 void c99_arm_map();
+void c99_map_totals(const char* when); // card 582: card099 and card582 tallies, print only (map arm, quit)
 // Card 102: an acting-player scope for that gate. On the host, inside BeginComponentOverlap, ApplyDamageFromImpactHit
 // Result and Interact, when the acting actor belongs to a server copy, an index-0 call returns that copy's controller
 // whatever the context (world actors ask "is this the player?" with their own context). Innermost scope wins.
-enum C102Entry : uint8_t { kC102None, kC102Overlap, kC102Damage, kC102Interaction, kC102Enemy, kC102Entries };
+enum C102Entry : uint8_t { kC102None, kC102Overlap, kC102Damage, kC102Interaction, kC102Enemy, kC102Place, kC102Entries };
 struct C102Scope {
     const void* acting; // the server copy, or null
     uint8_t entry;      // C102Entry
@@ -4742,6 +5021,12 @@ struct C102Scope {
 constexpr size_t kC102OverlapComponent = 0xE0; // FOverlapInfo: TWeakObjectPtr<UPrimitiveComponent> of the other side
 C102Scope c102_enter(const void* actor, uint8_t entry, const void* site = nullptr);
 void c102_leave(const C102Scope& saved);
+// Card 582 G3 (b453): ApplyDamageAtLocation (the knife) gets a card 102 damage scope; c582_copy_melee() is true
+// inside a server copy's self-caused call (its impact cue rows go to the copy's own PC too).
+using C582DamageAtFn = void* (*)(void* results, void* instigator, void* causer, const void* tmpl, const void* loc);
+extern C582DamageAtFn g_orig_c582_damage_at;
+void* detour_c582_damage_at(void* results, void* instigator, void* causer, const void* tmpl, const void* loc);
+bool c582_copy_melee();
 void c102_interact(void* interactor);
 using C102OverlapFn = void (*)(void* component, const void* info, bool notify);
 extern C102OverlapFn g_orig_c102_overlap;
@@ -4749,6 +5034,33 @@ void detour_c102_overlap(void* component, const void* info, bool notify);
 using C99BeginPlayFn = void (*)(void* actor, bool from_streaming);
 extern C99BeginPlayFn g_orig_c99_begin_play;
 void detour_c99_begin_play(void* actor, bool from_streaming);
+// Card 582 G3 b451 diagnostic (player_c99.cpp): UKismetSystemLibrary::SphereTraceSingleForObjects, GA_HumanMelee rows.
+struct C582Color {
+    float r, g, b, a; // FLinearColor (by value: the x64 ABI passes it by address, as the original expects)
+};
+using C582TraceFn = bool (*)(const void* ctx, Vec3 start, Vec3 end, float radius, const void* types, bool complex,
+                             const void* ignore, uint8_t draw, void* out_hit, bool ignore_self, C582Color color,
+                             C582Color hit_color, float draw_time);
+extern C582TraceFn g_orig_c582_trace;
+bool detour_c582_trace(const void* ctx, Vec3 start, Vec3 end, float radius, const void* types, bool complex,
+                       const void* ignore, uint8_t draw, void* out_hit, bool ignore_self, C582Color color,
+                       C582Color hit_color, float draw_time);
+void c582_trace_map_reset();
+// Card 555 (radar_c555.cpp): both sides, a new enemy's radar blip stays hidden until it has emerged from its spawn hole.
+void c555_begin_play(void* actor);   // detour_c99_begin_play, every actor
+void c555_step(void* engine);        // ubw_post_tick: the ground test, every 100 ms while an entry is listed
+bool c555_hidden(const void* object); // detour_c416_show: true while the object's blip is hidden
+void c555_map_end();
+// Card 588 (seat_c588.cpp): client diagnostic, what moves the own gunship seat and how smoothly.
+void c588_step(void* engine);                                // ubw_post_tick, client, own pawn a turret
+void c588_note_adjust(const void* cmc, const double* new_loc); // detour_client_adjust_position
+void c588_forget(const void* actor);                         // detour_c98_destroy: the own seat goes
+// detour_client_adjust_position, after c588_note_adjust: the location the CMC applies (led_out holds 3 doubles)
+const double* c588_lead_adjust(const void* cmc, const double* new_loc, double* led_out);
+void c588_map_end();
+using C588OnRepFn = void (*)(void* actor);
+extern C588OnRepFn g_orig_c588_onrep_movement;
+void detour_c588_onrep_movement(void* actor); // AActor::OnRep_ReplicatedMovement, every actor: one compare
 // Card 138 (begin_c138.cpp): client, AGameStateBase::OnRep_ReplicatedHasBegunPlay is held until the local PC has a
 // possessed BP_PlayerCharacterMI. c138_step releases it (engine tick); c138_hold_ping (the card 120 Pong gate) tries a
 // release and is true while it is held; c138_note_begin_play logs BP_PickupTracker's pawn (client); c138_load_map drops a hold at a map change.
@@ -4923,7 +5235,7 @@ extern C289UnlockFn g_c289_unlock;
 void detour_c289_secret_pickup(void* pickup);
 // Card 054: the interactables a client Use is relayed to, first match wins (subclasses before their parents). A
 // target of any other class (mech, turret, dropship) is logged and not relayed: the client's own run stands.
-enum class C54Kind : uint8_t { Weapon, Item, Tactical, Secret, Switch, SatchelSite, Zipline, Limited };
+enum class C54Kind : uint8_t { Weapon, Item, Tactical, Secret, Switch, SatchelSite, Zipline, Limited, Transport };
 struct C54Relay {
     const StaticClassFn* cls;
     C54Kind kind;
@@ -4938,6 +5250,8 @@ constexpr C54Relay kC54Relays[] = {
     {&g_c54_satchel_site_class, C54Kind::SatchelSite, "satchel placement site"},
     {&g_c54_zipline_class, C54Kind::Zipline, "zipline point"},
     {&g_c54_limited_class, C54Kind::Limited, "limited interaction actor"},
+    // Card 595: a client's Use on a player transport dropship reaches the host's OnInteraction (detour_c595_interaction).
+    {&g_transport_dropship_class, C54Kind::Transport, "player transport dropship"},
 };
 constexpr int32_t kC54RelayRows = static_cast<int32_t>(sizeof(kC54Relays) / sizeof(kC54Relays[0]));
 inline constexpr size_t kC104ChargeText = 64; // card 104: TacCharge text, 4 slots of "charge ready"
@@ -5070,13 +5384,14 @@ void* c50_find_placed(const void* world, const StaticClassFn* const* cls, int32_
 // Card 426: "<c50_name>@<FNV-1a of its level's name, 8 hex>", for a wire name that must tell apart same-named placed
 // actors of different sublevels (C5M1 has two BP_ProceduralDropshipTroops_C_0). Length or -1 (no name, no room).
 int32_t c50_level_key(const void* actor, char* out, int32_t cap);
-void* c50_find_placed_any(const void* world, const char* name); // card 236: any class, every actor of every level
+// Card 236: any class, every actor of every level. Card 605: `key` may be a level key, as c50_find_placed.
+void* c50_find_placed_any(const void* world, const char* key);
+void c50_name_probe(const void* world, const char* name, char* out, size_t cap); // card 605: miss diagnostic
 void c95_replay(void* pc);
 void c95_replay_step(); // card 219: host tick, the paced collision rows of each join replay
 void c95_map_end();     // card 200: at LoadMap enter
 void c95_host_door_state(void* door, uint8_t state, int buffer); // host: journal and send a BP door's DoorState (card 161)
 // --- Card 161: BP_Door_Base doors host owned (door_c161.cpp) ---
-extern bool g_c161_pe;                             // a door is tracked: detour_process_event calls c161_pe
 bool c161_pe(const void* object, const void* function); // true: the client refuses this call on a door
 // Card 507: void ProcessLocalScriptFunction(UObject* Context, FFrame& Stack, void* Result), every script function body
 using LocalScriptFn = void (*)(void* context, void* stack, void* result);
@@ -5088,10 +5403,56 @@ const char* c161_cmd(const char* name, uint8_t op); // host test command `door o
 void c288_presence_fired(const void* pawn); // card 288, host: a player presence fires now (before its original)
 void c288_trigger_at(Vec3 at, bool objective); // card 288, host: a player-trigger close starts now, `at` on the inner
                                                 // side; card 498: `objective` makes its doors one hold group
-void c492_switch_press(const void* target, const void* pawn); // card 492, host: a switch press sets the card 288 trigger
+// Card 492, host: a switch press sets the card 288 trigger. Card 602: returns whether the press will broadcast
+// OnPressSuccessful; the caller runs the original, then c602_send_press.
+bool c492_switch_press(const void* target, const void* pawn);
+void c602_send_press(const void* target, const void* pawn); // card 602, host: SwitchPress to every other client
+void c602_press_receive(void* pc, const WireString* s);     // card 602, client: ChanOp::SwitchPress (door_c161.cpp)
+// Card 604 (audio_c604.cpp): placed audio components and level-script music started by host-only chains reach the
+// client as ChanOp::LevelAudio text rows; the client pairs its own twin calls so nothing plays twice.
+using C604StopFn = void (*)(void* comp);                                   // UAudioComponent::Stop
+using C604PlayFn = void (*)(void* comp, float start);                      // UAudioComponent::Play
+using C604TriggerFn = void (*)(void* ctx, uint64_t name, bool flag);       // USTCommonUtilityLibrary::TriggerSpecificMusic
+using C604EndFn = void (*)(void* ctx, bool flag, float fade);              // USTCommonUtilityLibrary::EndMusic
+using C604ClearFn = void (*)(void* ctx, bool flag);                        // USTCommonUtilityLibrary::ClearMusicTriggers
+using C604Sound2DNameFn = void (*)(void* ctx, uint64_t name, float volume, float pitch, float start, void* concurrency,
+                                   void* owner);                           // USTCommonUtilityLibrary::PlaySound2DFName
+using C604SubmixSetFn = void (*)(const void* ctx, void* submix, void* presets, float fade); // TArray by value: by address
+using C604SubmixClearFn = void (*)(const void* ctx, void* submix, float fade);
+extern C604StopFn g_orig_c604_stop;
+extern C604PlayFn g_c604_play;
+extern C604TriggerFn g_orig_c604_trigger;
+extern C604EndFn g_orig_c604_end;
+extern C604ClearFn g_orig_c604_clear;
+extern C604Sound2DNameFn g_orig_c604_sound_name;
+extern C604SubmixSetFn g_orig_c604_submix_set;
+extern C604SubmixClearFn g_orig_c604_submix_clear;
+bool c604_component_play(void* comp, const void* request, int32_t vol_at, int32_t sound_at); // pl play; true: skip
+bool c604_level_2d(const void* ctx, const void* owner, const void* sound, float volume, float pitch); // c99 2D; true: skip
+void detour_c604_stop(void* comp);
+void detour_c604_trigger(void* ctx, uint64_t name, bool flag);
+void detour_c604_end(void* ctx, bool flag, float fade);
+void detour_c604_clear(void* ctx, bool flag);
+void detour_c604_sound_name(void* ctx, uint64_t name, float volume, float pitch, float start, void* concurrency,
+                            void* owner);
+void detour_c604_submix_set(const void* ctx, void* submix, void* presets, float fade);
+void detour_c604_submix_clear(const void* ctx, void* submix, float fade);
+void c604_receive(void* pc, const WireString* s); // client: ChanOp::LevelAudio
+// Card 606 (horde_c606.cpp): BP_HordeZone Begin / End KillEmAll run on the host goes to the client as
+// ChanOp::HordeZone; the client's own calls are refused, so the host is the one source of the zone's state.
+extern bool g_c606_vm; // both sides, the zone functions are resolved: detour_c507_local_script calls c606_vm
+bool c606_vm(const void* context, const void* stack); // true: the client refuses this script function call
+void c606_receive(void* pc, const WireString* s);     // client: ChanOp::HordeZone
+void c606_join_replay(void* pc);                      // host: a begin row per active zone (sync registry "horde")
+void c606_step(void* engine);                         // both: resolve the zone class and its two events
+void c606_map_end(void* old_world);                   // both: totals; the class and functions unload with the map
+void c606_arm_map();                                  // both: the first map of a process
+void c604_totals(const char* when);               // c99_map_totals: per-map tally, then reset
+bool c582_level_script(const void* ctx);          // player_c99.cpp: the class name ends in "_Scripting_C"
+int32_t c136_depth();                             // fx_c136.cpp: captured calls open on this thread
+extern C29InteractFn g_c602_on_interaction;                  // ASTSwitch::OnInteraction (interface this)
 // --- Card 408: flak and plasma bug buildings' attack driven by the host (satchel_c408.cpp) ---
-extern bool g_c408_pe;                                   // a building is on the map: detour_process_event calls c408_pe
-bool c408_pe(void* object, const void* function, void* parms); // client: true refuses its own timer event or card 419 burst; host: notes it
+bool c408_pe(void* object, const void* function, void* parms, uint64_t name); // client: true refuses its own timer event or card 419 burst; host: notes it
 void c408_after_pe(const void* object, const void* function); // host: the event's 'Q' row after it returned
 void c408_step(void* engine);
 void c408_arm_map();
@@ -5103,12 +5464,12 @@ bool c408_building(const void* actor); // a building of the class (its TurnInPla
 bool c408_attack(const void* actor);   // a building of the class or its plasma projectile (effects stay local)
 bool c408_projectile(const void* actor); // its plasma projectile only
 // --- Card 158: the client's own held grenade (grenade_c158.cpp) ---
-extern bool g_c158_pe;                             // client: a grenade ability is noted: detour_process_event calls c158_after_pe
 void c158_note_ability(const void* ability);       // client, from c73_bind: record its OnAnimationStarted / OnDoAction / Success
 void c158_after_pe(void* object, const void* function);
 void c158_host_throw(const void* ability, const void* projectile, const Vec3& v); // host: a server copy throw's aim line
 void c158_reset_map();
 void c347_client_step(void* pc); // death.cpp c50_step, client: camera resend limit
+void c599_host_step(void* world); // death.cpp c50_step, host: each copy's camera manager at its view
 // --- Card 169: AbilityTask SpawnActor held visuals on the client's own ability (spawn_c169.cpp) ---
 // TargetData is by value (the caller's copy, by pointer; the callee destroys it); TSubclassOf by pointer.
 using C169BeginSpawningFn = bool (*)(void* task, void* ability, void* target_data, void* const* cls, void** spawned);
@@ -5145,10 +5506,14 @@ void c421_receive_want(void* pc, const WireString* s); // card 421: client asks 
 struct C95Fanout {
     int32_t to, sent;
     uint32_t ahead; // card 294, priority sends: the most frames queued ahead of the row on one connection
+    int32_t culled; // card 585: ponged PCs skipped because their connection has no channel for `relevant`
 };
 // priority (card 294): the row skips each connection's pace FIFO (chan_send_client_now); an op or row kind is always
 // sent this way or never.
-C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool priority = false);
+// relevant (card 585): when set, a PC whose connection has no actor channel for it is skipped (counted in culled). Use
+// it for rows the client applies to that actor only, such as a bark from a speaker the client cannot resolve or hear.
+C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool priority = false,
+                       const void* relevant = nullptr);
 int32_t c95_ponged_count(const void* world); // host: remote PCs past their first Pong this map
 bool c95_send_one(void* pc, ChanOp op, const char* text); // card 132: one PC
 // Card 519: a blob frame of n bytes to c95_send_all's set (paced, never priority).
@@ -5453,6 +5818,18 @@ void c114_ftext(const uint8_t* addr, char* out, size_t cap); // difficulty.cpp: 
 void c227_recheck(void* world, ULONGLONG now);
 void c495_recheck(void* world, ULONGLONG now); // card 495, host: held per-player pickup bases (weapons.cpp)
 void c495_map_end(); // card 495, at LoadMap enter: the per-player pickup table starts over
+extern C50SelfFn g_orig_c570_ammo_pickup; // card 570
+extern C50SelfFn g_orig_c570_item_pickup; // card 570
+extern C50OverlapFn g_orig_c570_overlapping; // card 570
+void detour_c570_ammo_pickup(void* pickup); // card 570: per-player ammo pickups
+void detour_c570_item_pickup(void* pickup); // card 570: per-player grenade pickups
+extern C50SelfFn g_orig_c570_armour_pickup; // card 570
+extern C50SelfFn g_orig_c570_health_pickup; // card 570
+extern C50SelfFn g_orig_c570_tactical_pickup; // card 570
+void detour_c570_armour_pickup(void* pickup); // card 570: per-player armour pickups
+void detour_c570_health_pickup(void* pickup); // card 570: per-player health pickups
+void detour_c570_tactical_pickup(void* pickup); // card 570: per-player tactical support pickups
+void* detour_c570_overlapping(const void* pickup); // card 570: the credited character during a per-player take
 // Card 303 step 1 (stall_c303.cpp): frame watchdog, possession rows for mech and turret, the mount row.
 void c303_tick();                                         // game thread, every ubw_post_tick
 // Card 330 step 1 (frame_c330.cpp, both sides, always on): per-step QueryPerformanceCounter time of ubw_post_tick,
@@ -5497,12 +5874,51 @@ void detour_c527_sprite_tick(void* comp, float delta, int32_t tick_type, void* t
 // Times one component tick for `kind` when its owner is an NPC (FX flag), else just calls `orig`.
 void c527_component_tick(int32_t kind, CmcTickFn orig, void* comp, float delta, int32_t tick_type,
                          void* tick_function);
-void c330_pe(uint64_t tsc); // detour_process_event: one call's mod time (time stamp counter ticks, the original excluded)
+void c330_pe(uint64_t tsc, uint32_t weight); // detour_process_event: one sampled call's mod time (time stamp counter ticks, the original excluded), standing for `weight` calls
+// Card 572 step 1 (UBWCOOP_C571=1 only): per-call body cost of the hot detours, one card572 row per card 330 window.
+extern bool g_c572_on;
+// Card 572 step 2 diag: a sampled body's parts (ticks): the copy walk, the enemy remap, the tally.
+struct C572Parts {
+    uint64_t copy;
+    uint64_t enemy;
+    uint64_t count;
+    uint64_t check;  // ticks of the step 5 full-walk check, taken out of the body time
+    uint32_t served; // 1 when the memo answered this sampled body (card 572 step 5 diag)
+};
+void c572_c99_sample(uint64_t tsc, const C572Parts& parts); // detour_c99_get_pc: one sampled host body (ticks, the original excluded)
+void c572_c99_call();               // detour_c99_get_pc: one host index 0 call that runs the body
+void c572_pe_split(uint64_t before, uint64_t after, uint64_t body); // detour_process_event, sampled call: ticks before and after the original
+// Card 572 step 4: same-frame memo of the host GetPlayerController index 0 answer (player_c99.cpp), game thread only.
+// UBWCOOP_C572_MEMO_OFF=1 turns it off (A/B). Counts are cumulative; the card572 row prints them.
+extern bool g_c572_memo_on;
+struct C572Memo {
+    uint64_t served;   // repeats in the same frame answered from the memo
+    uint64_t verified; // repeats that ran the body anyway (one in kC99MemoVerifyEvery)
+    uint64_t differ;   // of those, a body answer that differed from the stored one (the memo would have been wrong)
+    uint64_t walk_checked; // step 5: sampled copy walks also run in full (past an ownerless actor's level)
+    uint64_t walk_differ;  // of those, a full walk answer that differed from the cut one (the cut would have been wrong)
+    uint64_t forget_bumps; // step 7: host destroys of a roster controller or pawn (each starts a new memo frame)
+    uint64_t input_bumps[3]; // step 8: memo frames started by a pick input write, by C572Input source
+};
+extern C572Memo g_c572_memo;
+void c99_frame_tick(); // c42_step, game thread: a new frame for the card 572 memo
+// Card 572 step 7, host DestroyActor: drops the memo row keyed by `actor`, and every row when `actor` is a roster
+// player controller or pawn (a new memo frame). Game thread.
+void c572_memo_forget(const void* actor);
+// Card 572 step 8: the writers of a memo pick input (an enemy primary target, a player pawn's role, owner or
+// controller, a card 586 hold) each start a new memo frame through c572_input_bump. Game thread.
+enum C572Input : uint32_t { kC572InputPrimary = 0, kC572InputRole = 1, kC572InputHold = 2, kC572Inputs = 3 };
+void c572_input_bump(C572Input source);
+void detour_c572_pawn_possessed(void* pawn, void* controller); // APawn::PossessedBy, host bump on a change
+void detour_c572_pawn_unpossessed(void* pawn);                 // APawn::UnPossessed, host bump on a change
+extern PossessedByFn g_orig_c572_pawn_possessed;
+extern PawnFn g_orig_c572_pawn_unpossessed;
 void c303_press(const char* what);                        // client: a mount or leave request sent (static string)
 void c303_possession(const char* event, const void* pawn); // client: OnRep_Pawn, ClientRestart, Ack, SetPawn
 // Cards 297 / 298 (b8, diagnostic only, attributes.cpp): the client pilot's mech rows.
 void c297_possessed(const void* pawn);                       // client: the mount press's possession (any pawn)
 void c297_tick(void* engine);                                // client: arms swap on own mech enter/exit, 1 s check, tag rows
+void c558_remote_row(void* mech); // card 558 (UBWCOOP_C76_LOG): 1 s row per remote mech, its meshes and velocity
 void c297_shot(const void* mech);                            // client: one row per shot of its own piloted mech
 using SetMeshVisibilityFn = void (*)(void* character, void* mesh, bool visible); // ASTPlayerCharacter::SetMeshVisibility
 extern SetMeshVisibilityFn g_c297_set_mesh_visibility;
@@ -5875,6 +6291,8 @@ inline constexpr uint8_t kC136FlagLocationMask = 0x07;
 inline constexpr uint8_t kC136FlagStopWithParent = 0x20; // SpawnSoundAttached bStopWhenAttachedDestroyed
 inline constexpr uint8_t kC136FlagReset = 0x40;          // Activate bReset (played the same on the client)
 inline constexpr uint8_t kC136FlagPlayerSource = 0x80;   // card 304: a sound of the sender's own player pawn or its weapon
+// Card 551: on a cue row the same bit means the cue's instigator is a player pawn (never the receiving client's own:
+// make_filter does not send a client its own pawn's cues), so the replay skips its personal feedback.
 inline constexpr size_t kNiagaraAsset = 0x520; // UNiagaraComponent::Asset (GetFXSystemAsset 0x01722800)
 inline constexpr size_t kNiagaraPoolingMethod = 0x650; // UNiagaraComponent::PoolingMethod (ReleaseToPool: cmpb $0x2)
 uint32_t c136_fx_enter(const C136Call& c);
@@ -5907,7 +6325,7 @@ void c136_join_replay(void* pc);                   // host: a joining PC's first
 void c136_net_arm_map(const char* when, bool keep_state);           // per map, from c136_report
 // proj_c132.cpp: the original of an attached or emitter point (13 slots, as the detour forwards them).
 void* c136_pass_play(C136Point point, const uint64_t* slots);
-bool c132_decal_gore(const void* material);    // decal_c132.cpp: the card 132 relay owns this decal
+bool c132_decal_relayed(const void* material);    // decal_c132.cpp: the card 132 relay owns this decal
 void* c132_decal_manager(const void* context); // decal_c132.cpp: the game instance's USTDecalManager
 using C136CueContextFn = void (*)(void* asc, uint64_t tag, const void* context); // context handle by value: pointer
 using C136CueLocalFn = void (*)(void* target, uint64_t tag, const void* parameters);
@@ -5922,6 +6340,7 @@ extern C136ActivateFn g_orig_c136_activate;
 extern C136ComponentFn g_orig_c136_deactivate;
 extern C136ComponentFn g_orig_c136_deactivate_now;
 extern C136CueActorFn g_c136_cue_instigator;
+extern C136CueActorFn g_c551_cue_causer; // card 551 b380: FGameplayCueParameters::GetEffectCauser
 extern C136CueParamsFn g_c136_cue_params_ctor;
 extern C136CueParamsFn g_c136_cue_params_dtor;
 extern C136CueFromContextFn g_c136_cue_params_from_context;
@@ -6031,6 +6450,9 @@ extern GetEquippedAmmoCountFn g_c274_magazine_count;
 extern GetEquippedAmmoTypeFn g_c274_magazine_type;
 size_t c274_magazine_text(const void* pawn, char* out, size_t used, size_t cap, int32_t* rounds);
 int32_t c274_magazine_rounds(const void* pawn);
+void c570_magazine_note(const void* pawn); // card 570, client: own magazine at each change
+void c570_magazine_keep(const void* pawn, ULONGLONG now); // card 570, client: own magazine at a Reload
+void c570_magazine_step(const void* pawn, ULONGLONG now); // card 570, client: set it on the rejoined pawn
 void c274_magazine_apply(const void* pawn, const char* text, const char* what);
 // --- Card 075: co-op mechs ---------------------------------------------------------------------------------------
 // Pads and pods do not replicate (card 032): each machine runs the pod drop, and the pod's Blueprint spawns a
@@ -6202,6 +6624,9 @@ void c75_count_step(const void* world, ULONGLONG now);
 void c76_step(const void* world, ULONGLONG now);
 bool c79_install(uint8_t* base, const IMAGE_NT_HEADERS64* nt);
 void c79_step(const void* world, ULONGLONG now);
+void c591_leave_note(const void* mech, bool piloted); // card 591 diag, UBWCOOP_C79_LOG=1
+void c591_death_note(const void* mech, const char* when);
+void c591_step(const void* world, ULONGLONG now);
 int card019_sync_aggregators(void* asc, const void* set);
 extern uint32_t g_c24_local_lines;
 extern uint32_t g_c24_rpc_lines;
@@ -6242,7 +6667,8 @@ bool pl_once(uint64_t key, ULONGLONG now, ULONGLONG ms);    // true at most once
 void pl_count(PlCount c, uint32_t n = 1);                   // a session counter for the summary
 int32_t pl_player_slot(const void* actor);                  // slot of a PC pawn, or -1 (pointer compares)
 uint32_t pl_shot_seq();                                     // the last own shot seq (card 157 puts it on the wire)
-void pl_rtt(uint32_t ms);                                   // a card 026 ping round trip
+void pl_rtt(uint32_t ms, ULONGLONG frame_ms);               // a card 026 ping round trip; frame_ms: the last full frame (card 583)
+ULONGLONG c303_last_frame_ms();                             // card 583 part 2: the last full frame (ms), 0 before the second tick
 uint32_t pl_rtt_last();                                   // card 159: the last card 026 round trip (ms), 0 before one
 uint32_t pl_rtt_floor();                                 // card 159 reopen: lowest of the last 5 (card 340) round trips (ms), 0 before one
 void pl_remote_seen(const void* pawn);                      // client: card 028 drew this remote pawn

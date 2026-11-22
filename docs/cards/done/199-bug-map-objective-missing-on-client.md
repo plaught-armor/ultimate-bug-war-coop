@@ -1,6 +1,6 @@
 # Card 199: A bug-map level objective the host has exists on the client
 
-Status: queued 2026-11-12, from c195-r1 (first run with a ponged client on a bug map). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c195-r1 (first run with a ponged client on a bug map). Budget: three runs. Static first.
 
 ## Why
 

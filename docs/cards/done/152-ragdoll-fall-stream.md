@@ -1,6 +1,6 @@
 # Card 152: A falling corpse follows the host's ragdoll
 
-Status: queued 2026-11-08, from card 140 run 15 (c140o). The user allowed this gap for the next playtest as a known
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from card 140 run 15 (c140o). The user allowed this gap for the next playtest as a known
 issue, to be fixed after it. Budget: three runs. Visible world state.
 
 Read: card 140 Run 15, cards 137 and 146 (pose rows, freeze, the blocked game ragdoll restart), card 151 (packet

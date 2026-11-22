@@ -71,6 +71,12 @@
 //
 // Card 532: NpcTarget (host to client, blob) carries rows of (NPC NetGUID, target NetGUID << 2 | HasLineOfSight) as
 // two varints: each change of an NPC's primary target or its line of sight (target_c532.cpp).
+// Card 561: CamFade (host to one client, blob of kC561FadeBytes) is a camera fade a pawn graph called on the host for
+// that client's own pawn (skipped on the host's screen); the client runs it on its own camera manager (c561_receive).
+// Card 601: DropshipBoard (host to client, text) is the placed name of a transport dropship whose held OnInteraction
+// (card 595) the host just ran; the client runs its own copy's original so its level script outro chain plays.
+// Card 602: SwitchPress (host to client, text) is the placed name of a switch whose OnInteraction broadcast
+// OnPressSuccessful on the host; the client runs its own copy's OnInteraction so its level script's bound graph runs.
 // Card 151: Batch (host to client) carries rows of other ops in one frame, one ledger stamp (ue/chan.h).
 //
 // (kChanObjectiveHead is now ue::chan::kChanNamedHead.)
@@ -86,7 +92,7 @@ enum class ChanOp : wchar_t { None, Fire, Ping, Pong, Gib, Anim, Down, Use, Warp
                               AmmoMirror, ObjectiveActors, GrenadeItem, GrenadeSpawn, GrenadeExplode,
                               MechEnter, MechLeave, DoorOp, CollisionOp, WorldOp, TacSupport, TacCharge, Difficulty, TurretMount,
                               TurretLeave, TurretAim, HoldDone, Digest, DigestQuery, LedgerAck, Hit, Pose,
-                              Decal, Dropship, Fx, GibPart, Clock, Switch, Reload, Restore, WarpTo, HitClaim, Marker, BugForm, IntroStart, EndLevel, Round, ScriptWrite, IntroDone, Radio, TravelIds, HurtSound, MechFuel, Score, PeerWeapons, Batch, Stamina, CombatLevel, Bark, Role, GibPose, NpcTarget, Count };
+                              Decal, Dropship, Fx, GibPart, Clock, Switch, Reload, Restore, WarpTo, HitClaim, Marker, BugForm, IntroStart, EndLevel, Round, ScriptWrite, IntroDone, Radio, TravelIds, HurtSound, MechFuel, Score, PeerWeapons, Batch, Stamina, CombatLevel, Bark, Role, GibPose, NpcTarget, CamFade, DropshipBoard, SwitchPress, LevelAudio, HordeZone, Count };
 inline constexpr int32_t kChanArgsNamed = ue::chan::kChanArgsNamed; // card 049: a header, then name chars (see above)
 inline constexpr int32_t kChanArgsText = ue::chan::kChanArgsText;   // card 050: text chars only (see above)
 inline constexpr int32_t kChanArgsBlob = ue::chan::kChanArgsBlob;   // card 136 run 4: bytes in 15-bit units
@@ -102,7 +108,7 @@ inline constexpr int32_t kChanArgs[] = {-1, 1, 1, 1, 3, 3, 5, 1, 5, kChanArgsNam
                                        kChanArgsPacked, kChanArgsText, 1, kChanArgsText, kChanArgsText, kChanArgsText,
                                        kChanArgsText, kChanArgsText, 3, kChanArgsText, 1, 1, kChanArgsText, 1, kChanArgsText,
                                        kChanArgsText, kChanArgsText, kChanArgsBlob, kChanArgsText, kChanArgsText,
-                                       kChanArgsBatch, 1, 1, kChanArgsText, 1, kChanArgsBlob, kChanArgsBlob}; // card 532: NpcTarget; card 519: GibPose; card 490: Stamina carries the host setting (0 or 1); card 321: CombatLevel 0/1/2; card 451: Bark; card 502: Role
+                                       kChanArgsBatch, 1, 1, kChanArgsText, 1, kChanArgsBlob, kChanArgsBlob, kChanArgsBlob, kChanArgsText, kChanArgsText, kChanArgsText, kChanArgsText}; // card 606: HordeZone; card 604: LevelAudio; card 602: SwitchPress; card 601: DropshipBoard; card 561: CamFade; card 532: NpcTarget; card 519: GibPose; card 490: Stamina carries the host setting (0 or 1); card 321: CombatLevel 0/1/2; card 451: Bark; card 502: Role
 static_assert(sizeof(kChanArgs) / sizeof(kChanArgs[0]) == static_cast<size_t>(ChanOp::Count));
 static_assert(static_cast<size_t>(ChanOp::Count) <= ue::chan::kChanOpSlots);
 inline constexpr size_t kChanOpCount = static_cast<size_t>(ChanOp::Count);

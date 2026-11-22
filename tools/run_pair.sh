@@ -143,7 +143,8 @@ if pgrep -f "$LANE_PAT" >/dev/null; then
 fi
 
 if [[ ${DEPLOY:-0} == 1 ]]; then
-    n=$(llvm-readobj --coff-exports "$REPO/build/dwmapi.dll" | grep -c Name:)
+    # 84 dwmapi forwarders; ubwcoop_marker (card 578) is the mod's own export.
+    n=$(llvm-readobj --coff-exports "$REPO/build/dwmapi.dll" | grep Name: | grep -vc 'Name: ubwcoop_marker$')
     imps=$(llvm-readobj --coff-imports "$REPO/build/dwmapi.dll" | grep -E '^\s*Name:' | awk '{print $2}' | sort -u | tr '\n' ' ')
     if [[ $n != 84 || $imps != "KERNEL32.dll " ]]; then
         echo "ABORT: build/dwmapi.dll has $n exports, imports: $imps" >&2

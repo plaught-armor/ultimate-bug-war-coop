@@ -1,6 +1,6 @@
 # Card 058: Final rehearsal on the playtest build
 
-Status: sent 2026-11-04 (senior). Playtest gate: the last card before 8 pm.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04 (senior). Playtest gate: the last card before 8 pm.
 
 Read the card 055 Report (its three sessions and the `playtest.sh` options) and `docs/PLAYTEST.md`. Repo root: `/path/to/ultimate-bug-war-coop`.
 

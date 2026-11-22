@@ -1,6 +1,6 @@
 # 498: FED_C4M1 stadium Gigantic C_1 closes while a player is outside
 
-Status: open (written 2026-11-18, senior, from c492b250a). Batch; no run of its own.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-18, senior, from c492b250a). Batch; no run of its own.
 
 ## Finding
 

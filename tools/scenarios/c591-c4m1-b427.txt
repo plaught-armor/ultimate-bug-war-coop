@@ -1,0 +1,76 @@
+# Card 591 diag (FED_C4M1 mech, FAST=1, lane 2) on b427 dwmapi e84faf5a7b0234b0 + ubwperf 87ed2db57fe2d130 (= b426
+# with the card 591 rows under UBWCOOP_C79_LOG=1: mech+0xC20 at each LeaveMech, on change, every 100 ms after an
+# eject, at each DeathComplete call; every DestroyComponent with a mech outer, with its caller).
+# Trigger (c558b377a and c572b426a logs): both crashes came 60.0 s after the host's normal mech exit (145404258 ->
+# 145464269, 177468578 -> 177528598): the game's abandoned-mech timer calls LeaveMech with no controller
+# (SelfDestruct_Eject sound), and DeathComplete runs about 3.0 s later. The client never entered a mech in either run.
+# Steps: the host enters mech A, walks it off its pod, leaves (E held 2.5 s) and waits for the
+# eject plus 5 s. Then the same on mech B for a repeat.
+# Prediction: after "card591: host ... LeaveMech (no controller: eject)" with body +0xC20 non-null, a
+# "card591: ... DestroyComponent <body> ... IS its body +0xC20, caller <module>+0x..." row (or a "body changed" row
+# to 0 with no DestroyComponent row, which means a plain property write) comes before "DeathComplete before" with
+# body 0, mech DeathComplete calls 1. Then the host crashes at exe+0x521B7B4 as before (no guard in b427). If the
+# caller is dwmapi, the map names the mod path; if exe, the rva names the game path. If DeathComplete calls reads 2,
+# the first call nulled it (DeathComplete twice).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c591-c4m1-b427.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C79_LOG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c591b427a 600
+# Expected wall: about 4 min (2 min if the host crashes on mech A).
+voidsoft
+failsoft
+void unless host dll e84faf5a7b0234b0
+void unless client dll e84faf5a7b0234b0
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "card098: host spawn BP_BaseMech_C BP_BaseMech_C at " timeout=60
+# --- Mech A: enter, walk off the pod, leave normally.
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; own pawn from" since-mark timeout=5
+host clear 4000 kill
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+host mark
+& host key W 4000 timeout=10
+try host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 3" since-mark timeout=8
+host mark
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=10
+join host
+host mark
+host key E 2500 timeout=15
+host wait log "card591: host t=\d+ LeaveMech \(piloted\): " since-mark timeout=5
+host clear 4000 kill
+# --- Wait for the abandoned-mech eject (60 s after the leave), then DeathComplete (about 3 s) plus 5 s.
+host mark
+host wait log "card591: host t=\d+ LeaveMech \(no controller: eject\): " since-mark timeout=75
+host mark
+try host wait log "card591: host t=\d+ DeathComplete after: " since-mark timeout=8
+sleep 5
+# --- Mech B: the same, for a repeat (only reached if the host lived through mech A).
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; own pawn from" since-mark timeout=5
+host clear 4000 kill
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+sleep 1
+host mark
+host key E 2500 timeout=15
+host wait log "card591: host t=\d+ LeaveMech \(piloted\): " since-mark timeout=5
+host clear 4000 kill
+host mark
+host wait log "card591: host t=\d+ LeaveMech \(no controller: eject\): " since-mark timeout=75
+host mark
+try host wait log "card591: host t=\d+ DeathComplete after: " since-mark timeout=8
+sleep 5

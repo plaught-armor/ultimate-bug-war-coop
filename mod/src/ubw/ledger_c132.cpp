@@ -100,6 +100,11 @@ constexpr C132OpInfo kC132Ops[] = {
     {"Role", C132KeyKind::None, true}, // card 502 a client's run role (client, client2): its own PC's tag, not world state
     {"GibPose", C132KeyKind::None, true}, // card 519 gib part M, R, G rows in binary: events, like GibPart
     {"NpcTarget", C132KeyKind::None, true}, // card 532 NPC primary target rows in binary: many NPCs per frame, no one key
+    {"CamFade", C132KeyKind::None, true}, // card 561 a camera fade of the client's own pawn: an event on one PC's screen
+    {"DropshipBoard", C132KeyKind::None, true}, // card 601 the host ran a held transport boarding: an event, run once
+    {"SwitchPress", C132KeyKind::None, true}, // card 602 a switch press broadcast on the host: an event, run once
+    {"LevelAudio", C132KeyKind::None, true},  // card 604 a placed component play/stop or level-script music call: an event
+    {"HordeZone", C132KeyKind::None, true},   // card 606 a horde zone Begin / End KillEmAll the host ran: an event
 };
 static_assert(sizeof(kC132Ops) / sizeof(kC132Ops[0]) == kChanOpCount);
 

@@ -14,6 +14,7 @@ GameInstanceRefFn g_gi_unregister_ref = nullptr;    // UGameInstance::Unregister
 ConstBoolFn g_world_is_paused = nullptr;             // UWorld::IsPaused
 ThreadCheckFn g_is_in_game_thread = nullptr;         // ::IsInGameThread
 SetActorLocationFn g_set_actor_location = nullptr;
+SetActorLocationAndRotationFn g_set_actor_location_rotation = nullptr; // card 599
 SetHiddenInGameFn g_set_hidden_in_game = nullptr; // USceneComponent::SetHiddenInGame(bool, EVisibilityPropagation)
 SetHiddenInGameFn g_scene_set_visibility = nullptr; // USceneComponent::SetVisibility(bool, EVisibilityPropagation), card 159
 SplineLengthFn g_spline_length = nullptr;          // USplineComponent::GetSplineLength, card 159

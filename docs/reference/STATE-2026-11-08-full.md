@@ -1,3 +1,5 @@
+> Historical snapshot of 2026-11-08. Current state: `docs/STATE.md`.
+
 # UBW Co-op Mod — Shared Project State
 
 Single source of truth for anyone picking up a card. Read this first; it is kept current by the senior engineer.

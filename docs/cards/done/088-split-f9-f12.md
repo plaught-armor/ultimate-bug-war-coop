@@ -1,6 +1,6 @@
 # Card 088: Split F9-F12: lobby UI, objectives, interact, test runner, grenades
 
-Status: sent 2026-11-05 17:14 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 17:14 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
 
 Read:
 

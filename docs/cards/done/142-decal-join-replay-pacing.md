@@ -1,6 +1,6 @@
 # Card 142: The card 132 decal join replay saturates the rejoin link
 
-Status: queued 2026-11-08, from card 136 hb65 review item 6. Budget: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from card 136 hb65 review item 6. Budget: three runs.
 
 Read: card 136 "hb65 review" item 6, card 132 (decal join replay), docs/STATE.md "Card scope and investigation rules".
 

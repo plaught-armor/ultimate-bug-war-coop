@@ -283,6 +283,17 @@ bool object_present(const void* object) {
     return object_item(object) != nullptr;
 }
 
+// FUObjectItem::SerialNumber (+0x10): set on the first weak reference to the object, 0 until then.
+constexpr size_t kObjItemSerial = 0x10;
+
+int32_t object_serial(const void* object) {
+    const uint8_t* const item = object_item(object);
+    if (item == nullptr || (read_i32(item, kObjItemFlags) & kObjItemGone) != 0) {
+        return -1;
+    }
+    return read_i32(item, kObjItemSerial);
+}
+
 // EInternalObjectFlags::RootSet: UObjectBase::AddObject (0x01569C40) sets bit 30 of the item flags (+0x8) for
 // RF_MarkAsRootSet (btsl $0x1e at 0x01569C76), beside Native (bit 25) for RF_MarkAsNative.
 constexpr int32_t kObjItemRootSet = 0x40000000;

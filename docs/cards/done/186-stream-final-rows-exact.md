@@ -1,6 +1,6 @@
 # Card 186: The final row of a streamed corpse ends exact
 
-Status: queued 2026-11-11, from card 152 (c152-r3). Budget: three runs, shared build and run with card 187.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from card 152 (c152-r3). Budget: three runs, shared build and run with card 187.
 
 Read: `docs/cards/done/152-ragdoll-fall-stream.md` ("Run c152-r3" results, "Problems for the senior", "Senior
 review"), `mod/src/ubw/pose_c132.cpp` (`pose_stream_final`, `pose_freeze_step`, `pose_freeze_check`, `pose_part`).

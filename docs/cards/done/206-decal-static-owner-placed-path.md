@@ -1,6 +1,6 @@
 # Card 206: A decal on a static actor that has a guid (the Landscape) goes by the placed path, not '@guid'
 
-Status: queued 2026-11-12, split from card 142 (c142-r4). Budget: three runs. Static first. Batch with card 204
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 142 (c142-r4). Budget: three runs. Static first. Batch with card 204
 (same resolver, same file) in one build and one run.
 
 Read: `docs/cards/142-decal-join-replay-pacing.md` "Trace 3 (after c142-r4)", `mod/src/ubw/decal_c132.cpp`

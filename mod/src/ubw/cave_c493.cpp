@@ -5,7 +5,7 @@
 // with CallFunctionWithDelay(30.0, 'Cave in') @32214. On the host player 0 is the host pawn, so the blast tracked the
 // host only.
 //
-// Host: the first CallFunctionWithDelay(..., 'Cave in') arms the ProcessEvent gate (g_c493_pe). Each later `Cave in`
+// Host: the first CallFunctionWithDelay(..., 'Cave in') arms the ProcessEvent gate (kPeGate_c493_pe). Each later `Cave in`
 // the timer runs through ProcessEvent is run once more, after the original, for every other living player inside a
 // card 102 acting scope for that player's server copy (an index-0 GetPlayerController returns the copy, so
 // GetSTPlayerCharacter is that pawn). During a rerun:
@@ -30,7 +30,6 @@
 
 namespace ubw::hooks {
 
-bool g_c493_pe = false;
 C493DelayFn g_orig_c493_delay = nullptr;
 
 namespace {
@@ -122,7 +121,7 @@ void detour_c493_delay(void* self, float delay, void* fstring) {
     }
     if (cave && !g_c493.armed) {
         g_c493.armed = true;
-        g_c493_pe = true;
+        pe_gate_set(kPeGate_c493_pe, true);
         if (c493_row_ok()) {
             log::line("card493: host t=%llu armed: CallFunctionWithDelay %.1f s 'Cave in'",
                       static_cast<unsigned long long>(GetTickCount64()), static_cast<double>(delay));
@@ -170,7 +169,7 @@ void c493_arm_map() {
     const uint64_t cache = g_c493.name_cache;
     g_c493 = C493State{};
     g_c493.name_cache = cache;
-    g_c493_pe = g_gate_diag; // b251 probe: every `Cave in` ProcessEvent is seen, armed or not
+    pe_gate_set(kPeGate_c493_pe, g_gate_diag); // b251 probe: every `Cave in` ProcessEvent is seen, armed or not
     g_c493_rerun = false;
 }
 

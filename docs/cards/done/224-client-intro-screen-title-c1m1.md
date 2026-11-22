@@ -1,6 +1,6 @@
 # Card 224: Client press-to-start screen on FED_C1M1: title, prompt and Enter in the play path
 
-Status: queued 2026-11-12, remainder of card 135. Static trace first; one run after the senior accepts it.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, remainder of card 135. Static trace first; one run after the senior accepts it.
 
 ## Seen
 

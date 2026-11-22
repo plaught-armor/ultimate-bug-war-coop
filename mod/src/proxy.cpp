@@ -4,6 +4,15 @@
 
 #include <stdint.h>
 
+// Card 578: one proxy body for two names. The co-op build (dwmapi.dll) uses the defaults; ubwperf.dll sets
+// UBW_PROXY_INC to its winhttp export list and UBW_PROXY_REAL to L"\\winhttp.dll".
+#ifndef UBW_PROXY_INC
+#define UBW_PROXY_INC "proxy_exports.generated.inc"
+#endif
+#ifndef UBW_PROXY_REAL
+#define UBW_PROXY_REAL L"\\dwmapi.dll"
+#endif
+
 namespace {
 
 struct ExportRow {
@@ -13,7 +22,7 @@ struct ExportRow {
 
 constexpr ExportRow kExports[] = {
 #define UBW_EXPORT(idx, ord, name) {ord, name},
-#include "proxy_exports.generated.inc"
+#include UBW_PROXY_INC
 #undef UBW_EXPORT
 };
 constexpr size_t kExportCount = sizeof(kExports) / sizeof(kExports[0]);
@@ -21,17 +30,17 @@ constexpr size_t kExportCount = sizeof(kExports) / sizeof(kExports[0]);
 // The generated index column (used by the stubs' jump offsets) must equal the array position.
 #define UBW_EXPORT(idx, ord, name) \
     static_assert(idx < kExportCount && kExports[idx].ordinal == (ord), "export index/ordinal mismatch");
-#include "proxy_exports.generated.inc"
+#include UBW_PROXY_INC
 #undef UBW_EXPORT
 
 // Routed to when an export is missing from the real DLL. All dwmapi exports return HRESULT
-// or BOOL; E_NOTIMPL is non-zero (BOOL TRUE) which is wrong for BOOL, but every such entry
+// or BOOL (winhttp: BOOL or a handle, where 0x80004001 is a non-null bad value); E_NOTIMPL is non-zero (BOOL TRUE) which is wrong for BOOL, but every such entry
 // is logged at attach so a missing export is visible before it matters.
 HRESULT WINAPI missing_export() {
     return E_NOTIMPL;
 }
 
-constexpr wchar_t kRealName[] = L"\\dwmapi.dll";
+constexpr wchar_t kRealName[] = UBW_PROXY_REAL;
 
 } // namespace
 
@@ -44,7 +53,7 @@ extern "C" void* ubw_real[kExportCount] = {};
     extern "C" __attribute__((naked, used)) void ubw_stub_##ord() {                 \
         __asm__ volatile("jmpq *ubw_real+8*" #idx "(%rip)");                        \
     }
-#include "proxy_exports.generated.inc"
+#include UBW_PROXY_INC
 #undef UBW_EXPORT
 
 namespace ubw::proxy {
@@ -75,7 +84,7 @@ bool load_real_dll(HMODULE self) {
         log::line("FATAL proxy: LoadLibraryW(%ls) returned the proxy itself", path);
         return false;
     }
-    log::line("proxy: real dwmapi %ls at %p", path, static_cast<void*>(real));
+    log::line("proxy: real dll %ls at %p", path, static_cast<void*>(real));
 
     size_t missing = 0;
     for (size_t i = 0; i < kExportCount; ++i) {

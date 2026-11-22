@@ -1,6 +1,6 @@
 # Card 430: client nuke launcher misses its auto reload after a shot
 
-Status: open, diagnostic in b128 (`c430_reload_try`, attributes.cpp). Found 2026-11-16 in run `c423b127a`
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, diagnostic in b128 (`c430_reload_try`, attributes.cpp). Found 2026-11-16 in run `c423b127a`
 (b127 `74c1fdca882992af`, scenario `tools/scenarios/c423-gates-c2m1.txt`); it voided the run from line 190.
 
 ## What happened (tick ms, client log unless noted)

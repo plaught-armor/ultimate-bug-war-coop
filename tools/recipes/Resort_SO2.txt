@@ -1,0 +1,11 @@
+# Resort_SO2: hand-written in tools/gen_recipes.py LITERAL. Do not edit.
+try host warp client BP_SatchelItemPickup_C 100 live
+try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+try client key E
+try host warp client BP_SatchelItemPickup_C 100 live
+try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+try client key E
+try host warp client BP_SatchelItemPickup_C 100 live
+try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C
+try client key E
+host objective wait Resort_SO2 15

@@ -1,6 +1,6 @@
 # Card 455: The client never hears its own hurt sounds
 
-Status: open 2026-11-16 (senior audit, user rule "all effects sent"). Budget: three runs, batched with card 207.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open 2026-11-16 (senior audit, user rule "all effects sent"). Budget: three runs, batched with card 207.
 
 ## Fault
 

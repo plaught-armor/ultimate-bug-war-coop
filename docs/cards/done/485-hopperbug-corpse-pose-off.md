@@ -1,6 +1,6 @@
 # 485: HopperBug corpse pose stays 166-323 uu off on the client
 
-Status: Open.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Open.
 
 ## Seen
 

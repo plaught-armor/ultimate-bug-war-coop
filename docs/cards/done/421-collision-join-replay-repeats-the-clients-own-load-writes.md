@@ -1,6 +1,6 @@
 # Card 421: the collision join replay repeats the client's own load writes (95 kB per run, 99% no-ops)
 
-Status: open (carded 2026-11-16 by senior, efficiency audit, card 329 class). Accepted 2026-11-16 as design 2 (b119 `6a3adf36b52871d8`, run c421b119a). The premise in the title was false; see runs 1 and 2 below. Same class as card 420;
+Status: finished (accepted, see below). Status as first written: open (carded 2026-11-16 by senior, efficiency audit, card 329 class). Accepted 2026-11-16 as design 2 (b119 `6a3adf36b52871d8`, run c421b119a). The premise in the title was false; see runs 1 and 2 below. Same class as card 420;
 build them together.
 
 ## Evidence (run c408b115a, b115 `d552217f60765a2b`)

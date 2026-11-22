@@ -1,3 +1,5 @@
+> Historical record of 2026-11-05. The split is finished and `mod/src/hooks.cpp` is gone.
+
 # Split map: `mod/src/hooks.cpp` into `ue/` and `ubw/` (card 061)
 
 Map of 2026-11-05, taken after card 075. Nothing has moved yet. Each later move card moves one feature and changes no behaviour.

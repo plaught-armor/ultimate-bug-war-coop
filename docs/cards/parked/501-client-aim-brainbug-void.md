@@ -1,4 +1,5 @@
 # 501: Client aim at BP_AI_BrainBug_C voids (c245 line 724)
+Status 2026-11-22: parked, not in the queue. The status below is as first written.
 
 Status: open (written 2026-11-19, senior). Repeated on b258 (c245b258a) and b259 (c245b259a).
 

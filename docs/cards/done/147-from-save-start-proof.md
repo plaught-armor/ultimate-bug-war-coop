@@ -1,6 +1,6 @@
 # Card 147: A from-save host start reaches a late client, and the digest runs after a rejoin
 
-Status: queued 2026-11-08, split from card 137 run 4 (hb72) by the user. Budget: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, split from card 137 run 4 (hb72) by the user. Budget: three runs.
 
 Read: card 137 step 3 (journal reconcile after LoadFromSlot, its rules per journal), card 137 run 2 to 4 results,
 docs/STATE.md "Card scope and investigation rules".

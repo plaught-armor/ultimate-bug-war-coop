@@ -1,6 +1,6 @@
 # 484: gib parts not at rest after 30 s (card273)
 
-Status: Open.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Open.
 
 ## Seen
 

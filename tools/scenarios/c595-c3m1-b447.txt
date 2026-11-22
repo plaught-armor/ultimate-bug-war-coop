@@ -1,0 +1,92 @@
+# b447 proof run (cards 595, 596, 582 G3): FED_C3M1. Hand written, preamble from c372-c3m1.txt.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-83).
+# Order: 582 G3 (door, then turret), 596 (C_19 exit held, then the last player out), 595 (evac: the client presses
+# first, then the host). 595 goes last because its release ends the level.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c595-c3m1-b447.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c595b447a 900
+voidsoft
+void unless host dll 627843c2d92d10ea
+void unless client dll 627843c2d92d10ea
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- card 582 G3: the client fires into a door, then at the cannon turret (Building_Generic_Damaged when hit).
+# Host rows: card099 caller rows with a BP_KillableBuilding context; card455 attached sound MS_EMIT_Human_Building_*
+# on the client copy. Client row: played attached sound. A turret not spawned or dead fails the warp, so `try`.
+host mark
+client mark
+host warp client BP_Door_Sliding_Gigantic_C 700
+client look actor BP_Door_Sliding_Gigantic_C 0 bounds
+client key LeftMouseButton 1500
+client shot c595-582-door-client
+try host warp client BP_AI_CannonTurret_C 900
+try client look actor BP_AI_CannonTurret_C 0 bounds
+try client key LeftMouseButton 2500
+try client wait log "card455: client .*played attached sound" since-mark timeout=6
+client shot c595-582-turret-client
+host clear 4000 kill
+# --- card 596: both players into BP_PlayerPresence_C_19 (ungated, enabled from the start). The host leaves first:
+# the exit is held (1 player inside). The client leaves: the exit runs (last living player out). Out points: the
+# door floor from run c595b447b warps, away from C_1's landing pad (c595b447c: players on the pad, C_1 never
+# landed). Run c595b447b: -18540 -50000 is still inside C_19; the client stood at 627 uu from C_1
+# and its interactor had no target, the host at 400 uu had one).
+host mark
+host warp actor BP_PlayerPresence_C_19 300
+host warp client BP_PlayerPresence_C_19 400
+sleep 1
+& host goto actor BP_PlayerPresence_C_19 80 timeout=60
+& client goto actor BP_PlayerPresence_C_19 80 timeout=60
+try join
+host warp actor BP_PlayerPresence_C_19 40
+host warp client BP_PlayerPresence_C_19 60
+sleep 2
+host shot c595-596-inside-host
+host warp actor point -68457 -645 1266
+host wait log "card596: host t=\d+ exit held on BP_PlayerPresence_C_19: .*1 player inside" since-mark timeout=5
+sleep 1
+host warp client point -68300 -800 1266
+host wait log "card596: host t=\d+ exit on BP_PlayerPresence_C_19 by \S+ runs: last living player out" since-mark timeout=5
+host clear 4000 kill
+# --- card 595: the debug key event lands dropship C_1 and adds Satcom_SO3 (skips Satcom SO1/SO2). The client
+# presses Use first: client row "relayed, own original skipped", host row "held: 1 of 2". In the hold the client
+# log has no MUS_FlyingSequence, StartAction or card260 own-script EndLevel row (checked after the run). The host
+# presses: "released: 2 of 2", then Satcom_SO3/O1 complete and card260 EndLevel about 13 s later on both.
+host mark
+client mark
+host levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1
+host wait log "cmd: \d+ levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1 on \S+: run" since-mark timeout=5
+host wait log "collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship_C, LocalRole 3\) player-inside flag 0 -> 0" since-mark timeout=120
+host clear 4000 kill
+host warp actor BP_PlayerTransportDropship_C_1 400
+host warp client BP_PlayerTransportDropship_C_1 380
+client look actor BP_PlayerTransportDropship_C_1
+client key E
+client wait log "card595: client t=\d+ Use on \S+ relayed, own original skipped" since-mark timeout=5
+host wait log "card595: host t=\d+ evac \S+ held: 1 of 2 aboard" since-mark timeout=5
+sleep 3
+client shot c595-held-client
+host shot c595-held-host
+host mark
+host look actor BP_PlayerTransportDropship_C_1
+host key E
+host wait log "card595: host t=\d+ evac \S+ released: 2 of 2 living players asked" since-mark timeout=5
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: host t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" since-mark timeout=15
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: client t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" timeout=30
+host shot c595-released-host
+client shot c595-released-client
+host wait log "card260: host EndLevel, sent to" since-mark timeout=40
+client wait log "card260: client EndLevel \(relay\)" timeout=30
+sleep 3
+client shot c595-endlevel-client
+host shot c595-endlevel-host

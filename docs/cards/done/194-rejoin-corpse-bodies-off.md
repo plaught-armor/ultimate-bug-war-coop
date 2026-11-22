@@ -1,6 +1,6 @@
 # Card 194: A corpse on a rejoining client lies where the host has it
 
-Status: queued 2026-11-12, from c177-r1c. Budget: three runs. Static first. Related: card 191 (bones off the
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c177-r1c. Budget: three runs. Static first. Related: card 191 (bones off the
 bodies on a rejoin copy), card 187 (done).
 
 ## Why

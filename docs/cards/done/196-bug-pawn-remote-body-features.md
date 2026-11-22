@@ -1,6 +1,6 @@
 # Card 196: Remote-body features work on the bug-side player pawn
 
-Status: queued 2026-11-12, from card 192. Budget: three runs. Static first. After card 195.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from card 192. Budget: three runs. Static first. After card 195.
 
 ## Why
 

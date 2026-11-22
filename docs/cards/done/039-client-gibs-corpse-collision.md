@@ -1,6 +1,6 @@
 # Card 039: Gibs and corpse collision on the client
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first ("Mod code rules", "Runtime facts", the milestone-3 known issue), then card 038's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

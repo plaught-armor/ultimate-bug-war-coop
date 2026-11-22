@@ -1,0 +1,81 @@
+# Card 556 (resupply rack pickups, Level 1, early end) on b440 dwmapi fa1b276bf1e392ba + ubwperf 0b01d4b16ba8f98d,
+# FED_C2M1, FAST, lane 2, one run c556b440c.
+# Steps: the c504 start block; bugs cleared by code; host warped to the playtest rack spot (173992 23778 7757), client
+# 300 uu south of the flare point; `resupplylevel 1` on both sides; the host calls Resupply (slot 0 charge, key Four);
+# on the BP_ResupplyRack_Level1_C spawn row the client walks to the medkit and the MoritaSmall ammo and presses E at
+# each (the playtest: the other player took 5 of rack 251379's pickups before its early end); then `host kill actor
+# BP_ResupplyRack_Level1_C` (InstaKillTarget, about 3 s after the spawn, the playtest's 3.6 s end). On the host destroy
+# row, bugs cleared again, host warped 450 uu west and client 450 uu east of the rack, both look at the destroy point
+# 100 uu down; shots right after the destroy, after the card556 "2 s after" rows, and 3 s later.
+# Prediction (card 556, static end-path table): the kill runs the parent HealthComp death, then the child Destroy,
+# which calls SetPhysicsStateOverride(1) on each still-valid RackedActors entry, then SetLifeSpan(0.1). Sleep
+# hypothesis: the remaining pickups were resting on the rack shelves, so at the host destroy row they are
+# `simulating 1` with awake 0, and at the "2 s after" row they are still at shelf height (z within 10 uu of spawn), with
+# the host `rows` count unchanged (no 'M' or rest row), floating on both screens. If instead they fall to the floor
+# under the rack (rows above 1, client within 100 uu at 2 s), the early end alone does not float them, and the next
+# step is the playtest client copies of 251256 and 251201.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c2m1-b440c.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b440c 900
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll fa1b276bf1e392ba
+void unless client dll fa1b276bf1e392ba
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+failsoft
+host warp actor point 173992 23778 7757
+host warp client point 174392 23478 7860
+client wait near 174392 23478 7860 300 timeout=10
+host clear 3000 kill
+host resupplylevel 1
+client resupplylevel 1
+host look point 174392 23778 7700
+host shot c556-b440c-host-before
+# --- the host calls Resupply (charge, then key Four: the flare throw runs from the key alone, c559b371b)
+host mark
+client mark
+host charge 0 20000 1
+host key Four
+host wait log "card104: host t=\d+ host own DoAction, key Flare_Throw" since-mark timeout=5
+host wait log "card098: host spawn BP_ResupplyRack_Level1_C " since-mark timeout=40
+# --- the client takes two pickups by Use (the playtest's other-player takes)
+client pickup BP_HealthPickup_Medium_C 1000
+client key E
+host wait log "card050: host AADPickupBase::DisablePickup on BP_HealthPickup_Medium_C" since-mark timeout=5
+client pickup BP_AmmoPickup_MoritaSmall_C 1000
+client key E
+host wait log "card050: host AADPickupBase::DisablePickup on BP_AmmoPickup_MoritaSmall_C" since-mark timeout=5
+# --- early end: the code kill (InstaKillTarget, the same chain as Lifetime and CheckBelow)
+host kill actor BP_ResupplyRack_Level1_C
+client wait log "card556: client t=\d+ resupply rack \S+ destroyed at" since-mark timeout=20
+host wait log "card556: host t=\d+ resupply rack \S+ destroyed at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+host clear 3000 kill
+host warp actor point {g1-450} {g2} {g3+60}
+host warp client point {g1+450} {g2} {g3+60}
+client wait near {g1+450} {g2} {g3+60} 300 timeout=5
+host look point {g1} {g2} {g3-100}
+client look point {g1} {g2} {g3-100}
+host shot c556-b440c-host-dest
+client shot c556-b440c-client-dest
+host wait log "card556: host t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+client wait log "card556: client t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+host shot c556-b440c-host-2s
+client shot c556-b440c-client-2s
+sleep 3
+host shot c556-b440c-host-5s
+client shot c556-b440c-client-5s
+host quit
+client quit

@@ -1,6 +1,6 @@
 # Card 050: The client's weapons follow its server copy
 
-Status: sent 2026-11-04. Playtest blocker; the user wants a playtest tonight.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04. Playtest blocker; the user wants a playtest tonight.
 
 Read `docs/STATE.md`, the card 021 Report (Steps 1 and 2), the card 024 and 026 channel notes, and the card 048 Report (inventory after a checkpoint). Repo root: `/path/to/ultimate-bug-war-coop`.
 

@@ -1,6 +1,6 @@
 # Card 481: C4M2 MoveableRoad differs between host and client in the digest
 
-Opened 2026-11-17 18:21 from runs c245b194b, c245b194c and c245b194d (b194 `a119f90574be9a2d`, FED_C4M2). This is a sync gap (full-world-sync rule), not a crash.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-17 18:21 from runs c245b194b, c245b194c and c245b194d (b194 `a119f90574be9a2d`, FED_C4M2). This is a sync gap (full-world-sync rule), not a crash.
 
 ## Seen
 - `BP_DestroyableActor_C4M2_MoveableRoad_C` mismatches: 2 to 3 rounds in 9 in c245b194d, 15 in c245b194b, 13 in c245b194c.

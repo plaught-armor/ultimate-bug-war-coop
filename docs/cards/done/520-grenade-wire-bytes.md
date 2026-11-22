@@ -1,6 +1,6 @@
 # 520: GrenadeSpawn and GrenadeExplode wire bytes (efficiency)
 
-Opened 2026-11-19 by senior from the c263d (b290 ae05cba6d5406b5b, FED_C3M2, 424 s) host log, per the
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by senior from the c263d (b290 ae05cba6d5406b5b, FED_C3M2, 424 s) host log, per the
 smaller-packets rule.
 
 ## Finding (c263d host netbudget windows and ledger map end)

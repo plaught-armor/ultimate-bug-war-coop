@@ -1,0 +1,48 @@
+# Card 553 proof (b420 5ca4dcf0b1251f1e = b419 + c553_arm equips the weapon when the native PickupWeapon already added
+# it): FED_C1M1 FAST, lane 2. Preamble and Morita takes from c570-c1m1-pickups.txt.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-70).
+# Predictions: on the host's take, "card495 ... held ... taken by 1 of 2" and in the same ms "card553: host t=...
+# held take of BP_WeaponPickup_MoritaMk1_C_0 armed its taker ... (host-own): already held, equipped (index N) = 1"
+# (no WARN). The host shot right after logs card494 "equipped BP_Weapon_MoritaMk1_C", before the client's take.
+# The client's take then logs "released ... taken by 2 of 2", and its card553 row is the same form (server-copy).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c553-c1m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c553b420a 600
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 5ca4dcf0b1251f1e
+void unless client dll 5ca4dcf0b1251f1e
+host wait state map=FED_C1M1 timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c373-hud-start
+host clear 4000 kill
+# FED_C1M1 starts unarmed (c551b378a made no holes): each player takes the range Morita by their own Use press
+# (cards 495, 559), host first, then the client; b11-soak-c1m1.txt recipe, card495 rows from soak5m1b367b.
+try host goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+try host wait goto timeout=45
+host look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+host key E
+host wait log "card495: host t=\d+ held Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 \(take\): taken by 1 of 2" since-mark timeout=8
+host wait log "card553: host t=\d+ held take of BP_WeaponPickup_MoritaMk1_C_0 armed its taker \S+ \(host-own\): (already held, equipped \(index \d+\)|AddWeapon\(\S+, equip 1\)) = 1" since-mark timeout=5
+host shot 553-host-armed
+host wait log "card494: host t=\d+ \S+553-host-armed: equipped BP_Weapon_MoritaMk1_C" since-mark timeout=5
+client shot 553-client-before-take
+try client goto actor BP_WeaponPickup_MoritaMk1_C_0 100
+try client wait goto timeout=45
+client look actor BP_WeaponPickup_MoritaMk1_C_0 0 bounds focus=BP_WeaponPickup_MoritaMk1_C_0
+host mark
+client key E
+host wait log "card495: host t=\d+ released Pickup_Implementation on BP_WeaponPickup_MoritaMk1_C_0 by take: taken by 2 of 2" since-mark timeout=8
+host shot 553-host-after-release
+client shot 553-client-after-release

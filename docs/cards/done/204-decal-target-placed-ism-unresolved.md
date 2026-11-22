@@ -1,6 +1,6 @@
 # Card 204: A decal on a placed instanced mesh finds its target on the client
 
-Status: queued 2026-11-12, split from card 142 (its trace, item 4). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 142 (its trace, item 4). Budget: three runs. Static first.
 
 Read: `docs/cards/done/142-decal-join-replay-pacing.md` ("Trace", item 4), `mod/src/ubw/decal_c132.cpp`
 (`host_target`, `client_target`, the T row).

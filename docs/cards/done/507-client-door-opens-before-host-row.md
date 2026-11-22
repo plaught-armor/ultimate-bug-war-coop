@@ -1,6 +1,6 @@
 # 507: A client's own level script opens a door the host has not opened yet
 
-Opened 2026-11-19 by the senior, from the junior's c502c1b280a finding (b280 c014bee01ec0e705, FED_C1M1, three games), checked in door_c161.cpp and door_c95.cpp.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from the junior's c502c1b280a finding (b280 c014bee01ec0e705, FED_C1M1, three games), checked in door_c161.cpp and door_c95.cpp.
 
 ## Finding
 

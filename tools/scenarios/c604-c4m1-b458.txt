@@ -1,0 +1,540 @@
+# b457 combined run (cards 603, 604, 573): FED_C4M1 through the stadium end (SetWaves C_2 encounter end, Stadium_O1).
+# Built from tools/scenarios/c244-c4m1.txt (gen_c244.py output): the same preamble and routine rounds, each round
+# guarded by Stadium_O1 completion instead of Metro_O1, then stadium-end waits and sparkler shots, then quit (the
+# card604 and card099 totals print at quit).
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons).
+# Predictions: docs/cards/603-client-ragdoll-root-drift-on-hit.md "Predictions (b457 C4M1 run)",
+# docs/cards/604-host-only-script-chains-audio-music.md "b457 run predictions",
+# docs/cards/573-perf-mod-cpu-gpu-utilization.md "b457: Niagara rank 2 ... Predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c604-c4m1-b458.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C99_LOG=1" tools/run_pair.sh c604b458a 1500
+# Expected wall: about 10 min (c244b443a reached Stadium_O1 about 460 s after launch).
+voidsoft
+void unless host dll 9dca0cc470eaa4c5
+void unless client dll 9dca0cc470eaa4c5
+host wait state map=FED_C4M1 timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C4M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c604-hud-start
+host clear 4000 kill
+# === digest round: map start
+# --- digest round: map start
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 00
+# --- round 00: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 01
+# --- round 01: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 02
+# --- round 02: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 03
+# --- round 03: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 04
+# --- round 04: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 05
+# --- round 05: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 06
+# --- round 06: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 07
+# --- round 07: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 08
+# --- round 08: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 09
+# --- round 09: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === digest round: after round 09
+# --- digest round: after round 09
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# --- death and respawn: client down, host down (all down), RESTART CHECKPOINT (card 371 path)
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client mark
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host mark
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host down client
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host down host
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C \(host-own, slot 0\) -> Dead \(all down: nobody Up\)" since-mark timeout=10
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host wait log "card044: host death screen: 5 widgets; .*LoadLastSave click function" since-mark timeout=20
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client wait log "card045: client death screen: 3 buttons disabled" since-mark timeout=20
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host shot c244-death-host
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client shot c244-death-client
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host mark
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client mark
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host ui click BndEvt__WB_PlayerDeathScreen_LoadLastSave
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host wait log "card045: host t=\d+ respawn in place \(new pawn" since-mark timeout=30
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client wait log "card045: client t=\d+ reconnected" since-mark timeout=60
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client wait log "card294: client t=\d+ restart done" since-mark timeout=60
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host wait state pawn=host-own timeout=60
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client wait state pawn=client-own timeout=60
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 host shot c244-respawn-host
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 client shot c244-respawn-client
+# === digest round: after respawn
+# --- digest round: after respawn
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 10
+# --- round 10: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 11
+# --- round 11: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 12
+# --- round 12: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 13
+# --- round 13: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 14
+# --- round 14: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 15
+# --- round 15: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 16
+# --- round 16: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 17
+# --- round 17: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 18
+# --- round 18: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 19
+# --- round 19: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === digest round: after round 19
+# --- digest round: after round 19
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 20
+# --- round 20: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 21
+# --- round 21: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 22
+# --- round 22: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 23
+# --- round 23: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 24
+# --- round 24: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 25
+# --- round 25: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 26
+# --- round 26: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 27
+# --- round 27: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 28
+# --- round 28: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 29
+# --- round 29: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === digest round: after round 29
+# --- digest round: after round 29
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 30
+# --- round 30: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 31
+# --- round 31: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 32
+# --- round 32: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 33
+# --- round 33: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 34
+# --- round 34: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 35
+# --- round 35: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 36
+# --- round 36: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 37
+# --- round 37: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 38
+# --- round 38: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 39
+# --- round 39: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === digest round: after round 39
+# --- digest round: after round 39
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 40
+# --- round 40: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 41
+# --- round 41: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 42
+# --- round 42: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 43
+# --- round 43: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 44
+# --- round 44: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 45
+# --- round 45: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 46
+# --- round 46: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 47
+# --- round 47: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 48
+# --- round 48: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 49
+# --- round 49: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === digest round: after round 49
+# --- digest round: after round 49
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+# === round 50
+# --- round 50: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 51
+# --- round 51: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 52
+# --- round 52: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 53
+# --- round 53: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 54
+# --- round 54: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 55
+# --- round 55: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 56
+# --- round 56: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 57
+# --- round 57: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 58
+# --- round 58: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === round 59
+# --- round 59: the live current step
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 try host objective now
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" when host last "(cmd: \d+ objective now: \d+ row\(s\) under \S+, current \w+|card049: host t=\d+ Complete\w*Objective|card097: host t=\d+ native CompleteObjective)" "objective now" try host objective next
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" host clear 4000 kill max-left=99
+unless host log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current none;|-> failed" try host wait log "card049: host t=\d+ (Add|Complete)" new timeout=15
+# === stadium end: card 604 rows, then the sparkler shots
+host wait log "(card049: host t=\d+ CompleteObjective\(Stadium_O1\)|card097: host t=\d+ native CompleteObjective (\w+/)?Stadium_O1 )" timeout=60
+try host wait log "card604: host t=\d+ component stop .* sent to 1 of 1 clients" timeout=20
+try client wait log "card604: client t=\d+ host row component stop: " timeout=20
+sleep 3
+host clear 4000 kill max-left=99
+host warp client NiagaraActor_17 1200
+host warp actor NiagaraActor_17 1300
+sleep 2
+client look actor NiagaraActor_17 0 bounds
+host look actor NiagaraActor_17 0 bounds
+client shot c604-sparklers-client
+host shot c604-sparklers-host
+sleep 12
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30
+client quit
+host quit

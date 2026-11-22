@@ -1,6 +1,6 @@
 # Card 444: Client AmmoMirror sends the whole ammo map as text 4 times a second while firing
 
-Status: queued 2026-11-16 15:52 (senior, efficiency audit, card 329 class; sibling of card 441). After the playtest.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-16 15:52 (senior, efficiency audit, card 329 class; sibling of card 441). After the playtest.
 
 ## Numbers (run c423b141a, client `netbudget` rows)
 AmmoMirror is the client's largest upload op: 5818 B of the run's listed client sends (Round 1518, Ping 912,

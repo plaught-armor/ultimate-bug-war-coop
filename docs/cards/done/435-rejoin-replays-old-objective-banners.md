@@ -1,6 +1,6 @@
 # Card 435: a rejoining client replays every objective banner of the mission
 
-Status: fix written (`c435_join_popups_patch.py`, senior scratchpad), handed to the junior for b133. Proof owed.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix written (`c435_join_popups_patch.py`, senior scratchpad), handed to the junior for b133. Proof owed.
 
 ## Seen
 

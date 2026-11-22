@@ -1,6 +1,6 @@
 # Finished cards
 
-Moved out of `docs/STATE.md` on 2026-11-04 so that STATE carries only open cards. One row per finished card, with the outcome. The full spec, Report and Senior review are in `docs/cards/NNN-*.md`. The senior appends a row here when a card is accepted.
+Moved out of `docs/STATE.md` on 2026-11-04 so that STATE carries only open cards. One row per finished card, with the outcome. The full spec, Report and Senior review are in `docs/cards/done/NNN-*.md`. The senior appends a row here when a card is accepted.
 
 | # | Title | Status |
 |---|---|---|
@@ -505,10 +505,115 @@ Moved out of `docs/STATE.md` on 2026-11-04 so that STATE carries only open cards
 | 498 | C4M1 stadium Gigantic C_1 not held | closed 2026-11-18 21:03: group half-plane hold, c492b253a |
 | 497 | Client research objectives complete early | closed 2026-11-18 21:03: c497b253a 0 Research_ mismatches, scores equal |
 | 153 | Host external address | closed 2026-11-18 21:03: c153b253c map + delete HTTP 200, exit 1.19 s |
-| 499 | Client completes BrainBug_O1 early | open 2026-11-19: c245b257a, b253 card 497 order regression; fix = host completion set filters client native completes |
+| 499 | Client completes BrainBug_O1 early | closed 2026-11-19 c245b262a/c247b262a: host completion set mirrored; Research_SO2/Marker2 blocked live, BrainBug_O1 82 ms after host |
 | 209 | Player rows third player | closed 2026-11-19 06:41: c209b257a Down and Warp by GUID on 3 instances; BugForm split to 500 |
 | 500 | BugForm third player | open 2026-11-19 06:41: split from 209 |
 | 500 | BugForm third player | dropped 2026-11-19 06:48: user does not care about bug mode |
 | 501 | Client aim at BrainBug voids | open 2026-11-19 06:59: c245 line 724 on b258 and b259 |
 | 502 | Four players | open 2026-11-19: user wants 4 player; proofs use three instances (user); MaxPlayers check at listen |
-| 503 | C5M2 Array_SO4 waves never end | open 2026-11-19: SetWaves C_1 encounter never ends in any c247 run; diag first |
+| 503 | C5M2 Array_SO4 waves never end | closed 2026-11-19 c247b262a: test radius, a stray wave NPC outside 4000 uu; SO4, O1 and doors done on both |
+| 504 | Test tools check themselves (warp verifies its landing, short proof scenarios, tool faults never void) | open 2026-11-19 09:35: user call, rides the 263/252 + 502 bug build |
+| 501 | Client aim at BrainBug voids | parked 2026-11-19 09:35: test-tool fault, 4 runs on line 761; superseded by 504 |
+| 509 | Downed leaver Up frame: guid stored at the C43Entry transition | closed 2026-11-19 b283 c502c1b283b: guid 0x270 Up sent to 1 of 1, client2 Downed -> Up 13 ms, 0 mismatches; 2-player line static |
+| 526 | Client Niagara component growth (quiet attached spawns never freed) | closed 2026-11-19 b313 c263L313: client 2079 against host 2393 at the end (was 6807 against 2351), Morita MuzzleFlash4 peak 40 (was 4704), digest 0 |
+| 528 | Client re-sees the old map's corpses as arrivals after a map change | open 2026-11-19 from c263L313: 94 arrivals 800 ms after the arm, 62 WARN; diagnostic row in source; c263L315: reproduced, 72 corpses in the client's new world 161 ms before the host's map change |
+| 523 | Client death stream start freeze | closed 2026-11-19 lane 2: 149 own falls, start offset mean 48.2 uu, hand-over mean 28.9 uu, 0 teleported; playtest check: a corpse that freezes then jumps at death |
+| 524 | Client bug position lag | closed 2026-11-19 lane 2: Hopper own-fall start offsets -12.0 to +52.3 uu (b309 up to 2665), digest 31 rounds 0 mismatches; playtest check: bugs visibly behind the host's |
+| 529 | FedScore change in the digest tick went out after B | closed 2026-11-19 b315 c263L315: T sent ahead of B in c132_send_begin, rounds 1-8 all 0 mismatches |
+| 515 | Satchel plant pressed E while the client was still falling after the site warp (harness) | closed 2026-11-20 c244b322a: 4 of 4 satchel steps complete on try 1 (Park_SO1_B included), 0 `no walking row` notes |
+| 586 | Seated player's down or all-down resolves the seat, not the trooper | closed 2026-11-21 lane 2 b419 c586b419a: missile and seat downs end the hold, client Downed 28/14 ms after host, revive + walk both, 0 host death, 0 WARN card586; HandleDeathEvent path and imp72 open in the card; b419 on lane 1 |
+| 553 | C1M1 pickup held until every player takes it; the taker was left unarmed | closed 2026-11-21 lane 2 b420 c553b420a: the host taker had the Morita equipped (already held, index 1), card494 shows BP_Weapon_MoritaMk1_C before the client's take, 0 WARN card553 |
+| 585 | Client bark dropped, speaker not resolved | closed 2026-11-21 lane 2 b421 c587b421a: host bark rows "culled 0" x13, 0 client WARN card451 |
+| 581 | Digest WARNs while the host rides the Door Gunner seat | closed 2026-11-21 lane 2 b422 c587b422b: client presence reject for attached player bodies; 0 card245 gate passes in either ride, map-end 4198 skip calls on 2 actors, 6877 rejects (about 100 per second of ride, accepted) |
+| 587 | Client fire while steering the guided missile dropped on the host | closed 2026-11-21 lane 2 b422 c587b422b: not reproduced in 3 client throws (fresh pickup each), 0 WARN card181/card157, 0 card024 pawn-gone |
+| 559 | Client's supply drop weapon taken back by the host | closed 2026-11-21 lane 2 b422 c587b422b: placed EPulse44, 60 s walk-over hold took nothing (weapons 1), Use took it (host relay match, weapons 2 after 60 s); class-and-point fallback not reachable in play |
+| 578 | Performance cards moved into ubwperf.dll | closed 2026-11-21 lane 2 b425 dwmapi 46eab80496a61ddd + ubwperf 708e86055e437468, c578b425a co-op (perf rows match c567b424a by kind, 0 mismatches) and c578sp2 single player via winhttp.dll (hooks installed standalone, card536 97.5% hit); lane 1 has b425 |
+| 252 | Client frame time in heavy fights (FED_C2M1 plasma area and wave hold) | Closed (senior 2026-11-21) |
+| 263 | Client frame collapse in the FED_C3M2 PowerPlant fight, and new WARN classes | Closed (senior 2026-11-21) |
+| 505 | Client corpses frozen 5 to 50 uu off their bodies are left drawn off the host's place | Closed 2026-11-19 (senior, c502b280a on b280 c014bee01ec0e705) |
+| 506 | A dead AA turret that comes back into net range is hidden for 9 s on the client, then dies again | Closed 2026-11-19 (senior) |
+| 507 | A client's own level script opens a door the host has not opened yet | Closed 2026-11-19 |
+| 508 | A player who leaves while downed stays "Downed" in the other clients' life table | Closed 2026-11-19 |
+| 510 | The focus scan misses actors whose bounds sit off the body | Closed. Board try 1, client cmd 25: `aim scan: fallback origin hit, root CapsuleComponent`, `hits 1 of 27 ... by |
+| 511 | A marker-off step under a marked container is not doable | Closed. `LOS_O03_SO02a: doable (other), current`, b the same; c was `already complete`, because its pickup was taken |
+| 512 | use step-in gates on the eye distance, not the bounds face | finished, see "Result" in the card |
+| 513 | cut idle time in objective runs (measured on c504k1) | Closed (senior 2026-11-21) |
+| 514 | stay stands in the presence volume that sets a step's script flag | Closed (senior 2026-11-21) |
+| 516 | b287 home go stalls guide-marker steps (c514a Bridge_Marker, 311 s) | Closed (senior 2026-11-21) |
+| 517 | digest build skips STNavModifierVolume (perf) | Closed (senior 2026-11-21) |
+| 518 | Fx wire bytes, halve the card 136 rows (efficiency) | Closed (senior 2026-11-21) |
+| 519 | GibPart pose rows in binary (efficiency) | Closed (senior 2026-11-21) |
+| 520 | GrenadeSpawn and GrenadeExplode wire bytes (efficiency) | finished, see "Result c263f (b296) and close (2026-11-19)" in the card |
+| 521 | Corpse pose stream bytes (efficiency) | Closed (senior 2026-11-21) |
+| 522 | Tracking fire command for fire tests | Closed (2026-11-19) |
+| 525 | Corpses that fall through the floor stream as long falls | Closed 2026-11-21 (junior, from c591b428a) |
+| 527 | Bug load performance, scoping (separate, co-op compatible mod) | finished, see "Whole-frame profile (user: "get to work" on the main thread, 2026-11-20)" in the card |
+| 530 | HopperBug flap sounds keyed to an actor the client does not have | Closed (senior 2026-11-21) |
+| 531 | perf mod, cache the save component behind USTSaveComponent::GetSaveId | c263L350 (b345): pass |
+| 532 | the client runs every NPC's targeting itself, at full cost | Closed (senior 2026-11-21) |
+| 533 | guard the NPC anim update against a destroyed floor component | Closed 2026-11-21 (junior, backlog rule) |
+| 534 | world collision query cost by caller (diag, card 527 family) | Status: done (c263L349, c263L350). Build b344 (build-b5/dwmapi-b344-dec3ac46fb77d562.dll = b342 + this card); b343 had the first cut, superseded because its report could name a class unloaded during the window. Diag stays in, gated by UBWCOOP_C132_FX=1. |
+| 535 | perf mod, client NavWalking NPC proxies skip the FindFloor sweep | c263L353 (b348, v2): pass |
+| 536 | perf mod, per-thread cache behind AActor::FindComponentByClass | c263L353 (b348): pass, except the detour cost |
+| 537 | perf mod, validate the FindComponentByClass cache by component-set generation | finished, see "Result (c263L358, b352, 4096 sets)" in the card |
+| 538 | perf mod, DoesTargetMeetConditions repeat counts (diag) | finished, see "Decision rule" in the card |
+| 539 | perf mod, client NPC proxy capsule sweep counts (diag) | Result (c263L359, b353): skip lever dropped |
+| 540 | performance mod, same-frame memo of DoesTargetMeetConditions | finished, see "Decision" in the card |
+| 541 | performance mod, component churn (sounds, effects, brushes): research, no lever now | finished, see "Reopen trigger" in the card |
+| 542 | client NPC proxy capsules stop sweeping against other NPCs | finished, see "Result (c263L364, b358 2033b596958baa95): all four predictions hit, lane 1" in the card |
+| 543 | performance mod, plan for cache misses and lookups after cards 536 to 540 | finished, see "Footstep notify trace (static, 2026-11-20)" in the card |
+| 544 | performance mod, Chaos dynamic tree padding | finished, see "Result c263L367 (b361, 60 cm)" in the card |
+| 545 | performance mod diag, callers of the costliest Kismet queries | finished, see "Result c263L367 (b361)" in the card |
+| 546 | performance mod diag, which player components pay for UpdateOverlaps | finished, see "Result c263L367 (b361)" in the card |
+| 547 | performance mod diag, UpdatePhysicsVolume cost by component | Result c263L368 (b362): closed, physics volumes are not the cost |
+| 548 | performance mod diag, player primitive UpdateOverlapsImpl by component | finished, see "Result c263L369 (b363, ddf2675fe0c3a75f)" in the card |
+| 549 | performance mod, overlap events off on the player ally nav colliders | Result c263L370 (b364): closed, lever kept |
+| 550 | C2M1 BP_AISpawner_C_85 location mismatch (card 132 gate) | Closed 2026-11-21 (junior, from c559b371b) |
+| 551 | a remote player's landing shakes the local camera | Status: closed on b384 `6bb0bf21e5a76ccf`. |
+| 552 | no bullet holes on shot training course targets | Closed 2026-11-21: passes in c551b380a |
+| 554 | host pawn teleports at random (training map) | Closed (senior, 2026-11-22) |
+| 554 |  | Closed 2026-11-21 (junior, from c551b370a) |
+| 555 | radar blips for enemies that are not there (both players), refresh too slow | Closed (senior, 2026-11-22) |
+| 556 | dropped pickups float, rifles stand upright (client view) | Closed (senior, 2026-11-22) |
+| 557 | "Player" name tag stays on an empty mech | Closed (junior, 2026-11-21): proven in c558b379a |
+| 558 | Razorback animations still do not play (reopens card 297's class) | Closed 2026-11-21 (user choice: accept as vanilla) |
+| 560 | tactical nuke (guided missile) leaves the client stuck in a third-person view | Closed. The fix has been in every build since b369. |
+| 561 | Door Gunner (gunner chopper) breaks the host's and the client's camera | Closed (senior, 2026-11-22) |
+| 562 | card490 logs a stamina WARN every frame for every non-trooper pawn | Result (senior, 2026-11-21): passed, closed |
+| 563 | card081 hides and restores the downed host's interact trace in the same frame | Result (senior, 2026-11-21): passed, closed |
+| 564 | Remote player trooper body flips animations every 100 ms | Closed (senior 2026-11-21) |
+| 565 | NPC troopers sometimes play the wrong animation | Closed (senior, 2026-11-22) |
+| 566 | client loses the range target bullet holes at a checkpoint restart | Closed 2026-11-21: passes in c551b380a |
+| 567 | performance targets from the card 330 rows (logs, 2026-11-21) | Re-rank on b376 to b440 (senior 2026-11-21): closed |
+| 568 | UpdateSignificanceManager at 30 Hz on both sides (perf mod family, card 567 target 1) | Result (senior 2026-11-21, from the card330 rows of later runs): closed, throttle kept |
+| 569 | client grenade sometimes does not appear at the client's release | Closed (senior, 2026-11-22) |
+| 570 | client has no reserve ammo and no grenades in C1M1 (first seen after a checkpoint reload) | finished, see "Regression in run c397b398a (2026-11-21) and fix in b399" in the card |
+| 571 | count calls per detour, then tighten the hottest detours | Decision (senior 2026-11-21): closed |
+| 572 | cut the co-op mod's own per-call detour cost | Step 7 closed |
+| 574 | weapon selector shows a fresh magazine after a checkpoint reload | Result c397b400a (b400, junior 2026-11-21): passed, closed |
+| 575 | client runs the detour crowd simulation and nav tile rebuilds for host-owned NPCs | Result in run c397b398a (2026-11-21): closed by card 577 |
+| 576 | shorter idle spin for the UE task workers (card 573 finding B) | finished, see "Result in run c569b395e (2026-11-21): SpinCycles 8 is the default" in the card |
+| 577 | client rebuilds navmesh tiles at runtime (performance mod family) | Result in run c397b398a (2026-11-21): passed |
+| 579 | client score paid again by the checkpoint snapshot replay | Result c397b400a (b400 `9d4f79c052aea9a7`, junior 2026-11-21): passed, closed |
+| 580 | the client's reserve ammo reads 0 for a few seconds after a checkpoint reload | Result c397b402a (b402 `5eba36ba27bfa080`, junior 2026-11-21): passed, closed |
+| 582 | Blueprint player-0 audit (single-player assumptions in Blueprint callers) | Closed (senior, 2026-11-22) |
+| 583 | card159 check WARN on in-flight dropships while live rounds agree (FAST C1M1) | Closed: fixed. Cause: the C round compared a host sample that was one long host frame old with no allowance for its age (part 1, b411). The L lead also used an rtt floor inflated by long frames (part 2, b414). Proof: 62 client logs from b414 through b454 that carry card159 rows have 0 `WARN card159` rows. Those include c584b432a, c448b442a, c448b453a and c448b454a, where the check reports "4 of 4 match" and the rtt floor is 27-44 ms. The hitch skip in `pl_rtt` has still not seen a sample ("0 after a long frame" in every run), so it is unexercised code, not a proven path. A future WARN card159 pair during a load hitch reopens this card. |
+| 584 | the client's own landings play the heavy landing shake | Closed (senior, 2026-11-22) |
+| 588 | client view in the gunship looks laggy | Closed (senior, 2026-11-22) |
+| 589 | card132 gate miss on a BP_PlayerPresence_C trigger state | Status: closed as a duplicate. This is the open PlayerPresence part of card 581. The c582b414b trace (the client's |
+| 590 | scenario goto sticks on geometry at the Door Gunner seat landing spot (FED_C3M1) | Closed as a scenario gap. c590b444a named the cause: a live Warrior Bug capsule overlapping the trooper capsule after a |
+| 591 | Host crash in the engine net tick at exe+0x521B7B4 (null read) | finished, see "Fix (b428 `28982ce0c7a6b385`)" in the card |
+| 593 | host navmesh tile rebuilds in combat (performance mod family) | finished, see "Decision (senior 2026-11-21, after c593b438a/b)" in the card |
+| 594 | host AI target gather runs every tick (performance mod family) | finished, see "Decision (senior 2026-11-21, after c593b437ca/cb)" in the card |
+| 595 | One player's evac dropship entry ends the level for both (card 301 class E, transport) | Closed (senior, 2026-11-21) |
+| 596 | A presence's exit fires when one player leaves while the other is still inside (card 301, C3M1 check) | Closed (senior, 2026-11-21) |
+| 597 | The client misses a cannon turret's fire sound: its actor is missing (C3M1) | Closed (senior, 2026-11-21) |
+| 598 | drop keyed one-shot sound rows for a PC past the net cull | Closed (senior, 2026-11-21) |
+| 599 | the server copy PC's camera manager sits at the world origin | Closed (senior, 2026-11-21) |
+| 600 | player 0 is not remapped for the caller at exe+0x3C7F202 (mortar zone, mech drop pod) | Closed (senior, 2026-11-22) |
+| 601 | the client misses the transport dropship outro chain after card 595 | Closed (senior, 2026-11-22) |
+| 602 | C3M2 generator glow on the client (level script material parameters) | Closed (senior, 2026-11-22) |
+| 603 | a client hit on a warrior bug corpse whose ragdoll root sits far above the host location | finished, see "b461 (dwmapi 559ed50803f35572): repeat tolerance" in the card |
+| 604 | placed audio and music from host-only level script chains never reach the client | Closed (senior, 2026-11-22) |
+| 605 | a host component-play row for NiagaraActor_0 finds no placed copy on the client | finished, see "b462 (dwmapi b01ad3ed4e0b535b)" in the card |
+| 606 | BP_HordeZone Begin / End KillEmAll is not relayed (card 301 class gap, 7 maps) | finished, see "b462 (dwmapi b01ad3ed4e0b535b, ubwperf 370519ecb6d260ab)" in the card |

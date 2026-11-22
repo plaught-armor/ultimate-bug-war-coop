@@ -1,3 +1,5 @@
+> Historical design draft of 2026-11-03. The channel, lobby and downed state are built. The code and `docs/guide/` are authoritative.
+
 # Design: mod channel, lobby overlay, downed and revive
 
 Status: senior draft, 2026-11-03. This is static design; nothing here is runtime-checked unless a line says so. Each section ends with the first card it implies. User decisions behind it (2026-11-03): the lobby is an in-game Host / Join-by-IP overlay with ready-up first and a LAN browser later; the death rule is downed and revive, with a checkpoint restart when every player is down.

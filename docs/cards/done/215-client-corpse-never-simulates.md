@@ -1,6 +1,6 @@
 # Card 215: A client corpse never simulates; it only shows the host's bodies
 
-Status: queued 2026-11-12, from the senior design review (user request: repeat-offender sync mechanisms). Static
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from the senior design review (user request: repeat-offender sync mechanisms). Static
 design trace first, no code and no run until the senior accepts the trace. Budget after that: three runs.
 
 Holds behind it (not worked one by one until this trace is judged): cards 191, 194, 197, 203, 207. Card 189 is a

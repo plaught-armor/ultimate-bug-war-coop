@@ -10,6 +10,7 @@
 #   GAME_DIR     extracted game folder holding StarshipTroopers_UBW/ (default: $REPO/game)
 #   PREFIX       Proton wine prefix (default: $REPO/prefix)
 #   DLL          mod DLL to deploy (default: $REPO/build/dwmapi.dll)
+#   PERF         performance DLL to deploy beside it (default: ubwperf.dll in the folder of DLL)
 #   MAP          host map (default: /Game/Maps/FED/FED_C1M1)
 #   WINDOWED=1   run in a window instead of full screen (1280x720 unless RES is set)
 #   RES=WxH      window size with WINDOWED=1, e.g. RES=640x360
@@ -32,6 +33,7 @@ ROLE=${1:?usage: playtest.sh menu | host | client <ip>}
 GAME_DIR=${GAME_DIR:-$REPO/game}
 PREFIX=${PREFIX:-$REPO/prefix}
 DLL=${DLL:-$REPO/build/dwmapi.dll}
+PERF=${PERF:-$(dirname "$DLL")/ubwperf.dll}
 MAP=${MAP:-/Game/Maps/FED/FED_C1M1}
 BIN=$GAME_DIR/StarshipTroopers_UBW/Binaries/Win64
 EXE=StarshipTroopers_UBW/Binaries/Win64/StarshipTroopers_UBW-Win64-Shipping.exe
@@ -63,13 +65,20 @@ if [[ ${SECOND:-0} == 1 ]]; then
     echo "second game: using the deployed $(sha256sum "$BIN/dwmapi.dll" | cut -c1-16)"
 elif [[ -f $DLL ]]; then
     if command -v llvm-readobj >/dev/null; then
-        n=$(llvm-readobj --coff-exports "$DLL" | grep -c Name:)
-        [[ $n == 84 ]] || { echo "ABORT: $DLL has $n exports (want 84)" >&2; exit 5; }
+        # 84 dwmapi forwarders; ubwcoop_marker (card 578) is the mod's own export.
+        n=$(llvm-readobj --coff-exports "$DLL" | grep Name: | grep -vc 'Name: ubwcoop_marker$')
+        [[ $n == 84 ]] || { echo "ABORT: $DLL has $n dwmapi exports (want 84)" >&2; exit 5; }
     else
         echo "note: llvm-readobj missing; export count not checked"
     fi
-    cp "$DLL" "$BIN/dwmapi.dll"
+    cp "$DLL" "$BIN/dwmapi.dll" || { echo "ABORT: could not deploy $DLL" >&2; exit 5; }
     echo "deployed $(sha256sum "$BIN/dwmapi.dll" | cut -c1-16)"
+    if [[ -f $PERF ]]; then
+        cp "$PERF" "$BIN/ubwperf.dll" || { echo "ABORT: could not deploy $PERF" >&2; exit 5; }
+        echo "deployed ubwperf $(sha256sum "$BIN/ubwperf.dll" | cut -c1-16)"
+    else
+        echo "WARN: no $PERF; performance cuts may be off" >&2
+    fi
 elif [[ ! -f $BIN/dwmapi.dll ]]; then
     echo "ABORT: no mod DLL at $DLL and none deployed in $BIN" >&2
     exit 5

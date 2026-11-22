@@ -1,6 +1,6 @@
 # 483: client play-time collision changes on pickups and props (card137 WARNs)
 
-Status: Open.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Open.
 
 ## Seen
 

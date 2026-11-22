@@ -1,6 +1,6 @@
 # Card 037: Enemy health on the client
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the two replication notes ("The game's own native code replicates nothing", "Replicating a game property"), the known issue "Enemy health does not replicate", and rows 021 and 023. Then read card 021's step 5 report and card 023's report and review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

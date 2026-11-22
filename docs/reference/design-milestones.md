@@ -1,3 +1,5 @@
+> Historical plan of 2026-11-03, including its "current" marker. What was built: `docs/guide/` and `CHANGELOG.md`. Current state: `docs/STATE.md`.
+
 ## Architecture (planned)
 Injected proxy DLL + MinHook, functions resolved by RVA from the PDB. Host = listen server, authoritative; bug AI host-only. Use UE native replication: force bReplicates, hook GetLifetimeReplicatedProps for game classes, custom RPC path for events. Patch single-player assumptions (GetPlayerCharacter(0) etc.).
 

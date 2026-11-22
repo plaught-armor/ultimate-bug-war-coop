@@ -12,6 +12,7 @@
 // Game thread only (ubw_post_tick, c23_collect callers and LoadMap enter all run there).
 
 #include "ubw/hooks_internal.h"
+#include "ue/hooktable.h"
 
 #include <intrin.h>
 #include <wchar.h>
@@ -91,6 +92,42 @@ struct C330 {
     int64_t pe_qpc0;
 };
 C330 g_c330 = {};
+
+// Card 572 step 1: window totals for the body-cost row. ProcessEvent: 1 call in kC572PeEvery is timed (card 572
+// step 2) and weighted by that count, so calls are exact and the total is an estimate. GetPlayerController: 1 host body in kC572Every is timed; the estimate scales the sampled mean by the
+// body calls.
+// Card 572 step 3: a sampled body over this many ticks (about 1 us at 4 GHz) is counted as slow, to tell a steady
+// per-call cost from rare long bodies (a log row, a preemption).
+constexpr uint64_t kC572SlowTsc = 4000;
+
+struct C572 {
+    uint64_t pe_tsc;
+    uint64_t pe_calls;
+    uint64_t pe_max;
+    uint64_t c99_tsc;
+    uint64_t c99_sampled;
+    uint64_t c99_max;
+    uint64_t c99_served_sampled; // step 5 diag: sampled bodies the memo answered, and their ticks
+    uint64_t c99_served_tsc;
+    uint64_t c99_calls;
+    C572Parts c99_parts; // step 2 diag: the sampled bodies' parts
+    uint64_t pe_before;  // step 3 diag: sampled ProcessEvent ticks before the original (scope, notes, refusals)
+    uint64_t pe_after;   // after it (c128_pe_after), both unweighted
+    uint64_t pe_sampled; // sampled calls in the window
+    uint64_t pe_slow;    // sampled bodies over kC572SlowTsc ticks
+    uint64_t pe_slow_tsc;
+    uint64_t tsc0;
+    int64_t qpc0;
+};
+C572 g_c572 = {};
+
+} // namespace
+
+bool g_c572_on = false; // written in ubw::init before any hook
+
+namespace {
+
+void c572_row(unsigned long long now); // after the card 330 window row
 
 int64_t c330_now() {
     LARGE_INTEGER t;
@@ -283,6 +320,115 @@ void c526_niagara_row() {
               pool[5], c330_ms(c330_now() - t0));
 }
 
+// Card 573 b461 (UBWCOOP_C132_FX=1 only): the UMG census behind the host's Slate share (c601b455a: SWidget 2.3 %, with
+// TPanelChildren<SWrapBox::FSlot>::GetChildRefAt 38 and Prepass_ChildLoop 66 samples of 6172). Counts only: user
+// widgets by class (all, shown, with a Blueprint Tick), and every WrapBox's slots by the class of the user widget that
+// holds it. "Hidden" means the widget or a user widget above it is Collapsed (1) or Hidden (2); other panels between
+// them are not read, so a shown count is an upper bound.
+constexpr size_t kC573Cap = 4096;              // user widgets read per census
+constexpr size_t kC573PanelSlots = 0x168;      // UPanelWidget::Slots (card049x4 dump)
+constexpr int32_t kC573OuterHops = 12;         // outer chain steps from a widget to the root user widget
+constexpr int32_t kC573SlotsMax = 512;         // slots counted per WrapBox
+constexpr int32_t kC573Top = 12;
+const void* g_c573_objs[kC573Cap];
+C526Table g_c573_all;
+C526Table g_c573_shown;
+C526Table g_c573_tick;
+C526Table g_c573_wrap_slots;
+C526Table g_c573_wrap_shown_slots;
+
+bool c573_collapsed(const void* widget) {
+    const uint8_t v = static_cast<const uint8_t*>(widget)[kC67WidgetVisibility];
+    return v == 1 || v == 2; // ESlateVisibility Collapsed, Hidden
+}
+
+// The user widget holding `widget` (itself excluded) and whether `widget` or any user widget above it is collapsed.
+const void* c573_holder(const void* widget, const void* user_cls, bool* hidden) {
+    const void* holder = nullptr;
+    bool off = c573_collapsed(widget);
+    const void* o = read_ptr(widget, kObjectOuter);
+    for (int32_t i = 0; i < kC573OuterHops && o != nullptr; ++i) {
+        if (is_a(o, user_cls)) {
+            holder = holder != nullptr ? holder : o;
+            off = off || c573_collapsed(o);
+        }
+        o = read_ptr(o, kObjectOuter);
+    }
+    *hidden = off;
+    return holder;
+}
+
+void c573_slate_row() {
+    const void* const user_cls = find_class(L"/Script/UMG.UserWidget");
+    const void* const wrap_cls = find_class(L"/Script/UMG.WrapBox");
+    if (user_cls == nullptr) {
+        return;
+    }
+    const int64_t t0 = c330_now();
+    const uint8_t* const tick_prop = prop_find_prop(user_cls, "bHasScriptImplementedTick");
+    const bool tick_ok = tick_prop != nullptr && prop_bool_ok(tick_prop);
+    const int32_t tick_at = tick_ok ? read_i32(tick_prop, kPropertyOffset) + tick_prop[kBoolByteOffset] : 0;
+    const uint8_t tick_mask = tick_ok ? tick_prop[kBoolFieldMask] : 0;
+    g_c573_all = g_c573_shown = g_c573_tick = C526Table{};
+    const int32_t users = objects_of_class(user_cls, g_c573_objs, static_cast<int32_t>(kC573Cap), true);
+    const int32_t nu = users < static_cast<int32_t>(kC573Cap) ? users : static_cast<int32_t>(kC573Cap);
+    int32_t shown = 0;
+    int32_t ticking = 0;
+    for (int32_t i = 0; i < nu; ++i) {
+        const auto* const w = static_cast<const uint8_t*>(g_c573_objs[i]);
+        const void* const cls = read_ptr(w, kObjectClass);
+        bool hidden = false;
+        c573_holder(w, user_cls, &hidden);
+        const bool tick = tick_ok && (w[tick_at] & tick_mask) != 0;
+        c526_count(g_c573_all, cls);
+        if (!hidden) {
+            c526_count(g_c573_shown, cls);
+            ++shown;
+        }
+        if (tick && !hidden) {
+            c526_count(g_c573_tick, cls);
+            ++ticking;
+        }
+    }
+    g_c573_wrap_slots = g_c573_wrap_shown_slots = C526Table{};
+    const int32_t wraps = wrap_cls != nullptr ? objects_of_class(wrap_cls, g_c573_objs, static_cast<int32_t>(kC573Cap), true) : 0;
+    const int32_t nw = wraps < static_cast<int32_t>(kC573Cap) ? wraps : static_cast<int32_t>(kC573Cap);
+    int32_t slots = 0;
+    int32_t shown_slots = 0;
+    for (int32_t i = 0; i < nw; ++i) {
+        const void* const box = g_c573_objs[i];
+        bool hidden = false;
+        const void* const holder = c573_holder(box, user_cls, &hidden);
+        const void* const key = holder != nullptr ? read_ptr(holder, kObjectClass) : nullptr;
+        const int32_t num = read_i32(box, kC573PanelSlots + kArrayNum);
+        const int32_t n = num < 0 ? 0 : (num < kC573SlotsMax ? num : kC573SlotsMax);
+        slots += n;
+        shown_slots += hidden ? 0 : n;
+        for (int32_t k = 0; k < n; ++k) {
+            c526_count(g_c573_wrap_slots, key);
+            if (!hidden) {
+                c526_count(g_c573_wrap_shown_slots, key);
+            }
+        }
+    }
+    char all[640];
+    char shown_text[640];
+    char tick_text[384];
+    char wrap_text[384];
+    char wrap_shown_text[384];
+    all[0] = shown_text[0] = tick_text[0] = wrap_text[0] = wrap_shown_text[0] = '\0';
+    c526_text(g_c573_all, kC573Top, all, sizeof(all));
+    c526_text(g_c573_shown, kC573Top, shown_text, sizeof(shown_text));
+    c526_text(g_c573_tick, kC573Top, tick_text, sizeof(tick_text));
+    c526_text(g_c573_wrap_slots, kC573Top, wrap_text, sizeof(wrap_text));
+    c526_text(g_c573_wrap_shown_slots, kC573Top, wrap_shown_text, sizeof(wrap_shown_text));
+    log::line("card573: %s slate user widgets %d (%d read, %d shown, %d shown with BP Tick%s): by class %s; shown %s; "
+              "shown ticking %s", side(), users, nu, shown, ticking, tick_ok ? "" : ", tick flag unresolved", all,
+              shown_text, tick_text);
+    log::line("card573: %s slate wrap boxes %d, slots %d (%d shown): slots by holder class %s; shown %s; scan %.2f ms",
+              side(), wraps, slots, shown_slots, wrap_text, wrap_shown_text, c330_ms(c330_now() - t0));
+}
+
 // Card 527 step 1 (UBWCOOP_C132_FX=1 only): live NPCs per significance level, with the 2D and the settings +0x29 forms
 // (offsets from OnSignificanceChanged 0x0519DE50 and GetCurrentSignificanceLevelSettings 0x05178B80, see the card),
 // and once per class the level table (each level's tick interval). The level index is the game's own:
@@ -424,7 +570,8 @@ void c527_level_table(const void* npc, const uint8_t* iface, int32_t count) {
 // count, total and max ms, and the first call of the class on its own (a class load would show there). Map row.
 constexpr int32_t kC527SpawnClasses = 24;
 struct C527Spawn {
-    const void* cls;
+    const void* cls; // a compare key, never read through (card 608: a reused address merges two classes)
+    uint64_t name;   // copied at insert
     uint32_t n;
     int64_t ticks, max, first;
 };
@@ -446,7 +593,7 @@ void c527_spawn_add(const void* cls, const void* spawned, int64_t ticks) {
             ++g_c527_spawn_other;
             return;
         }
-        g_c527_spawn[g_c527_spawn_n++] = C527Spawn{cls, 0, 0, 0, ticks};
+        g_c527_spawn[g_c527_spawn_n++] = C527Spawn{cls, object_fname(cls), 0, 0, 0, ticks};
     }
     C527Spawn& s = g_c527_spawn[i];
     ++s.n;
@@ -458,8 +605,8 @@ void c527_spawn_row(const char* map) {
     for (int32_t i = 0; i < g_c527_spawn_n; ++i) {
         const C527Spawn& s = g_c527_spawn[i];
         log::line("card527: %s map %s spawns %s: %u, %.1f ms total, %.3f ms mean, %.2f ms max, first %.2f ms", side(),
-                  map, object_name(s.cls).text, s.n, c330_ms(s.ticks), c330_ms(s.ticks) / s.n, c330_ms(s.max),
-                  c330_ms(s.first));
+                  map, s.cls != nullptr ? fname_text(&s.name).text : "null", s.n, c330_ms(s.ticks),
+                  c330_ms(s.ticks) / s.n, c330_ms(s.max), c330_ms(s.first));
     }
     if (g_c527_spawn_other != 0) {
         log::line("card527: %s map %s spawns past the class table: %u", side(), map, g_c527_spawn_other);
@@ -597,6 +744,10 @@ void c330_window_row(ULONGLONG now) {
               static_cast<unsigned long long>(g_c330.win_collect.calls),
               static_cast<unsigned long long>(g_c330.win_collect.actors), c330_ms(g_c330.win_collect.ticks),
               g_c330.dropped, recv);
+    ue::hooktable::log_hook_counts(side(), static_cast<unsigned long long>(now), static_cast<unsigned long long>(window));
+    if (g_c572_on) {
+        c572_row(static_cast<unsigned long long>(now));
+    }
     g_c330.log_ticks_seen = log_ticks;
     g_c330.log_lines_seen = log_lines;
     for (uint16_t i = 0; i < g_c330.steps; ++i) {
@@ -611,9 +762,69 @@ void c330_window_row(ULONGLONG now) {
     if (g_c132_fx_log) {
         c252_census_row(now);
         c526_niagara_row();
+        c573_slate_row(); // card 573 b461: the Slate share's widgets
         c527_census_row();
         c527_tick_window_row(window);
     }
+}
+
+// Card 572 step 1: one row per card 330 window with the sampled body costs, then the totals restart. The tick-to-ns
+// scale comes from this window's own time stamp counter and QPC deltas.
+void c572_row(unsigned long long now) {
+    const uint64_t tsc = __rdtsc();
+    const int64_t qpc = c330_now();
+    if (g_c572.tsc0 != 0 && tsc > g_c572.tsc0) {
+        const double ns_per_tsc = c330_ms(qpc - g_c572.qpc0) * 1.0e6 / static_cast<double>(tsc - g_c572.tsc0);
+        const double pe_n = g_c572.pe_calls != 0 ? static_cast<double>(g_c572.pe_calls) : 1.0;
+        const double c99_n = g_c572.c99_sampled != 0 ? static_cast<double>(g_c572.c99_sampled) : 1.0;
+        const double c99_avg = static_cast<double>(g_c572.c99_tsc) * ns_per_tsc / c99_n;
+        const double pe_s = g_c572.pe_sampled != 0 ? static_cast<double>(g_c572.pe_sampled) : 1.0;
+        log::line("card572: %s t=%llu ProcessEvent %llu calls: body avg %.0f ns, max %.0f ns, total %.1f ms; "
+                  "GetPlayerController %llu body calls, sampled %llu: body avg %.0f ns, max %.0f ns, est %.1f ms "
+                  "(copy walk %.0f ns, enemy remap %.0f ns, tally %.0f ns); ProcessEvent sampled %llu: before %.0f ns, "
+                  "after %.0f ns, slow %llu (over %llu ticks) avg %.0f ns; GetPlayerController memo %s: served %llu, "
+                  "verified %llu, differ %llu (since start); sampled served %llu avg %.0f ns, other avg %.0f ns; full walk "
+                  "checked %llu, differ %llu (since start); forget bumps %llu (since start); input bumps %llu (primary %llu, "
+                  "role %llu, hold %llu) (since start)",
+                  side(), now, static_cast<unsigned long long>(g_c572.pe_calls),
+                  static_cast<double>(g_c572.pe_tsc) * ns_per_tsc / pe_n, static_cast<double>(g_c572.pe_max) * ns_per_tsc,
+                  static_cast<double>(g_c572.pe_tsc) * ns_per_tsc / 1.0e6,
+                  static_cast<unsigned long long>(g_c572.c99_calls), static_cast<unsigned long long>(g_c572.c99_sampled),
+                  c99_avg, static_cast<double>(g_c572.c99_max) * ns_per_tsc,
+                  c99_avg * static_cast<double>(g_c572.c99_calls) / 1.0e6,
+                  static_cast<double>(g_c572.c99_parts.copy) * ns_per_tsc / c99_n,
+                  static_cast<double>(g_c572.c99_parts.enemy) * ns_per_tsc / c99_n,
+                  static_cast<double>(g_c572.c99_parts.count) * ns_per_tsc / c99_n,
+                  static_cast<unsigned long long>(g_c572.pe_sampled),
+                  static_cast<double>(g_c572.pe_before) * ns_per_tsc / pe_s,
+                  static_cast<double>(g_c572.pe_after) * ns_per_tsc / pe_s, static_cast<unsigned long long>(g_c572.pe_slow),
+                  static_cast<unsigned long long>(kC572SlowTsc),
+                  g_c572.pe_slow != 0 ? static_cast<double>(g_c572.pe_slow_tsc) * ns_per_tsc / static_cast<double>(g_c572.pe_slow)
+                                      : 0.0,
+                  g_c572_memo_on ? "on" : "off", static_cast<unsigned long long>(g_c572_memo.served),
+                  static_cast<unsigned long long>(g_c572_memo.verified),
+                  static_cast<unsigned long long>(g_c572_memo.differ),
+                  static_cast<unsigned long long>(g_c572.c99_served_sampled),
+                  g_c572.c99_served_sampled != 0
+                      ? static_cast<double>(g_c572.c99_served_tsc) * ns_per_tsc / static_cast<double>(g_c572.c99_served_sampled)
+                      : 0.0,
+                  g_c572.c99_sampled > g_c572.c99_served_sampled
+                      ? static_cast<double>(g_c572.c99_tsc - g_c572.c99_served_tsc) * ns_per_tsc /
+                            static_cast<double>(g_c572.c99_sampled - g_c572.c99_served_sampled)
+                      : 0.0,
+                  static_cast<unsigned long long>(g_c572_memo.walk_checked),
+                  static_cast<unsigned long long>(g_c572_memo.walk_differ),
+                  static_cast<unsigned long long>(g_c572_memo.forget_bumps),
+                  static_cast<unsigned long long>(g_c572_memo.input_bumps[kC572InputPrimary] +
+                                                  g_c572_memo.input_bumps[kC572InputRole] +
+                                                  g_c572_memo.input_bumps[kC572InputHold]),
+                  static_cast<unsigned long long>(g_c572_memo.input_bumps[kC572InputPrimary]),
+                  static_cast<unsigned long long>(g_c572_memo.input_bumps[kC572InputRole]),
+                  static_cast<unsigned long long>(g_c572_memo.input_bumps[kC572InputHold]));
+    }
+    g_c572 = {};
+    g_c572.tsc0 = tsc;
+    g_c572.qpc0 = qpc;
 }
 
 // One frame's ProcessEvent hook time into the map totals (from c330_tick_end).
@@ -764,9 +975,43 @@ void c330_tick_end() {
     }
 }
 
-void c330_pe(uint64_t tsc) {
-    g_c330.pe_frame += tsc;
-    ++g_c330.pe_frame_calls;
+void c330_pe(uint64_t tsc, uint32_t weight) {
+    g_c330.pe_frame += tsc * weight;
+    g_c330.pe_frame_calls += weight;
+    if (g_c572_on) {
+        g_c572.pe_tsc += tsc * weight;
+        g_c572.pe_calls += weight;
+        g_c572.pe_max = tsc > g_c572.pe_max ? tsc : g_c572.pe_max;
+    }
+}
+
+void c572_c99_sample(uint64_t tsc, const C572Parts& parts) {
+    g_c572.c99_parts.copy += parts.copy;
+    g_c572.c99_parts.enemy += parts.enemy;
+    g_c572.c99_parts.count += parts.count;
+    const uint64_t body = tsc > parts.check ? tsc - parts.check : 0;
+    g_c572.c99_tsc += body;
+    ++g_c572.c99_sampled;
+    g_c572.c99_max = body > g_c572.c99_max ? body : g_c572.c99_max;
+    g_c572.c99_served_sampled += parts.served;
+    g_c572.c99_served_tsc += parts.served != 0 ? body : 0;
+}
+
+void c572_pe_split(uint64_t before, uint64_t after, uint64_t body) {
+    if (!g_c572_on) {
+        return;
+    }
+    g_c572.pe_before += before;
+    g_c572.pe_after += after;
+    ++g_c572.pe_sampled;
+    if (body > kC572SlowTsc) {
+        ++g_c572.pe_slow;
+        g_c572.pe_slow_tsc += body;
+    }
+}
+
+void c572_c99_call() {
+    ++g_c572.c99_calls;
 }
 
 void c330_recv(wchar_t op, int64_t ticks) {

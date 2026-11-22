@@ -1,6 +1,6 @@
 # Card 176: Server-copy weapon sounds through UAudioComponent::PlayInternal play 2D on the host
 
-Status: queued 2026-11-11, from run c175-r2. Budget: three runs. One goal: the host does not hear, as its own 2D
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from run c175-r2. Budget: three runs. One goal: the host does not hear, as its own 2D
 sound, a 2D sound that a client's server copy plays through an audio component.
 
 Read: card 160 (`c160_copy_effect`, the one skip for server-copy 2D effects), card 173 (its SpawnSound2D skip does not

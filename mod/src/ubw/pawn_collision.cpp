@@ -64,11 +64,32 @@ void detour_post_init(void* pawn) {
     log_player_pawn("PostInitializeComponents", static_cast<const uint8_t*>(pawn), before, nullptr);
 }
 
+// Card 554: a player pawn has no bAlwaysRelevant, so past the net cull distance the other side drops its copy and
+// re-creates it at the pawn's current spot when it comes back in range: the player "teleports". On the authority
+// side, every player-possessed pawn (trooper or mech, at each possess, so respawns too) is made always relevant.
+// The bit itself is the state: it is set once per pawn, and only the first set is logged.
+constexpr uint32_t kC554Lines = 16;
+uint32_t g_c554_lines = 0; // game thread only, per process
+
+void c554_relevant(void* pawn, const void* controller) {
+    if (static_cast<const uint8_t*>(pawn)[kActorLocalRole] != kRoleAuthority || controller == nullptr ||
+        !is_a(controller, g_player_controller_class())) {
+        return;
+    }
+    const int32_t set = actor_always_relevant(pawn);
+    if (set != 0 && note_event_cap(g_c554_lines, kC554Lines, "card554 always relevant")) {
+        log::line("%scard554: %s player pawn %s (%s) set always relevant: %s", set > 0 ? "" : "WARN ", side_text(),
+                  object_name(pawn).text, class_name(pawn).text,
+                  set > 0 ? "yes" : "no, bAlwaysRelevant not found (its copy is dropped past the net cull distance)");
+    }
+}
+
 void detour_possessed_by(void* pawn, void* controller) {
     g_last_hook = "PossessedBy";
     const int before = collision_bit(static_cast<const uint8_t*>(pawn));
     g_orig_possessed_by(pawn, controller);
     log_player_pawn("PossessedBy", static_cast<const uint8_t*>(pawn), before, controller);
+    c554_relevant(pawn, controller);
     // Card 019 host baseline: the host's on-foot character after the dropship landing.
     // is_a(PlayerController) first: GetLocalPlayer faults on null and reads garbage on an AIController.
     if (autoinput::host_script() && g_dropship_watch.seen && controller != nullptr &&

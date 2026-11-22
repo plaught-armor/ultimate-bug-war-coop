@@ -1,6 +1,6 @@
 # 429: client dropship copy is re-placed along its spline on most live frames
 
-Status: fix written (`c429_dropship_dist_patch.py`), proof owed. Found 2026-11-16 11:53 by the senior, efficiency
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix written (`c429_dropship_dist_patch.py`), proof owed. Found 2026-11-16 11:53 by the senior, efficiency
 audit of run c423b126a.
 
 ## Finding

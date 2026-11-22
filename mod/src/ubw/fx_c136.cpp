@@ -383,9 +383,10 @@ void c136_log_own(const C136Call& c, const void* owner) {
 constexpr int32_t kC518Blocked = 256;
 constexpr int32_t kC518BlockedLines = 16;
 struct C518Blocked {
-    const void* asset;
+    const void* asset;    // a compare key with tag, never read through (card 608: a reused address merges two assets)
+    uint64_t asset_name;  // copied at insert
     uint64_t tag;
-    const void* owner_class;
+    uint64_t owner_class; // the first owner's class FName, copied at insert; 0 no owner
     uint32_t n;
     uint32_t in_notify;
 };
@@ -411,7 +412,8 @@ void c518_note_blocked(const C136Call& c, const void* owner) {
         return;
     }
     if (i == t.n) {
-        t.rows[t.n++] = C518Blocked{c.asset, c.tag, owner != nullptr ? read_ptr(owner, kObjectClass) : nullptr, 0, 0};
+        t.rows[t.n++] = C518Blocked{c.asset, object_fname(c.asset), c.tag,
+                                     owner != nullptr ? object_fname(read_ptr(owner, kObjectClass)) : 0, 0, 0};
     }
     ++t.rows[i].n;
     t.rows[i].in_notify += t_c136_notify != nullptr ? 1u : 0u;
@@ -430,8 +432,8 @@ void c518_blocked_lines(const char* when) {
         t.rows[line] = r;
         log::line("card518: %s (%s) %s: %u calls, %u in an anim notify, first owner %s",
                   g_client_session ? "client fx blocked" : "host fx calls", when,
-                  r.asset != nullptr ? object_name(r.asset).text : fname_text(&r.tag).text, r.n, r.in_notify,
-                  r.owner_class != nullptr ? object_name(r.owner_class).text : "-");
+                  r.asset != nullptr ? fname_text(&r.asset_name).text : fname_text(&r.tag).text, r.n, r.in_notify,
+                  r.owner_class != 0 ? fname_text(&r.owner_class).text : "-");
     }
     if (t.unrowed != 0) {
         log::line("card518: %s (%s): %u calls not counted (table of %d full)",
@@ -447,6 +449,8 @@ uint32_t c136_fx_enter(const C136Call& c) {
     C136Thread& t = t_c136;
     ++t.depth;
     if (g_client_session) {
+        // Card 566: a decal drawn while a host row plays never reaches here: the spawn detours' c132_decal_suppress
+        // drops every client decal not drawn by the card 132 relay (the host's journal brings it).
         if (t.depth == 1) { // step 3: the outermost call decides; its inner calls inherit
             const void* const owner = c136_owner(c);
             t.blocked = !t.playing && !c136_client_own(c, owner, c136_instigator(c, owner));
@@ -489,6 +493,10 @@ uint32_t c136_fx_enter(const C136Call& c) {
 
 const char* c136_point_name(C136Point point) {
     return c136_row(point).name;
+}
+
+int32_t c136_depth() {
+    return t_c136.depth;
 }
 
 bool c136_blocked() {
@@ -649,7 +657,7 @@ void detour_c136_anim_notify(void* anim_instance, void* notify_ref) {
 // 'S' row), so they are local too. An effect the building only owns, with neither in progress (a player's bullet hit
 // on it: run c408b115a logged NS_FX_Weapons_MoritaHit_Ground "by owner"), is not its own and is sent as usual.
 bool c136_attack_local(const C136Call& c, const void* owner) {
-    if (!g_c408_pe) {
+    if (!pe_gate(kPeGate_c408_pe)) {
         return false;
     }
     const char* by = c408_projectile(owner)                             ? "projectile owner"
@@ -701,7 +709,8 @@ thread_local C409Mark t_c409{}; // card 409: execSpawnSystemAtLocation
 thread_local C409Mark t_c418{}; // card 418: execSpawnSoundAtLocation
 
 struct C409Row {
-    const void* asset;
+    const void* asset;  // a compare key, never read through (card 608: a reused address merges two assets)
+    uint64_t name;      // copied at insert
     uint32_t events;    // converted calls (host: events made; client: own-or-host decisions)
     uint32_t blocked;   // client: host-sent, component discarded
     uint32_t unseen;    // a component returned with no Activate or play under the mark (nothing sent)
@@ -712,7 +721,8 @@ struct C409Table {
     C409Row rows[kC409Assets];
 };
 struct C418Null {
-    const void* cls; // the calling Blueprint's class
+    const void* cls; // the calling Blueprint's class: a compare key, never read through (card 608: can merge two)
+    uint64_t name;   // the class's, copied at insert
     uint32_t n;      // thunk calls that returned no component (FAudioDevice::CreateComponent: out of range, or no device)
 };
 struct C418Nulls {
@@ -736,7 +746,7 @@ C409Row* c409_row(C409Table& t, const void* asset) {
         ++t.unrowed;
         return nullptr;
     }
-    t.rows[t.n] = C409Row{asset, 0, 0, 0};
+    t.rows[t.n] = C409Row{asset, object_fname(asset), 0, 0, 0};
     return &t.rows[t.n++];
 }
 
@@ -751,7 +761,7 @@ void c418_null(const void* cls) {
         ++g_c418_nulls.unrowed;
         return;
     }
-    g_c418_nulls.rows[g_c418_nulls.n++] = C418Null{cls, 1};
+    g_c418_nulls.rows[g_c418_nulls.n++] = C418Null{cls, object_fname(cls), 1};
     // The first null of a class this map is logged at once (the map line needs a map end, which a run may not reach).
     log::line("card418: %s t=%llu first SpawnSoundAtLocation by %s this map returned no component (out of audible "
               "range or no device)", side_text(), static_cast<unsigned long long>(GetTickCount64()),
@@ -806,7 +816,8 @@ void c409_table_line(C409Table& t, const char* card, const char* when, const cha
     for (int32_t i = 0; i < t.n; ++i) {
         const C409Row& r = t.rows[i];
         log::line("card%s: %s map asset (%s) %s: %u converted, %u host-sent discarded, %u with no %s", card,
-                  side_text(), when, r.asset != nullptr ? object_name(r.asset).text : "-", r.events, r.blocked, r.unseen, step);
+                  side_text(), when, r.asset != nullptr ? fname_text(&r.name).text : "-", r.events, r.blocked,
+                  r.unseen, step);
     }
     if (t.unrowed != 0) {
         log::line("WARN card%s: %s map (%s): %u calls not counted (table of %d full)", card, side_text(), when,
@@ -934,7 +945,8 @@ void c409_report(const char* when) {
     for (int32_t i = 0; i < g_c418_nulls.n; ++i) {
         log::line("card418: %s map (%s): %u SpawnSoundAtLocation calls by %s returned no component (out of audible "
                   "range or no device: no event, the other side hears nothing)", side_text(), when,
-                  g_c418_nulls.rows[i].n, g_c418_nulls.rows[i].cls != nullptr ? object_name(g_c418_nulls.rows[i].cls).text : "-");
+                  g_c418_nulls.rows[i].n,
+                  g_c418_nulls.rows[i].cls != nullptr ? fname_text(&g_c418_nulls.rows[i].name).text : "-");
     }
     if (g_c418_nulls.nested != 0) {
         log::line("card418: %s map (%s): %u SpawnSoundAtLocation plays inside another capture (no own event)",
@@ -997,7 +1009,8 @@ using C136SetVarFn = void (*)(void* component, uint64_t name, uint64_t value);
 using C136SetFloatFn = void (*)(void* component, uint64_t name, float value);
 
 struct C136SetVarRow {
-    const void* asset;
+    const void* asset;   // a compare key with name, never read through (card 608: a reused address merges two assets)
+    uint64_t asset_name; // copied at insert
     uint64_t name; // the variable's FName
     uint32_t calls;
     bool live;     // at least one call was on a component a captured point 2 spawn returned
@@ -1029,7 +1042,7 @@ void c136_setvar_note(const void* component, uint64_t name) {
         ++s.unrowed;
         return;
     }
-    s.rows[s.n] = {asset, name, 1u, live};
+    s.rows[s.n] = {asset, object_fname(asset), name, 1u, live};
     ++s.n;
 }
 
@@ -1060,7 +1073,8 @@ void c136_setvar_dump() {
     C136SetVars& s = g_c136_setvars;
     for (int32_t i = 0; i < s.n; ++i) {
         const C136SetVarRow& r = s.rows[i];
-        log::line("card136: host fx setvar %s %s %u calls%s", object_name(r.asset).text, fname_text(&r.name).text,
+        log::line("card136: host fx setvar %s %s %u calls%s",
+                  r.asset != nullptr ? fname_text(&r.asset_name).text : "null", fname_text(&r.name).text,
                   r.calls, r.live ? " (on a captured spawn)" : "");
     }
     if (s.n != 0 || s.unrowed != 0) {

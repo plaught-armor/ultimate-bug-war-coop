@@ -1,6 +1,6 @@
 # 431 - The ledger stamp is 10 B on every blob frame, 11 B on every text frame
 
-Status: open, parked until after the playtest (efficiency audit 2026-11-16; no build yet).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, parked until after the playtest (efficiency audit 2026-11-16; no build yet).
 
 ## Measured
 Every mod frame carries the card 132 stamp (`chan.cpp stamped`): seq 30 bits and sender ms 30 bits. A blob or packed

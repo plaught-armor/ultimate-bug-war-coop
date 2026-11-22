@@ -1,5 +1,7 @@
 # Sync design audit (started 2026-11-13, senior, static)
 
+Each entry is true as of its date and build. A card named open here may have closed since: `docs/STATE.md` lists what is open.
+
 User decision 2026-11-13: review each sync mechanism by class. Question per class: is the method right, or are
 symptoms being patched. One entry per class: method now, verdict, what to change, what proves it. Defects get cards.
 No runs are made for this audit; proofs ride runs that happen anyway.
@@ -352,6 +354,16 @@ card 256's rest rows.
 - The host handler table has 21 opcodes; `PickupGone` is still in the enum and ledger table with no sender or
   handler (dead since card 239's rework): remove.
 
+## L6. Blueprint callers of player helpers (card 582, 2026-11-21)
+
+L1 swept native callers only. Card 582 swept all 87 Blueprint packages that call a player helper (346 call sites).
+Most are covered: ability, weapon and ABP contexts resolve to the right player through the c99 Instigator, Owner and
+acting-scope remap, and HUD, audio volume and minimap readers are local presentation on each side. Gaps: 11 placed
+world actors with no player context read player 0 on the host (mortar zone target, EM marker threat, building hit
+sound, pickup tracker binds, pylon line of sight, spawner initial overlap, plus four to verify). Fix class: one
+condition table keyed by (class, function) giving the player-0 rule (any-overlap, nearest, fan-out, causer-player),
+riding the card 302 acting scope. Level-script camera, sound and control-rotation calls still need verdicts.
+
 ## Practices from other games (senior, 2026-11-14, web research; sources in the chat report)
 
 | Practice | Who | Ours | Action |
@@ -427,7 +439,7 @@ screen and the in-place load):
 One owner decides each row; no state has two writers. The hold is the only state whose rule depended on an op that
 another gate (card 139) can refuse; that is the card 364 defect.
 
-Earlier findings still open and unchanged in build 6: cards 226, 239, 276, 279, 280, 301, 321, 322 part B, 323.
+Earlier findings still open and unchanged in build 6: cards 226, 239, 276, 279, 280, 301, 321, 322 part B, 323. (2026-11-22: all of these have closed since, except 301.)
 None was re-read line by line in this pass.
 
 ### Third pass, player state (card 043 family), static

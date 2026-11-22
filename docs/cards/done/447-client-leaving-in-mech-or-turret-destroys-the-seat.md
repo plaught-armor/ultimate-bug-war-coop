@@ -1,6 +1,6 @@
 # Card 447: a client that leaves the game in a mech or turret takes the seat with it
 
-Status: fixed in b150 `c05f5e851f6418a5` and b151; passes in run c447b150a (seat stays, mech reusable after rejoin). Closes on the junior's shot report.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fixed in b150 `c05f5e851f6418a5` and b151; passes in run c447b150a (seat stays, mech reusable after rejoin). Closes on the junior's shot report.
 
 ## Defect
 

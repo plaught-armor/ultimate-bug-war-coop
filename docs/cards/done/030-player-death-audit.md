@@ -1,6 +1,6 @@
 # Card 030: Player death audit (log only), groundwork for downed and revive
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, milestone 3a ("Player death flow"), and rows 021, 024 and 025. Then read `docs/design/coop-channel-lobby-downed.md` section 3. Repo root: `/path/to/ultimate-bug-war-coop`. This card only logs; the game's own death runs unchanged.
 

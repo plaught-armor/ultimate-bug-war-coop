@@ -1,6 +1,6 @@
 # Card 401: the host's ext sweep walks every level actor twice a second (about 200 us per frame)
 
-Status: open, measured, design written, not coded. Class: card 330 (per-frame cost). Not a play blocker.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, measured, design written, not coded. Class: card 330 (per-frame cost). Not a play blocker.
 
 ## Cost (seen, run `c399b87f`, b87, host)
 

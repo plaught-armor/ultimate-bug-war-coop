@@ -7,13 +7,15 @@
 
 #include <intrin.h>
 
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
 namespace ubw::hooks {
 
 void c46_note_start_death(const void* pawn);
 void c48_complete_death(const void* pawn);
 bool c43_death(void* pawn);
 bool c43_skip_start_death(const void* pawn);
-void c44_after_pe(void* object, const void* function); // card 044: client game over, downed checks
+void c44_after_pe(void* object, const void* function, uint64_t name); // card 044: client game over, downed checks
 void c44_complete_death(const void* pawn);
 bool c43_health_pre(const void* owner);
 void c43_health_post(const void* owner, float old_health, float new_health);
@@ -28,9 +30,9 @@ DeathEventFn g_bug_start_death = nullptr; // card 196: ASTPlayerCharacterBug::St
 CompleteDeathFn g_orig_complete_death = nullptr;
 SetAutoSaveFn g_orig_set_auto_save = nullptr;
 ProcessEventFn g_orig_process_event = nullptr;
+PeHot g_pe{}; // card 573 b463: detour_process_event's gate word and FName ids, one cache line
 HealthChangedFn g_orig_health_changed = nullptr; // g_health_attribute_changed (card 021) enters the detour too
 config::KillPlayer g_c30_mode = config::KillPlayer::Off; // written in ubw::init before any hook
-bool g_c30_window = false; // the ProcessEvent gate: one load and one branch while closed
 
 constexpr size_t kPawnOnDeath = 0x898;         // ASTPlayerCharacter::OnDeath: FMulticastScriptDelegate (TArray)
 constexpr size_t kPawnDeathTimer = 0x9DC;      // ASTPlayerCharacter::TimeUntilDeathCompletion (float)
@@ -80,13 +82,13 @@ void c30_open(const char* why, const void* pawn) {
         return;
     }
     g_c30.zero_ms = GetTickCount64();
-    g_c30_window = true;
+    pe_gate_set(kPeGate_c30_window, true);
     log::line("card030: %s death window open (%s) on %s (%s); ProcessEvent lines from here", side(), why,
               object_name(pawn).text, kSprintSideText[sprint_side(pawn)]);
 }
 
 void c30_close(ULONGLONG now) {
-    g_c30_window = false;
+    pe_gate_set(kPeGate_c30_window, false);
     log::line("card030: %s death window closed %llu ms after Health 0 (CompleteDeath %s): %u ProcessEvent lines, "
               "%u repeats not logged after the cap",
               side(), now - g_c30.zero_ms, g_c30.complete_ms != 0 ? "seen" : "not seen", g_c30.seen_count,
@@ -225,7 +227,7 @@ void c30_window_step(void* pc, const C30Pawns& p, ULONGLONG now) {
         log::line("card030: %s interact key E released", side());
     }
     const bool complete_end = g_c30.complete_ms != 0 && now >= g_c30.complete_ms + kC30AfterCompleteMs;
-    if (g_c30_window && (complete_end || t >= kC30WindowMaxMs)) {
+    if (pe_gate(kPeGate_c30_window) && (complete_end || t >= kC30WindowMaxMs)) {
         c30_close(now);
     }
 }
@@ -290,67 +292,141 @@ struct C128PeScope {
     C128PeScope& operator=(const C128PeScope&) = delete;
 };
 
-// The notes and refusals before the original, then the original; false when a refusal skipped it. `orig_tsc`: the
-// original's time stamp counter ticks (0 when skipped), taken out of the hook's own cost.
-bool c128_pe_run(void* object, void* function, void* parms, uint64_t* orig_tsc) {
-    const C128PeScope scope(object, function);
-    if (g_c30_window) {
+// Card 572 step 3, timed calls only: when the original started and its ticks (both 0 when a refusal skipped it).
+struct C572PeOrig {
+    uint64_t start;
+    uint64_t ticks;
+};
+
+// Card 573 b463: the gates of the notes and refusals ahead of the FName read, and of the notes after the original.
+constexpr uint32_t kPeGatesEarly = kPeGate_c30_window | kPeGate_c32_pe | kPeGate_c74_pe | kPeGate_c99_log |
+                                   kPeGate_c161_pe | kPeGate_c376_pe | kPeGate_c345b_pe;
+constexpr uint32_t kPeGatesAfter = kPeGate_c408_pe | kPeGate_c44_pe | kPeGate_c67_pe | kPeGate_c158_pe | kPeGate_c493_pe;
+
+// Card 573 b463: the five FName ids, until all resolve (each hook's own fname_cached retried the same way).
+void pe_names_resolve() {
+    PeNames& n = g_pe.names;
+    const bool ok = fname_cached(n.exit, L"Exit") != 0 && fname_cached(n.player_exit, L"PlayerExit") != 0 &&
+                    fname_cached(n.fed_score_gained, L"FedScoreGained") != 0 &&
+                    fname_cached(n.receive_begin_play, L"ReceiveBeginPlay") != 0 &&
+                    fname_cached(n.construct, L"Construct") != 0;
+    g_pe.names_ready = ok ? 1u : 0u;
+}
+
+// The notes and refusals that need no FName, in their order. True: a refusal skipped the call. Each gate is loaded
+// again at its own test, so a sub-hook that changes a later gate is seen as before.
+bool c128_pe_early(void* object, void* function) {
+    if (pe_gate(kPeGate_c30_window)) {
         c30_note_event(object, function);
     }
-    if (g_c32_pe) {
+    if (pe_gate(kPeGate_c32_pe)) {
         c32_note_pe(object, function);
     }
-    if (g_c74_pe) {
+    if (pe_gate(kPeGate_c74_pe)) {
         c74_note_pe(object, function);
     }
-    if (g_c161_pe && c161_pe(object, function)) {
-        return false; // card 161: the client's own door trigger, refused (the host owns the door)
+    if (pe_gate(kPeGate_c99_log)) {
+        c582_building_pe(object, function); // card 582 G3 b450: per-hit building damage row
     }
-    if (g_c376_pe && c376_pe(object, function)) {
-        return false; // card 376: the client's own RESTART MISSION, refused (the host restarts the mission)
+    if (pe_gate(kPeGate_c161_pe) && c161_pe(object, function)) {
+        return true; // card 161: the client's own door trigger, refused (the host owns the door)
     }
-    if (g_c345b_pe && c345b_pe(object, function)) {
-        return false; // card 345b: the client's own level-end Next, held until the host's Next
+    if (pe_gate(kPeGate_c376_pe) && c376_pe(object, function)) {
+        return true; // card 376: the client's own RESTART MISSION, refused (the host restarts the mission)
     }
-    if (g_c408_pe && c408_pe(object, function, parms)) {
+    if (pe_gate(kPeGate_c345b_pe) && c345b_pe(object, function)) {
+        return true; // card 345b: the client's own level-end Next, held until the host's Next
+    }
+    return false;
+}
+
+// The notes and refusals before the original, then the original; false when a refusal skipped it. `orig` (timed
+// calls only): the original's time stamp counter span, taken out of the hook's own cost. `name`: the function's FName,
+// read once here for every hook that compares it (c600 or c491 reads it on every call, so it is no new read).
+template <bool kTimed>
+bool c128_pe_run(void* object, void* function, void* parms, C572PeOrig* orig, uint64_t& name) {
+    const C128PeScope scope(object, function);
+    if ((pe_gates() & kPeGatesEarly) != 0 && c128_pe_early(object, function)) {
+        return false;
+    }
+    if (g_pe.names_ready == 0) {
+        pe_names_resolve();
+    }
+    name = read_u64(function, kObjectName);
+    if (pe_gate(kPeGate_c408_pe) && c408_pe(object, function, parms, name)) {
         return false; // card 408: the client's own flak or plasma bug building timer event (the host's row calls it)
     }
-    if (g_client_session && c491_pe(object, function)) {
+    const bool client = pe_gate(kPeGate_client);
+    if (!client && c600_exit_pe(object, function, parms, name)) {
+        return false; // card 600: a spawner's player exit while another player is still inside
+    }
+    if (client && c491_pe(object, function, name)) {
         return false; // card 491 b262: a player pawn's own resupply step (the host's "U" row runs it)
     }
-    const uint64_t t0 = __rdtsc();
-    g_orig_process_event(object, function, parms);
-    *orig_tsc = __rdtsc() - t0;
+    if constexpr (kTimed) {
+        orig->start = __rdtsc();
+        g_orig_process_event(object, function, parms);
+        orig->ticks = __rdtsc() - orig->start;
+    } else {
+        g_orig_process_event(object, function, parms);
+    }
     return true;
 }
 
-} // namespace
-
-// Hot path: every ProcessEvent. Closed window: one load and one branch. The mod's own time in it (all but the
-// original) goes to the per-frame ProcessEvent cost row (frame_c330.cpp, c330_pe).
-void detour_process_event(void* object, void* function, void* parms) {
-    const uint64_t t0 = __rdtsc();
-    uint64_t orig = 0;
-    if (!c128_pe_run(object, function, parms, &orig)) {
-        c330_pe(__rdtsc() - t0 - orig);
+// The notes after a run original. One load skips them all while every gate is closed; each open one is loaded again
+// at its own test (the original or an earlier note may change it).
+void c128_pe_after(void* object, void* function, uint64_t name) {
+    if ((pe_gates() & kPeGatesAfter) == 0) {
         return;
     }
-    if (g_c408_pe) {
+    if (pe_gate(kPeGate_c408_pe)) {
         c408_after_pe(object, function);
     }
-    if (g_c44_pe) {
-        c44_after_pe(object, function);
+    if (pe_gate(kPeGate_c44_pe)) {
+        c44_after_pe(object, function, name);
     }
-    if (g_c67_pe) {
+    if (pe_gate(kPeGate_c67_pe)) {
         c67_note_pe(object, function);
     }
-    if (g_c158_pe) {
+    if (pe_gate(kPeGate_c158_pe)) {
         c158_after_pe(object, function);
     }
-    if (g_c493_pe) {
+    if (pe_gate(kPeGate_c493_pe)) {
         c493_after_pe(object, function); // card 493: cave-in rerun per player
     }
-    c330_pe(__rdtsc() - t0 - orig);
+}
+
+// Card 572 step 2 (c397b398a: ProcessEvent 36.7 ms of 215.4 mod ms per window, 4 __rdtsc per call): only 1 call in
+// kC572PeEvery is timed, and its cost stands for that many calls. A race on the counter only moves which call is
+// sampled (ProcessEvent runs on several threads).
+constexpr uint32_t kC572PeEvery = 16; // a power of two
+// Card 573 b463: one counter per thread, so the threads that run ProcessEvent no longer bounce one cache line. Only
+// this detour reads it.
+thread_local uint32_t t_c572_pe_tick = 0;
+
+} // namespace
+
+// Hot path: every ProcessEvent. The mod's own time in a sampled call (all but the original) goes to the per-frame
+// ProcessEvent cost row (frame_c330.cpp, c330_pe).
+void detour_process_event(void* object, void* function, void* parms) {
+    uint64_t name = 0;
+    if ((++t_c572_pe_tick & (kC572PeEvery - 1u)) != 0) {
+        if (c128_pe_run<false>(object, function, parms, nullptr, name)) {
+            c128_pe_after(object, function, name);
+        }
+        return;
+    }
+    const uint64_t t0 = __rdtsc();
+    C572PeOrig orig{0, 0};
+    if (c128_pe_run<true>(object, function, parms, &orig, name)) {
+        c128_pe_after(object, function, name);
+    }
+    const uint64_t t1 = __rdtsc();
+    const uint64_t body = t1 - t0 - orig.ticks;
+    c330_pe(body, kC572PeEvery);
+    // Card 572 step 3: where a sampled body's ticks go. A refused call has no original: all of it counts as before.
+    const uint64_t before = orig.start != 0 ? orig.start - t0 : body;
+    c572_pe_split(before, body - before, body);
 }
 
 void c30_pawn_line(const char* what, const void* pawn) {
@@ -881,6 +957,7 @@ bool c43_death(void* pawn) {
         return skip;
     }
     void* const world = g_actor_get_world(pawn);
+    c586_end_hold_of(pawn, world, "HandleDeathEvent"); // card 586: the seat or missile hands the player back first
     const C43Roster r = world != nullptr ? c43_roster(world) : C43Roster{};
     const int32_t id = object_index(pawn);
     const int32_t slot = c43_slot(r, id);
@@ -1633,7 +1710,7 @@ void c43_use_edge(void* reviver, bool pressed) {
 
 // Both sides: this machine's own downed view: camera lowered, fire released; the client also zeroes walk speed.
 void c43_own_view(void* pawn, bool down) {
-    if (down == g_c43.view_down || pawn == nullptr) {
+    if (down == g_c43.view_down || pawn == nullptr || !c43_is_trooper(pawn, "own view")) { // card 586: no camera
         return;
     }
     g_c43.view_down = down;
@@ -1908,7 +1985,7 @@ void c44_complete_death(const void* pawn) {
     const ULONGLONG now = GetTickCount64();
     g_c44.complete_ms = now;
     g_c44.window_ms = now;
-    g_c44_pe = true;
+    pe_gate_set(kPeGate_c44_pe, true);
     if (note_event_cap(g_c44.complete_lines, kC44CompleteLines, "card044 CompleteDeath")) {
         log::line("card044: %s t=%llu CompleteDeath on %s (%s): %lld ms after the client's StartDeath, OnDeath "
                   "bound %d, IsAutoSaveEnabled %d",
@@ -2002,14 +2079,14 @@ void c44_dump_screen(void* screen) {
 }
 
 // ProcessEvent, after the original, while the gate is open: the death screen's Construct (its bindings are made).
-void c44_after_pe(void* object, const void* function) {
-    if (function == nullptr || read_u64(function, kObjectName) != fname_cached(g_c44.construct, L"Construct")) {
+void c44_after_pe(void* object, const void* function, uint64_t name) {
+    if (function == nullptr || !pe_name_is(name, g_pe.names.construct)) { // card 573 b463: the detour's one FName read
         return;
     }
     if (strncmp(class_name(object).text, "WB_PlayerDeathScreen", 20) != 0) {
         return;
     }
-    g_c44_pe = false;
+    pe_gate_set(kPeGate_c44_pe, false);
     g_weak_assign(&g_c44.screen_weak, &object);
     c44_dump_screen(object);
     if (g_client_session) {
@@ -2970,9 +3047,11 @@ void detour_c79_start_death(void* mech, const void* damage_event) {
 }
 
 void detour_c79_death_complete(void* mech) {
+    c591_death_note(mech, "before");
     c79_mech_state("mech DeathComplete", "before", mech);
     g_orig_c79_death_complete(mech);
     c79_mech_state("mech DeathComplete", "after", mech);
+    c591_death_note(mech, "after");
 }
 
 void detour_c79_self_destruct(void* mech) {
@@ -2991,6 +3070,136 @@ void detour_c79_sd_complete(void* mech) {
     c79_mech_state("OnSelfDestructSequenceComplete", "before", mech);
     g_orig_c79_sd_complete(mech);
     c79_mech_state("OnSelfDestructSequenceComplete", "after", mech);
+}
+
+// Card 591 diag (UBWCOOP_C79_LOG=1, host): the host crash at DeathComplete +0x7A reads a null mech+0xC20 (the body
+// mesh) about 3 s after the 60 s abandoned-mech self-destruct eject. These rows name what nulls it: the body pointer
+// at each LeaveMech, on every change, every 100 ms after an eject, at each DeathComplete call, and every
+// DestroyComponent whose component's outer is a mech, with its caller. Log only; nothing here changes the game.
+constexpr size_t kC591Body = 0xC20;            // ASTPlayerMechBase body mesh (attributes.cpp kMechSecondMesh)
+constexpr uint32_t kC591Lines = 200;
+constexpr ULONGLONG kC591PollMs = 100;
+constexpr ULONGLONG kC591LeaveWatchMs = 75000; // the 60 s abandoned-mech timer plus the 3 s eject, with margin
+constexpr ULONGLONG kC591EjectWatchMs = 10000;
+constexpr ULONGLONG kC591AfterDeathMs = 500; // the mech actor may be destroyed after DeathComplete
+
+struct C591State {
+    const void* mech;      // the mech watched since its last LeaveMech; nullptr = none
+    const void* world;     // the world at the first step of the watch; another world ends it unread (map change)
+    const void* last_body; // its +0xC20 at the last row or poll
+    ULONGLONG end_ms;      // the watch ends here
+    ULONGLONG eject_ms;    // the eject LeaveMech (no controller); 0 = only a normal leave so far
+    ULONGLONG next_ms;     // the next 100 ms poll row after an eject
+    uint32_t lines;
+    uint32_t deaths;       // DeathComplete calls this session, any mech
+    uint32_t mech_deaths;  // DeathComplete calls on the watched mech
+};
+C591State g_c591{};
+C409DestroyFn g_orig_c591_destroy = nullptr;
+
+unsigned long long c591_caller_rva(const void* ra, const char** module) {
+    const unsigned long long exe = exe_rva(ra);
+    if (exe != 0) {
+        *module = "exe";
+        return exe;
+    }
+    *module = "dwmapi";
+    return static_cast<unsigned long long>(static_cast<const uint8_t*>(ra) -
+                                           reinterpret_cast<const uint8_t*>(&__ImageBase));
+}
+
+void c591_body_row(const char* what, const void* mech, ULONGLONG now) {
+    const void* const body = read_ptr(mech, kC591Body);
+    g_c591.last_body = body;
+    if (!note_event_cap(g_c591.lines, kC591Lines, "card591")) {
+        return;
+    }
+    log::line("card591: %s t=%llu %s: mech %s %p body +0xC20 %p (%s %s), eject %s%llu ms ago, mech DeathComplete "
+              "calls %u (all mechs %u)",
+              side(), static_cast<unsigned long long>(now), what, object_name(mech).text, mech, body,
+              object_name(body).text, class_name(body).text, g_c591.eject_ms != 0 ? "" : "none, ",
+              static_cast<unsigned long long>(g_c591.eject_ms != 0 ? now - g_c591.eject_ms : 0), g_c591.mech_deaths,
+              g_c591.deaths);
+}
+
+void c591_death_note(const void* mech, const char* when) {
+    const ULONGLONG now = GetTickCount64();
+    if (when[0] == 'b') {
+        ++g_c591.deaths;
+        g_c591.mech_deaths += mech == g_c591.mech ? 1u : 0u;
+    }
+    if (mech == g_c591.mech) {
+        g_c591.end_ms = now + kC591AfterDeathMs;
+    }
+    char what[48];
+    snprintf(what, sizeof(what), "DeathComplete %s", when);
+    c591_body_row(what, mech, now);
+}
+
+void c591_destroy_note(const void* comp, const void* ra) {
+    const void* const owner = read_ptr(comp, kObjectOuter);
+    if (owner == nullptr || !is_a(owner, g_mech_class())) {
+        return;
+    }
+    if (!note_event_cap(g_c591.lines, kC591Lines, "card591")) {
+        return;
+    }
+    const char* module = "";
+    const unsigned long long rva = c591_caller_rva(ra, &module);
+    log::line("card591: %s t=%llu DestroyComponent %s (%s) %p on mech %s %p: %s, caller %s+0x%llX",
+              side(), static_cast<unsigned long long>(GetTickCount64()), object_name(comp).text,
+              class_name(comp).text, comp, object_name(owner).text, owner,
+              comp == read_ptr(owner, kC591Body) ? "IS its body +0xC20" : "not its body", module, rva);
+}
+
+void detour_c591_destroy(void* comp, bool promote_children) {
+    if (comp != nullptr) {
+        c591_destroy_note(comp, _ReturnAddress());
+    }
+    g_orig_c591_destroy(comp, promote_children);
+}
+
+// detour_c75_leave_mech, before the original, with UBWCOOP_C79_LOG=1: watch this mech's body pointer from here.
+void c591_leave_note(const void* mech, bool piloted) {
+    const ULONGLONG now = GetTickCount64();
+    if (mech != g_c591.mech) {
+        g_c591.mech = mech;
+        g_c591.world = nullptr;
+        g_c591.mech_deaths = 0;
+        g_c591.eject_ms = 0;
+    }
+    if (!piloted) {
+        g_c591.eject_ms = now; // no weak PC: the game's own eject (self-destruct), not a player's exit
+        g_c591.next_ms = now + kC591PollMs;
+    }
+    g_c591.end_ms = now + (piloted ? kC591LeaveWatchMs : kC591EjectWatchMs);
+    c591_body_row(piloted ? "LeaveMech (piloted)" : "LeaveMech (no PC: eject)", mech, now);
+}
+
+void c591_step(const void* world, ULONGLONG now) {
+    if (g_c591.mech == nullptr) {
+        return;
+    }
+    if (g_c591.world == nullptr) {
+        g_c591.world = world;
+    }
+    if (world != g_c591.world) {
+        g_c591.mech = nullptr; // the map changed: the watched mech is gone, so it is not read again
+        return;
+    }
+    if (now >= g_c591.end_ms) {
+        c591_body_row("watch end", g_c591.mech, now);
+        g_c591.mech = nullptr;
+        return;
+    }
+    const bool changed = read_ptr(g_c591.mech, kC591Body) != g_c591.last_body;
+    const bool poll = g_c591.eject_ms != 0 && now >= g_c591.next_ms;
+    if (poll) {
+        g_c591.next_ms = now + kC591PollMs;
+    }
+    if (changed || poll) {
+        c591_body_row(changed ? "body changed" : "poll", g_c591.mech, now);
+    }
 }
 
 // Log: each PlayerController whose pawn changed since the last step, with the new pawn's class and Health.
@@ -3290,6 +3499,12 @@ bool c294_hold_respawn(const void* pawn, const void* old, ULONGLONG now) {
     return true;
 }
 
+// Client: true from the host's restart row until the new map's first pawn (or a respawn in place with no travel).
+// A pawn seen in this window lives in the old world and is destroyed by the travel (card 570, run c397b398a).
+bool c294_restart_pending() {
+    return g_c294.started_ms != 0;
+}
+
 // Client, after a respawn in place ran: no travel followed the row, so the hold ends here.
 void c294_shown(ULONGLONG now) {
     if (g_c294.started_ms != 0) {
@@ -3506,7 +3721,7 @@ void c54_track_step(ULONGLONG now) {
 
 void c50_relay_use(void* pawn, bool pressed) {
     void* const interactor = !g_client_session && sprint_side(pawn) == kSideServerCopy
-                                 ? read_ptr(pawn, kCharacterInteractor)
+                                 ? pawn_interactor(pawn)
                                  : nullptr;
     if (interactor == nullptr) {
         return;
@@ -3562,10 +3777,12 @@ void c50_step(void* world, void* pc, ULONGLONG now) {
         }
     } else {
         C330_STEP(c50_host_step(world, now));
+        C330_STEP(c599_host_step(world));          // card 599: each copy's camera manager at its view, each frame
         C330_STEP(c50_peer_host_step(world, now)); // card 050 b205
         C330_STEP(c143_host_step(world, now)); // card 143: a rejoined client's held Restore, once its new copy is ready
         C330_STEP(c278_host_step(world));      // card 278: script loadout rows on a respawned copy, after any Restore
         C330_STEP(c310_host_step(world, now)); // card 310: the default class compare, the map rows on a new copy pawn
+        C330_STEP(c582_tracker_step(now));     // card 582 G4: pickup tracker binds for a changed pawn
         C330_STEP(c95_replay_step());          // card 219: the next paced collision rows of each join replay
         if (g_c50_test && g_c57_solo) {
             c57_test_solo(world, pc, now);
@@ -3591,7 +3808,7 @@ void c50_step(void* world, void* pc, ULONGLONG now) {
     }
 }
 
-// Hot path while g_c67_pe: every ProcessEvent. `object` is live here (the call is on it).
+// Hot path while kPeGate_c67_pe: every ProcessEvent. `object` is live here (the call is on it).
 void c67_note_pe(void* object, const void* function) {
     const int32_t k = c67_kind_of(object);
     if (k < 0) {
@@ -3656,8 +3873,12 @@ void c72_client_step(void* pc, ULONGLONG now) {
         return; // card 073: no mirror while a seed waits, or the new pawn's own counts would lower its copy first
     }
     void* const pawn = read_ptr(pc, kControllerPawn);
+    c570_magazine_step(pawn, now); // card 570: a checkpoint rejoin's kept magazine, before the mirror reads it
     int32_t rounds = c274_magazine_rounds(pawn); // card 274
     const bool reloaded = rounds > g_c72.magazine_rounds; // card 274: a reload (or a switch to a fuller weapon) goes now
+    if (rounds != g_c72.magazine_rounds) {
+        c570_magazine_note(pawn); // card 570: kept for a Reload that comes after the pawn is gone
+    }
     g_c72.magazine_rounds = rounds;
     if (now < g_c72.next_ms && !reloaded) {
         return;
@@ -3721,6 +3942,7 @@ void c79_step(const void* world, ULONGLONG now) {
     const C43Roster r = c43_roster(world);
     if (g_c79_log) {
         c79_watch_pawns(r, now);
+        c591_step(world, now);
     }
     if (g_c79_kill && !g_client_session && g_c79.kill_ms != 0 && now >= g_c79.kill_ms) {
         c79_kill_step(world, r, now);
@@ -3743,6 +3965,9 @@ bool c79_install(uint8_t* base, const IMAGE_NT_HEADERS64* nt) {
          reinterpret_cast<void**>(&g_orig_c79_sd_init)},
         {&offsets::ASTPlayerMechBase_OnSelfDestructSequenceComplete, reinterpret_cast<void*>(&detour_c79_sd_complete),
          reinterpret_cast<void**>(&g_orig_c79_sd_complete)},
+        // Card 591 diag. g_scene_destroy_component (card 409) keeps the raw address, so its calls pass this detour.
+        {&offsets::USceneComponent_DestroyComponent, reinterpret_cast<void*>(&detour_c591_destroy),
+         reinterpret_cast<void**>(&g_orig_c591_destroy)},
     };
     for (const HookSpec& h : hooks) {
         void* const target = code_address(base, nt, *h.sym);

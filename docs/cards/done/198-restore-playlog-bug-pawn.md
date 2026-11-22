@@ -1,6 +1,6 @@
 # Card 198: Card 143 restore and the play log work on the bug-side player pawn
 
-Status: queued 2026-11-12, split from card 195 (one goal per card). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 195 (one goal per card). Budget: three runs. Static first.
 
 ## Why
 

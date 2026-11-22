@@ -1,6 +1,6 @@
 # Card 164: The digest gate leaves server-only actors out
 
-Status: queued 2026-11-08, from docs/playtest-2026-11-08.md findings 3 and 21. Budget: one run.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from docs/playtest-2026-11-08.md findings 3 and 21. Budget: one run.
 
 Read: card 132 (digest), docs/playtest-2026-11-08.md findings 3, 21.
 

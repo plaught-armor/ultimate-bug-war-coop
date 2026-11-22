@@ -1,6 +1,6 @@
 # Card 449: troop dropship takeoff is decided per side, and ignores the client's trooper
 
-Status: fixed in b151 `7d8087dbc3cee8ab`; run c448b151b shows both client rows and 0 `WARN card159`. Host `takeoff held` row not reached yet. Closes on the junior's shot report.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fixed in b151 `7d8087dbc3cee8ab`; run c448b151b shows both client rows and 0 `WARN card159`. Host `takeoff held` row not reached yet. Closes on the junior's shot report.
 on the b148 tree). Needs `python3 tools/pdb_rva.py gen` after applying (new symbol).
 
 ## Fault

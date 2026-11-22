@@ -36,3 +36,6 @@ Reopen when: a `WARN card148 ... asleep above the ground` row names a part withi
 (compare the row's position with the nearest player position row), or a playtest shot shows a gib piece hanging
 in the air on one screen. When `gib_ground_check` (`mod/src/ubw/gib_c137.cpp:1114`) is next touched, add the
 distance to the own pawn to the row and drop the WARN beyond the collision streaming distance.
+
+Seen again 2026-11-21 c586b419a (b419, FED_C3M1): one client row, part 36 `STGorePartNonSticky_StaticMesh` at
+-29003 13407 563 (t=170895114). Known cosmetic item; no reopen condition met.

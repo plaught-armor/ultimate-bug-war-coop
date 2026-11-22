@@ -1,6 +1,6 @@
 # 526: Client NiagaraComponent count grows through a fight (host flat)
 
-Opened 2026-11-19 by senior from the c263L card 252 census (4-player load, 150 bugs, FED_C3M2, b309). Real bug
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by senior from the c263L card 252 census (4-player load, 150 bugs, FED_C3M2, b309). Real bug
 candidate: a client that keeps more live FX components than the host pays for them every frame, and the gap grows
 with play time.
 

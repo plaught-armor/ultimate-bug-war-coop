@@ -1,0 +1,68 @@
+# b448 proof run a (card 595 user rule 2026-11-21): FED_C3M1, the client is downed during the hold, revived, then presses.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-84).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c595-c3m1-b448a.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c595b448a 600
+voidsoft
+void unless host dll 28e16459fd3c774b
+void unless client dll 28e16459fd3c774b
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- card 595 evac: the debug key event lands dropship C_1 and adds Satcom_SO3. Lesson 84: both players stand on
+# the door floor (off the landing pad), within 400 uu of C_1. The host presses first: held 1 of 2 (slot 0).
+host mark
+client mark
+host levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1
+host wait log "cmd: \d+ levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1 on \S+: run" since-mark timeout=5
+host wait log "collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship_C, LocalRole 3\) player-inside flag 0 -> 0" since-mark timeout=120
+host clear 4000 kill
+host warp actor BP_PlayerTransportDropship_C_1 400
+host warp client BP_PlayerTransportDropship_C_1 380
+host look actor BP_PlayerTransportDropship_C_1
+host key E
+host wait log "card595: host t=\d+ evac \S+ held: 1 of 2 aboard \(slot 0 " since-mark timeout=5
+# The client goes down during the hold: its bleedout is capped to 10 s (kC595BleedS) and its ask cleared.
+host mark
+client mark
+host down client
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Downed " since-mark timeout=5
+host wait log "card595: host t=\d+ evac \S+: BP_PlayerCharacterMI_C\S* downed during the hold, bleedout capped to 10 s" since-mark timeout=2
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+client shot c595-a-downed-client
+host shot c595-a-downed-host
+# Case A (revive): the host revives the client inside the 10 s; no release until the client presses (checked after
+# the run: no "released" row between the revive row and the client's relayed row).
+host warp actor BP_PlayerCharacterMI_C 120
+host look actor BP_PlayerCharacterMI_C 0
+host key E 4500
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Up \(revived" since-mark timeout=10
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) (Downed|Out) -> Up" since-mark timeout=10
+client wait state pawn=client-own timeout=10
+sleep 2
+host shot c595-a-revived-host
+client mark
+host mark
+client look actor BP_PlayerTransportDropship_C_1
+client key E
+client wait log "card595: client t=\d+ Use on \S+ relayed, own original skipped" since-mark timeout=5
+host wait log "card595: host t=\d+ evac \S+ released: 2 of 2 living players asked \(mask 0x3 of 0x3\) after \d+ ms, the last press" since-mark timeout=5
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: host t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" since-mark timeout=15
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: client t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" timeout=30
+host shot c595-a-released-host
+client shot c595-a-released-client
+host wait log "card260: host EndLevel, sent to" since-mark timeout=40
+client wait log "card260: client EndLevel \(relay\)" timeout=30
+sleep 3
+client shot c595-a-endlevel-client
+host shot c595-a-endlevel-host

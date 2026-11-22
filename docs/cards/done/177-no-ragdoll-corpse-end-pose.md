@@ -1,6 +1,6 @@
 # Card 177: A corpse with no ragdoll shows the host's end pose
 
-Status: queued 2026-11-11, split from card 152 (one goal per card). Budget: three runs. Playtest 2026-11-08 finding 5.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, split from card 152 (one goal per card). Budget: three runs. Playtest 2026-11-08 finding 5.
 
 Read: card 146 (c37 live-death fix, corpse arrival), card 152 (pose rows), `mod/src/ubw/pose_c132.cpp`
 (`c132_pose_arrival`, `arrival_tick`).

@@ -1,6 +1,6 @@
 # 506: A dead AA turret that comes back into net range is hidden for 9 s on the client, then dies again
 
-Opened 2026-11-19 by the senior, from a static trace of c243b273a and c243b271c (FED_C3M2).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from a static trace of c243b273a and c243b271c (FED_C3M2).
 
 ## Finding
 

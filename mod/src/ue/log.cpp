@@ -11,7 +11,8 @@ namespace {
 HANDLE g_file = INVALID_HANDLE_VALUE;
 SRWLOCK g_lock = SRWLOCK_INIT;
 
-constexpr wchar_t kLogStem[] = L"UBWCoop";
+const wchar_t* g_stem = L"UBWCoop"; // card 578: ubwperf.dll standalone opens "ubwperf"
+SinkFn g_sink = nullptr;            // card 578: ubwperf.dll in co-op writes through the co-op log
 constexpr wchar_t kLogExt[] = L".log";
 constexpr size_t kMaxNameLen = 64; // "UBWCoop-" + 16-char tag + "-YYYYMMDD-HHMMSS" + ".log" fits with room
 
@@ -34,7 +35,7 @@ bool append(wchar_t* dst, size_t cap, size_t* pos, const wchar_t* src) {
 bool build_name(const wchar_t* tag, const wchar_t* ext, wchar_t* name, size_t cap) {
     size_t pos = 0;
     const bool tagged = tag != nullptr && tag[0] != L'\0';
-    return append(name, cap, &pos, kLogStem) && (!tagged || append(name, cap, &pos, L"-")) &&
+    return append(name, cap, &pos, g_stem) && (!tagged || append(name, cap, &pos, L"-")) &&
            (!tagged || append(name, cap, &pos, tag)) && append(name, cap, &pos, ext);
 }
 
@@ -58,7 +59,8 @@ bool path_next_to_exe(const wchar_t* tag, const wchar_t* ext, wchar_t* path, siz
     return cut != 0 && append(path, cap, &pos, name);
 }
 
-bool open_next_to_exe(const wchar_t* tag) {
+bool open_next_to_exe(const wchar_t* tag, const wchar_t* stem) {
+    g_stem = stem;
     // Card 130 item 16: one log per launch. The name carries the local start time, so a relaunch never truncates
     // the last session's log: UBWCoop-<tag>-YYYYMMDD-HHMMSS.log (UBWCoop-YYYYMMDD-HHMMSS.log untagged).
     SYSTEMTIME t;
@@ -139,7 +141,7 @@ void line_totals(int64_t* ticks, int64_t* lines) {
 }
 
 void line(const char* fmt, ...) {
-    if (g_file == INVALID_HANDLE_VALUE) {
+    if (g_file == INVALID_HANDLE_VALUE && g_sink == nullptr) {
         return;
     }
     const LineTimer timer;
@@ -152,11 +154,26 @@ void line(const char* fmt, ...) {
         return;
     }
     InterlockedIncrement64(&g_line_count);
+    if (g_sink != nullptr) {
+        g_sink(buf, n);
+        return;
+    }
+    write_raw(buf, n);
+}
+
+void write_raw(const char* text, size_t n) {
+    if (g_file == INVALID_HANDLE_VALUE || n == 0 || n > MAXDWORD) {
+        return;
+    }
     AcquireSRWLockExclusive(&g_lock);
     DWORD written = 0;
     // A failed log write cannot itself be logged; there is no other sink.
-    (void)WriteFile(g_file, buf, static_cast<DWORD>(n), &written, nullptr);
+    (void)WriteFile(g_file, text, static_cast<DWORD>(n), &written, nullptr);
     ReleaseSRWLockExclusive(&g_lock);
+}
+
+void set_sink(SinkFn sink) {
+    g_sink = sink;
 }
 
 void crash_line(const char* fmt, ...) {

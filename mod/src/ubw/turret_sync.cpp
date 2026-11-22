@@ -571,11 +571,27 @@ void c125_host_aim(void* pc, const WireString*, const ChanArgs& args) {
 // Client: our copy of the turret ticks while the host's does. The host's MountTurret turns the actor tick on and its
 // LeaveTurret turns it off (unless bAlwaysTick); both run only on the host, so a client's turret never ticked and its
 // blueprint tick never put the camera at its gunner offset (the client's view sat inside the turret mesh, c125w4).
+// Card 561: a seat whose blueprint tick flies it along a "Spline" actor variable that only the host's spawn sets (the
+// Door Gunner gunship, BP_MountableTurret_Gunner_C, from GA_TacSupp_DoorGunner's deferred spawn). The client copy has
+// it null, so its tick ran the flight on no spline and moved the seat, and the client's view, to the world origin
+// every frame. Such a copy never ticks here; its place comes from the host.
+static bool c561_spline_missing(const uint8_t* turret) {
+    const uint8_t* prop = nullptr;
+    const void* const spline = prop_object_field(turret, "Spline", &prop);
+    return prop != nullptr && spline == nullptr;
+}
+
 void c125_mirror_tick(uint8_t* turret) {
     if (g_actor_tick_enabled == nullptr) {
         return;
     }
-    const bool want = turret[kC125InUse] != 0 || turret[kC125AlwaysTick] != 0;
+    const bool in_use = turret[kC125InUse] != 0 || turret[kC125AlwaysTick] != 0;
+    const bool no_spline = in_use && c561_spline_missing(turret);
+    const bool want = in_use && !no_spline;
+    if (no_spline && g_actor_tick_enabled(turret)) {
+        log::line("card561: client turret %s at (%.0f, %.0f) keeps its actor tick off: its Spline is the host's "
+                  "only (null here)", object_name(turret).text, actor_location(turret).x, actor_location(turret).y);
+    }
     if (g_actor_tick_enabled(turret) == want) {
         return;
     }
@@ -631,23 +647,46 @@ void c125_apply_row(uint8_t* turret, uint32_t value);
 // Card 467: a 'T' row whose turret has no copy here yet waits in this table and is retried on the client's turret
 // step for kC467WaitMs. c460b170a: after a checkpoint load and rejoin, the join replay's rows for the two spawned
 // TurretTrooper turrets ran before their copies arrived, and the one-shot rows were skipped. Newest row per name wins.
-constexpr uint32_t kC467Rows = 8;
+// c578b425a: a TurretTrooper drop 15661 uu from the client's pawn, past net cull distance, never got a copy there; its
+// row was dropped with a WARN at 10 s. A row that times out past kC467CullUu from the own pawn is an out-of-range hold
+// (a plain row, no time cap): applied when the copy appears, dropped by the client destroy path or at map end. Back
+// inside cull distance it gets a new kC467WaitMs window; a timeout there is a real missing copy (WARN).
+constexpr uint32_t kC467Rows = 16;
 constexpr ULONGLONG kC467WaitMs = 10000;
-constexpr uint32_t kC467Lines = 16; // WARN rows per map (timeouts and table full)
+constexpr double kC467CullUu = 15000.0; // the engine's default net cull distance
+constexpr uint32_t kC467Lines = 16;     // WARN rows per map (timeouts and table full)
+constexpr uint32_t kC467FarLines = 8;   // out-of-range hold rows per map
 
 struct C467Row {
     char name[kAssetPathChars]; // the host's name of the turret
     Vec3 at;
     uint32_t value;
-    ULONGLONG since_ms; // when the first row for this name was held
+    ULONGLONG since_ms; // when the first row for this name was held (or came back inside cull distance)
+    bool out_of_range;  // an out-of-range hold: no time cap
+};
+// c587b422b: the host's last row for a Door Gunner seat (in use 0 at unpossess) is sent 7 ms before the seat is
+// destroyed; the client's copy was gone when the row landed, so the row was held 10 s and dropped with a WARN. A
+// spawned copy (card 271, not placed) that a row was applied to is remembered by the host's name; when it is
+// destroyed here, a row for that name is dropped at once with a plain row: its turret no longer exists.
+constexpr uint32_t kC467Seen = 16;
+struct C467Seen {
+    char name[kAssetPathChars]; // the host's name of the turret
+    int32_t copy;               // our copy's object index; -1 once destroyed
+    ULONGLONG gone_ms;          // when our copy was destroyed, else 0
 };
 struct C467Pending {
     C467Row row[kC467Rows];
     uint32_t n;
     uint32_t lines; // WARN rows this map
-    uint32_t held, late, timed_out, full; // this map
+    uint32_t held, late, timed_out, full, gone; // this map
+    uint32_t far_held, far_applied;            // this map: out-of-range holds, and of those applied later
+    uint32_t far_lines;                        // out-of-range rows logged this map
+    C467Seen seen[kC467Seen];
+    uint32_t seen_n, seen_next; // used entries, the next one to overwrite once full
+    uint32_t gone_lines;        // gone rows logged this map
 };
 C467Pending g_c467{}; // game thread; cleared by c467_map_end
+constexpr uint32_t kC467GoneLines = 8;
 
 // Card 467: the index of the held row for `name`, or kC467Rows.
 uint32_t c467_find(const char* name) {
@@ -663,49 +702,167 @@ void c467_remove(uint32_t i) {
     g_c467.row[i] = g_c467.row[--g_c467.n];
 }
 
-// Card 467: holds a row with no turret copy yet; false (WARN) when the table is full.
-bool c467_hold(const char* name, const Vec3& at, uint32_t value) {
+// Card 467: the seen entry for host name `name`, or kC467Seen.
+uint32_t c467_seen_find(const char* name) {
+    for (uint32_t i = 0; i < g_c467.seen_n && i < kC467Seen; ++i) {
+        if (strcmp(g_c467.seen[i].name, name) == 0) {
+            return i;
+        }
+    }
+    return kC467Seen;
+}
+
+// Card 467: client, a row was applied to `turret`, the copy of the host's `name`. Spawned copies only (placed ones
+// are not destroyed in play); the oldest entry goes once the table is full.
+void c467_seen_note(const uint8_t* turret, const char* name) {
+    if (c50_placed(turret)) {
+        return;
+    }
+    uint32_t i = c467_seen_find(name);
+    if (i != kC467Seen) { // a copy that came back (net relevancy) after an earlier one went
+        g_c467.seen[i].copy = object_index(turret);
+        g_c467.seen[i].gone_ms = 0;
+        return;
+    }
+    i = g_c467.seen_n;
+    if (i < kC467Seen) {
+        ++g_c467.seen_n;
+    } else {
+        i = g_c467.seen_next;
+        g_c467.seen_next = (g_c467.seen_next + 1) % kC467Seen;
+    }
+    C467Seen& e = g_c467.seen[i];
+    snprintf(e.name, sizeof(e.name), "%s", name);
+    e.copy = object_index(turret);
+    e.gone_ms = 0;
+}
+
+// Card 467: true (and a plain row) when `name`'s copy was destroyed here: the row has no turret to apply to.
+bool c467_gone(const char* name) {
+    const uint32_t i = c467_seen_find(name);
+    if (i == kC467Seen || g_c467.seen[i].gone_ms == 0) {
+        return false;
+    }
+    ++g_c467.gone;
+    if (note_event_cap(g_c467.gone_lines, kC467GoneLines, "card467 destroyed turret rows")) {
+        log::line("card467: client turret row %s: its copy was destroyed %llu ms before, row dropped", name,
+                  static_cast<unsigned long long>(GetTickCount64() - g_c467.seen[i].gone_ms));
+    }
+    return true;
+}
+
+// Card 467: client, from the DestroyActor detour. A remembered copy going marks its host name gone, and a row held
+// for that name is dropped.
+void c467_client_forget(const void* actor) {
+    const int32_t id = object_index(actor);
+    for (uint32_t i = 0; i < g_c467.seen_n && i < kC467Seen; ++i) {
+        C467Seen& e = g_c467.seen[i];
+        if (e.copy != id) {
+            continue;
+        }
+        e.copy = -1;
+        e.gone_ms = GetTickCount64();
+        const uint32_t held = c467_find(e.name);
+        if (held != kC467Rows) {
+            c467_remove(held);
+            (void)c467_gone(e.name);
+        }
+        return;
+    }
+}
+
+// Card 467: the index of the held row with the earliest since_ms (the table is not empty).
+uint32_t c467_oldest() {
+    uint32_t oldest = 0;
+    for (uint32_t i = 1; i < g_c467.n && i < kC467Rows; ++i) {
+        oldest = g_c467.row[i].since_ms < g_c467.row[oldest].since_ms ? i : oldest;
+    }
+    return oldest;
+}
+
+// Card 467: holds a row with no turret copy yet. A newer row for a held name replaces its state; a full table drops
+// its oldest row (WARN) for the new one.
+void c467_hold(const char* name, const Vec3& at, uint32_t value) {
     uint32_t i = c467_find(name);
-    if (i == kC467Rows && g_c467.n < kC467Rows) {
+    if (i == kC467Rows && g_c467.n >= kC467Rows) {
+        const C467Row& old = g_c467.row[c467_oldest()];
+        ++g_c467.full;
+        if (note_event_cap(g_c467.lines, kC467Lines, "card467 turret row warnings")) {
+            log::line("WARN card467: client turret pending table full (%u rows): oldest row %s%s at (%.0f, %.0f, %.0f) "
+                      "dropped for %s", kC467Rows, old.name, old.out_of_range ? " (out of range)" : "", old.at.x, old.at.y,
+                      old.at.z, name);
+        }
+        c467_remove(c467_oldest());
+    }
+    if (i == kC467Rows) {
         i = g_c467.n++;
         C467Row& fresh = g_c467.row[i];
         snprintf(fresh.name, sizeof(fresh.name), "%s", name);
         fresh.since_ms = GetTickCount64();
+        fresh.out_of_range = false;
         ++g_c467.held;
-    }
-    if (i == kC467Rows) {
-        ++g_c467.full;
-        if (note_event_cap(g_c467.lines, kC467Lines, "card467 turret row warnings")) {
-            log::line("WARN card467: client turret row %s at (%.0f, %.0f, %.0f): no turret copy and the pending table "
-                      "is full (%u rows), skipped", name, at.x, at.y, at.z, kC467Rows);
-        }
-        return false;
     }
     g_c467.row[i].at = at;
     g_c467.row[i].value = value;
-    return true;
 }
 
-// Card 467: client turret step. Each held row whose turret copy is here now is applied; one past kC467WaitMs is
-// dropped with a WARN.
+// Card 467: distance from the client's own pawn (any pawn, a mounted turret too) to `at`; negative with no pawn.
+double c467_own_dist(const void* world, const Vec3& at) {
+    void* const pc = own_pc(world);
+    const void* const pawn = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+    return pawn != nullptr ? vec_dist(actor_location(pawn), at) : -1.0;
+}
+
+// Card 467: a held row past its wait. Out of cull distance: an out-of-range hold (kept, true); an out-of-range hold
+// with no own pawn stays. Inside it, or a first timeout with no own pawn: the WARN and the drop (false).
+bool c467_keep_far(C467Row& r, double dist, ULONGLONG now) {
+    if (dist > kC467CullUu) {
+        if (!r.out_of_range) {
+            r.out_of_range = true;
+            ++g_c467.far_held;
+            if (note_event_cap(g_c467.far_lines, kC467FarLines, "card467 out-of-range holds")) {
+                log::line("card467: client turret row %s at (%.0f, %.0f, %.0f): no copy after %llu ms, %.0f uu from "
+                          "the own pawn (net cull distance %.0f): out-of-range hold", r.name, r.at.x, r.at.y, r.at.z,
+                          static_cast<unsigned long long>(now - r.since_ms), dist, kC467CullUu);
+            }
+        }
+        return true;
+    }
+    if (r.out_of_range && dist < 0.0) { // no own pawn (dead, respawning): stays held until one can measure it
+        return true;
+    }
+    if (r.out_of_range) { // back inside cull distance: the copy should arrive; a new wait window
+        r.out_of_range = false;
+        r.since_ms = now;
+        return true;
+    }
+    ++g_c467.timed_out;
+    ++g_c125s.missed;
+    if (note_event_cap(g_c467.lines, kC467Lines, "card467 turret row warnings")) {
+        log::line("WARN card467: client turret row %s at (%.0f, %.0f, %.0f): no turret copy after %llu ms, %.0f uu "
+                  "from the own pawn, dropped", r.name, r.at.x, r.at.y, r.at.z,
+                  static_cast<unsigned long long>(kC467WaitMs), dist);
+    }
+    return false;
+}
+
+// Card 467: client turret step. Each held row whose turret copy is here now is applied; one past kC467WaitMs is an
+// out-of-range hold (c467_keep_far) or dropped with a WARN. Out-of-range holds are measured every step.
 void c467_retry(const void* world, ULONGLONG now) {
     uint32_t i = 0;
     for (uint32_t step = 0; step < kC467Rows && i < g_c467.n; ++step) {
-        const C467Row& r = g_c467.row[i];
+        C467Row& r = g_c467.row[i];
         uint8_t* const turret = c125_find_turret(world, r.name, r.at);
         if (turret != nullptr) {
             c125_apply_row(turret, r.value);
             ++g_c467.late;
-            log::line("card467: client turret row %s at (%.0f, %.0f, %.0f) applied %llu ms late", r.name, r.at.x,
-                      r.at.y, r.at.z, static_cast<unsigned long long>(now - r.since_ms));
+            g_c467.far_applied += r.out_of_range ? 1u : 0u;
+            log::line("card467: client turret row %s at (%.0f, %.0f, %.0f) applied %llu ms late%s", r.name, r.at.x,
+                      r.at.y, r.at.z, static_cast<unsigned long long>(now - r.since_ms),
+                      r.out_of_range ? " (out-of-range hold)" : "");
+            c467_seen_note(turret, r.name);
             c467_remove(i);
-        } else if (now - r.since_ms >= kC467WaitMs) {
-            ++g_c467.timed_out;
-            ++g_c125s.missed;
-            if (note_event_cap(g_c467.lines, kC467Lines, "card467 turret row warnings")) {
-                log::line("WARN card467: client turret row %s at (%.0f, %.0f, %.0f): no turret copy after %llu ms, "
-                          "dropped", r.name, r.at.x, r.at.y, r.at.z, static_cast<unsigned long long>(kC467WaitMs));
-            }
+        } else if ((r.out_of_range || now - r.since_ms >= kC467WaitMs) && !c467_keep_far(r, c467_own_dist(world, r.at), now)) {
             c467_remove(i);
         } else {
             ++i;
@@ -718,17 +875,20 @@ void c467_retry(const void* world, ULONGLONG now) {
 void c125_client_turret(void* pc, const char* name, const Vec3& at, uint32_t value) {
     const void* const world = g_actor_get_world(pc);
     uint8_t* const turret = c125_find_turret(world, name, at);
+    if (turret == nullptr && c467_gone(name)) {
+        c132_ledger_result(C132Result::Skipped, "turret copy destroyed (card 467)");
+        return;
+    }
     if (turret == nullptr) {
-        const bool held = c467_hold(name, at, value);
-        g_c125s.missed += held ? 0u : 1u;
-        c132_ledger_result(held ? C132Result::Pending : C132Result::Skipped,
-                           held ? "no turret copy yet: held (card 467)" : "no turret copy, card 467 table full");
+        c467_hold(name, at, value);
+        c132_ledger_result(C132Result::Pending, "no turret copy yet: held (card 467)");
         return;
     }
     const uint32_t held = c467_find(name);
     if (held != kC467Rows) {
         c467_remove(held); // this newer row replaces the held one
     }
+    c467_seen_note(turret, name);
     c125_apply_row(turret, value);
 }
 
@@ -753,10 +913,15 @@ void c125_apply_row(uint8_t* turret, uint32_t value) {
 // Card 467: map end (the world relay's): held rows belong to the old map.
 void c467_map_end() {
     const C467Pending& p = g_c467;
-    if (p.held != 0 || p.full != 0) {
+    if (p.held != 0 || p.full != 0 || p.gone != 0) {
+        uint32_t far_now = 0;
+        for (uint32_t i = 0; i < p.n && i < kC467Rows; ++i) {
+            far_now += p.row[i].out_of_range ? 1u : 0u;
+        }
         log::line("%scard467: %s turret rows map totals: %u held, %u applied late, %u timed out, %u table full, %u "
-                  "still held", p.timed_out == 0 && p.full == 0 ? "" : "WARN ", side(), p.held, p.late, p.timed_out,
-                  p.full, p.n);
+                  "still held, %u for destroyed copies; held out of range %u, applied later %u, still held %u",
+                  p.timed_out == 0 && p.full == 0 ? "" : "WARN ", side(), p.held, p.late, p.timed_out, p.full, p.n,
+                  p.gone, p.far_held, p.far_applied, far_now);
     }
     memset(&g_c467, 0, sizeof(g_c467));
 }
@@ -816,6 +981,245 @@ void c125_host_forget(const void* actor) {
                       static_cast<unsigned long long>(GetTickCount64()), object_name(actor).text, g_c125s.rows);
             return;
         }
+    }
+}
+
+
+// ---- Card 561: a pawn blueprint's camera fade reaches only the screen of the pawn's own player ----
+// The Door Gunner seat fades the screen through GetPlayerCameraManager(self, 0): black at its BeginPlay, fade-in at
+// its possess. Index 0 is this machine's own player, so on the host a seat the client called blacked out the host's
+// screen (playtest 2026-11-20: "they got a black screen"), and the host's own seat does the same on the client's
+// copy. Class rule: a fade called from a pawn's graph runs only when that pawn's controller is this machine's own
+// player controller; a pawn with no controller or a remote or AI one fades nothing here. The exec thunk still runs
+// (it steps the Blueprint frame's parameters); only the native fade it calls is skipped.
+struct C561State {
+    const void* skip; // the pawn whose exec call is running and is not this machine's player's, else null
+    void* forward;    // host: the remote player controller that pawn's fade belongs to, else null (b408)
+    uint32_t lines;
+    uint32_t forwarded; // host: fades sent to their client (b408)
+    uint32_t applied;   // client: host fades run on the own camera manager (b408)
+    uint32_t fade_lines; // forwarded or applied rows logged (b408)
+};
+static C561State g_c561{nullptr, nullptr, 0, 0, 0, 0}; // game thread
+constexpr uint32_t kC561Lines = 24;   // skipped-fade rows per run
+constexpr uint32_t kC561FadeLines = 16; // forwarded (host) or applied (client) rows per run
+C561ExecFn g_orig_c561_exec_start_fade = nullptr;
+C561ExecFn g_orig_c561_exec_manual_fade = nullptr;
+C561StartFadeFn g_orig_c561_start_fade = nullptr;
+C561ManualFadeFn g_orig_c561_manual_fade = nullptr;
+
+// Card 561 b408: the player controller `who` stands for: `who` itself when it is a player controller, else the
+// player controller driving `who` when it is a pawn; null for an AI, no controller, or another class.
+static void* c561_pc_of(const void* who) {
+    if (who == nullptr) {
+        return nullptr;
+    }
+    if (is_a(who, g_player_controller_class())) {
+        return const_cast<void*>(who);
+    }
+    if (!is_a(who, g_pawn_class())) {
+        return nullptr;
+    }
+    void* const ctrl = read_ptr(who, kPawnController);
+    return ctrl != nullptr && is_a(ctrl, g_player_controller_class()) ? ctrl : nullptr;
+}
+
+struct C561Verdict {
+    const void* skip; // the calling pawn when its fade is not this machine's player's, else null
+    void* forward;    // host: the connected client whose own pawn it is, else null
+};
+
+// The player controller an unpossessed pawn's fade belongs to.
+// Card 561 b404: a pawn not possessed yet belongs to the player that spawned it. c372b402a: the host's own Door Gunner
+// seat calls its BeginPlay black fade 1 ms after its spawn (GA_TacSupp_DoorGunner on the host-own pawn), before its
+// possess, and b402 skipped it. b406: c372b404a showed the seat's Instigator is the seat itself and its Owner is null
+// (the ability spawns it with no owner). The ability sets the seat's exposed `Target` variable to the caller's trooper
+// before FinishSpawningActor, so `Target` names the player; Instigator, else Owner, stays the rule for a pawn without
+// it. A client's seat on the host names the client's server copy (a remote controller), so it is still skipped there.
+// c372b407a: `Target` is not replicated (net 0), so on the client it is null and the client's own seat is skipped
+// there too; the host forwards that fade instead (b408).
+static void* c561_spawner_pc(const void* caller) {
+    const uint8_t* prop = nullptr;
+    const void* const target = prop_object_field(caller, "Target", &prop);
+    const void* const instigator = read_ptr(caller, kActorInstigator);
+    const void* const who =
+        target != nullptr ? target : (instigator != nullptr && instigator != caller ? instigator : read_ptr(caller, kActorOwner));
+    void* const pc = c561_pc_of(who);
+    if (note_event_cap(g_c561.lines, kC561Lines, "card561 skipped fade")) {
+        log::line("card561: %s t=%llu unpossessed %s fade: Target %s (property %s, net %d), player %s, local %d",
+                  side(), static_cast<unsigned long long>(GetTickCount64()), object_name(caller).text,
+                  object_name(target).text, prop != nullptr ? "found" : "absent",
+                  prop != nullptr && (read_u64(prop, kPropertyFlags) & kCpfNet) != 0 ? 1 : 0, object_name(who).text,
+                  pc != nullptr && is_local_pc(pc) ? 1 : 0);
+    }
+    return pc;
+}
+
+// Card 561 b408: the ReceivePossessed fade-in of the Door Gunner seat runs only on the host (PossessedBy is
+// authority-only), so a client's own seat fade never ran on the client: the host skipped it on its own screen and the
+// client never called it. The host now sends each fade it skips for a connected client's own pawn to that client.
+static C561Verdict c561_foreign_pawn(const void* frame) {
+    const void* const caller = frame != nullptr ? read_ptr(frame, kFrameObject) : nullptr;
+    if (caller == nullptr || !is_a(caller, g_pawn_class())) {
+        return C561Verdict{nullptr, nullptr};
+    }
+    const void* const ctrl = read_ptr(caller, kPawnController);
+    // Card 561 b402: the transport dropship has no controller and fades every rider's screen at the drop (both
+    // players ride it), so its fades still run here; b371 skipped its 25 landing fades on the host. The rider may
+    // already be detached when the fade runs, so the class is checked, not the attachment.
+    if (ctrl == nullptr && is_a(caller, g_transport_dropship_class())) {
+        return C561Verdict{nullptr, nullptr};
+    }
+    void* const pc = ctrl != nullptr ? c561_pc_of(ctrl) : c561_spawner_pc(caller);
+    if (pc != nullptr && is_local_pc(pc)) {
+        return C561Verdict{nullptr, nullptr};
+    }
+    void* const forward = !g_client_session && pc != nullptr && c26_is_remote_pc(pc) ? pc : nullptr;
+    return C561Verdict{caller, forward};
+}
+
+static void c561_exec(C561ExecFn orig, void* context, void* frame, void* result) {
+    const void* const outer = g_c561.skip;
+    void* const outer_forward = g_c561.forward;
+    const C561Verdict v = c561_foreign_pawn(frame);
+    g_c561.skip = v.skip;
+    g_c561.forward = v.forward;
+    orig(context, frame, result);
+    g_c561.skip = outer;
+    g_c561.forward = outer_forward;
+}
+
+static bool c561_skipped(const char* fn) {
+    if (g_c561.skip == nullptr) {
+        return false;
+    }
+    if (note_event_cap(g_c561.lines, kC561Lines, "card561 skipped fade")) {
+        const void* const ctrl = read_ptr(g_c561.skip, kPawnController);
+        log::line("card561: %s t=%llu skipped %s from %s (controller %s, instigator %s, owner %s): not this machine's "
+                  "player's pawn", side(), static_cast<unsigned long long>(GetTickCount64()), fn,
+                  object_name(g_c561.skip).text, object_name(ctrl).text,
+                  object_name(read_ptr(g_c561.skip, kActorInstigator)).text,
+                  object_name(read_ptr(g_c561.skip, kActorOwner)).text);
+    }
+    return true;
+}
+
+// Card 561 b408: the CamFade blob. Byte 0 is the kind, byte 1 the flags, then from (or the manual amount), to,
+// duration, and the color's r, g, b, a as floats.
+enum C561Kind : uint8_t { kC561Start, kC561Manual, kC561Kinds };
+const char* const kC561KindText[kC561Kinds] = {"StartCameraFade", "SetManualCameraFade"};
+constexpr uint8_t kC561Audio = 1;
+constexpr uint8_t kC561Hold = 2;
+constexpr int32_t kC561Floats = 7;
+constexpr int32_t kC561FadeBytes = 2 + kC561Floats * 4;
+constexpr float kC561MaxDuration = 60.0f;
+
+struct C561Fade {
+    uint8_t kind;
+    uint8_t flags;
+    float v[kC561Floats]; // from, to, duration, r, g, b, a
+};
+
+static void c561_forward(const C561Fade& f) {
+    if (g_c561.forward == nullptr) {
+        return;
+    }
+    uint8_t bytes[kC561FadeBytes];
+    bytes[0] = f.kind;
+    bytes[1] = f.flags;
+    memcpy(bytes + 2, f.v, sizeof(f.v));
+    static wchar_t wire[kChanBlobFrame]; // game thread only
+    const WireString w = chan_blob_frame(static_cast<wchar_t>(ChanOp::CamFade), bytes, kC561FadeBytes, wire);
+    const bool sent = w.num > 0 && chan_send_client(g_c561.forward, w);
+    ++g_c561.forwarded;
+    if (!sent) {
+        log::line("WARN card561: host CamFade %s from %s not sent to %s", kC561KindText[f.kind],
+                  object_name(g_c561.skip).text, object_name(g_c561.forward).text);
+    } else if (note_event_cap(g_c561.fade_lines, kC561FadeLines, "card561 forwarded fade")) {
+        log::line("card561: host t=%llu forwarded %s (%.2f, %.2f, %.2f s) from %s to %s, %u forwarded",
+                  static_cast<unsigned long long>(GetTickCount64()), kC561KindText[f.kind], static_cast<double>(f.v[0]),
+                  static_cast<double>(f.v[1]), static_cast<double>(f.v[2]), object_name(g_c561.skip).text,
+                  object_name(g_c561.forward).text, g_c561.forwarded);
+    }
+}
+
+static C561Fade c561_fade(uint8_t kind, float from, float to, float duration, const void* color, bool audio, bool hold) {
+    C561Fade f{kind, static_cast<uint8_t>((audio ? kC561Audio : 0) | (hold ? kC561Hold : 0)), {from, to, duration}};
+    if (color != nullptr) {
+        memcpy(f.v + 3, color, 4 * sizeof(float));
+    }
+    return f;
+}
+
+void detour_c561_exec_start_fade(void* context, void* frame, void* result) {
+    c561_exec(g_orig_c561_exec_start_fade, context, frame, result);
+}
+
+void detour_c561_exec_manual_fade(void* context, void* frame, void* result) {
+    c561_exec(g_orig_c561_exec_manual_fade, context, frame, result);
+}
+
+void detour_c561_start_fade(void* pcm, float from, float to, float duration, const void* color, bool audio, bool hold) {
+    if (!c561_skipped("StartCameraFade")) {
+        g_orig_c561_start_fade(pcm, from, to, duration, color, audio, hold);
+        return;
+    }
+    c561_forward(c561_fade(kC561Start, from, to, duration, color, audio, hold));
+}
+
+void detour_c561_manual_fade(void* pcm, float amount, const void* color, bool audio) {
+    if (!c561_skipped("SetManualCameraFade")) {
+        g_orig_c561_manual_fade(pcm, amount, color, audio);
+        return;
+    }
+    c561_forward(c561_fade(kC561Manual, amount, 0.0f, 0.0f, color, audio, false));
+}
+
+// Negated compares: a NaN fails every one of them.
+static bool c561_fade_valid(const C561Fade& f) {
+    if (f.kind >= kC561Kinds || (f.flags & ~(kC561Audio | kC561Hold)) != 0) {
+        return false;
+    }
+    for (int32_t k = 0; k < kC561Floats; ++k) {
+        const float lim = k == 2 ? kC561MaxDuration : 1.0f;
+        if (!(f.v[k] >= 0.0f && f.v[k] <= lim)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Client: ChanOp::CamFade from the host, a fade of this client's own pawn; runs on the own camera manager.
+void c561_receive(void* pc, const WireString* s) {
+    if (!g_client_session) {
+        return;
+    }
+    static uint8_t bytes[kChanBlobBytes]; // game thread only
+    const int32_t n = chan_blob(s, bytes, kChanBlobBytes);
+    C561Fade f{};
+    if (n == kC561FadeBytes) {
+        f.kind = bytes[0];
+        f.flags = bytes[1];
+        memcpy(f.v, bytes + 2, sizeof(f.v));
+    }
+    void* const pcm = pc != nullptr ? read_ptr(pc, kPcCameraManager) : nullptr;
+    if (n != kC561FadeBytes || !c561_fade_valid(f) || pcm == nullptr || g_orig_c561_start_fade == nullptr ||
+        g_orig_c561_manual_fade == nullptr) {
+        log::line("WARN card561: client CamFade dropped (%d bytes, kind %u, camera manager %s)", n,
+                  static_cast<unsigned>(f.kind), pcm != nullptr ? "found" : "null");
+        return;
+    }
+    const bool audio = (f.flags & kC561Audio) != 0;
+    if (f.kind == kC561Start) {
+        g_orig_c561_start_fade(pcm, f.v[0], f.v[1], f.v[2], f.v + 3, audio, (f.flags & kC561Hold) != 0);
+    } else {
+        g_orig_c561_manual_fade(pcm, f.v[0], f.v + 3, audio);
+    }
+    ++g_c561.applied;
+    if (note_event_cap(g_c561.fade_lines, kC561FadeLines, "card561 applied fade")) {
+        log::line("card561: client t=%llu applied host %s (%.2f, %.2f, %.2f s), %u applied",
+                  static_cast<unsigned long long>(GetTickCount64()), kC561KindText[f.kind], static_cast<double>(f.v[0]),
+                  static_cast<double>(f.v[1]), static_cast<double>(f.v[2]), g_c561.applied);
     }
 }
 

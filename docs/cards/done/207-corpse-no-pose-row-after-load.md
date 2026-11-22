@@ -1,6 +1,6 @@
 # Card 207: A corpse the host holds after an in-place load has a pose row
 
-Status: queued 2026-11-12, from c142-r4. Budget: three runs. Static first. Related: cards 194, 203 (rejoin
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c142-r4. Budget: three runs. Static first. Related: cards 194, 203 (rejoin
 corpses), card 152 (owner of the hold).
 
 ## Why

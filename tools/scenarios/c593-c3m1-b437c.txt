@@ -1,0 +1,84 @@
+# Cards 593 step 4, 594 step 2.2 (bug-wave A/B) and 564 (sprint) on b437c dwmapi a7f6f78392eb5ddc + ubwperf
+# 9c36d98a12d46c95, FED_C3M1, FAST, lane 2. Two runs: c593b437ca (memo on) and c593b437cb (UBWCOOP_C594_MEMO_OFF=1 on
+# the host). Steps: start, bugs cleared by code; a 3 s client sprint across the host's view on the navmesh (goto
+# sprint holds LeftShift); then 16 code-spawned warrior bugs 1000-1400 uu around the host (god) and a 20 s GameThread
+# capture window (tools/c573_capture.sh) while they attack, no seat.
+# Prediction 593: one `card593: host ... ai class` row per AI class at first possession (BP_AI_WarriorBug_C at least),
+# each with NavAgentProps found and a GetNavData name; `card593: host nav resolves so far` rows with a growing count and
+# 0 overflow; `nav resolves to` rows name at most the navmeshes some agent uses. Any of the five DefaultEngine.ini
+# RecastNavMesh names with no row is never resolved (cut candidate). Off-thread count stays small against the total.
+# Prediction 594: host GameThread samples on HasMatchingGameplayTag + GetTargetFaction in the window fall by at least
+# 30 % in a (on) against b (off), normalized to window samples; card594 row in a: served above 80 % of calls, differ 0.
+# Under 30 %: the memo is removed (senior rule).
+# Prediction 564: the host card028 rows for the client body after the sprint mark read Idle (or Walk) -> Run once and
+# one change out of Run at the end; Run held over 2 s; no key held under 300 ms.
+# Run (a): rm -f logs/c593b437c.release; (tools/c573_capture.sh logs/c593b437ca-gt logs/c593b437c.release > logs/c593b437ca.capture 2>&1 &);
+#      systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c593-c3m1-b437c.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c593b437ca 900
+# Run (b): the same with tag c593b437cb, out dir logs/c593b437cb-gt, and UBWCOOP_C594_MEMO_OFF=1 added to HOST_EXTRA_ENV.
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll a7f6f78392eb5ddc
+void unless client dll a7f6f78392eb5ddc
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+# Capture trigger row 1 (tools/c573_capture.sh waits for the second host row).
+host mark
+host console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+host clear 4000 kill
+# --- card 564: the client sprints 3000 uu across the host's view, 1200 uu in front of the host.
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host warp client point {g1+1200} {g2-1500} {g3+60}
+sleep 1
+host look point {g1+1200} {g2} {g3}
+host mark
+try client goto {g1+1200} {g2+1500} {g3} 200 sprint
+sleep 1
+host shot c564-sprint-host
+try client wait goto timeout=10
+sleep 1
+# --- cards 593 + 594: 16 warrior bugs around the host (god), the capture window while they attack.
+both god all
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+1000} {g2} {g3+50} 180
+host spawn bug {g1+1000} {g2+300} {g3+50} 180
+host spawn bug {g1+1000} {g2-300} {g3+50} 180
+host spawn bug {g1+1400} {g2} {g3+50} 180
+host spawn bug {g1-1000} {g2} {g3+50} 0
+host spawn bug {g1-1000} {g2+300} {g3+50} 0
+host spawn bug {g1-1000} {g2-300} {g3+50} 0
+host spawn bug {g1-1400} {g2} {g3+50} 0
+host spawn bug {g1} {g2+1000} {g3+50} 270
+host spawn bug {g1+300} {g2+1000} {g3+50} 270
+host spawn bug {g1-300} {g2+1000} {g3+50} 270
+host spawn bug {g1} {g2+1400} {g3+50} 270
+host spawn bug {g1} {g2-1000} {g3+50} 90
+host spawn bug {g1+300} {g2-1000} {g3+50} 90
+host spawn bug {g1-300} {g2-1000} {g3+50} 90
+host spawn bug {g1} {g2-1400} {g3+50} 90
+sleep 3
+host shot c594-wave-host
+# Capture trigger row 2: tools/c573_capture.sh profiles 20 s of both games, then writes the release file.
+host mark
+host console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+host wait file logs/c593b437c.release timeout=120
+host shot c594-wave-end-host
+host quit
+client quit

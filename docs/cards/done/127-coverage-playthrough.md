@@ -1,6 +1,6 @@
 # Card 127: Co-op playthrough on autoplay of the maps that cover the game
 
-Status: queued, last. Gate for the next play build. Card 126 (autoplay) is parked: drive the soak with a scripted scenario of the c140q shape instead of autoplay.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, last. Gate for the next play build. Card 126 (autoplay) is parked: drive the soak with a scripted scenario of the c140q shape instead of autoplay.
 
 Read:
 

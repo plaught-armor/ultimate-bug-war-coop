@@ -1,6 +1,6 @@
 # Card 371: RESTART CHECKPOINT strands the client when the checkpoint was saved before it joined
 
-Status: defect found by the proof run c371b56 (b56 08265a76bc24632c, lane 2). Fix in source (see the last section), not built.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: defect found by the proof run c371b56 (b56 08265a76bc24632c, lane 2). Fix in source (see the last section), not built.
 
 ## Run c371b56
 

@@ -1,6 +1,6 @@
 # Card 092: Why the host's body bounces on the client's screen (log only)
 
-Status: sent 2026-11-05 19:00 (senior). Log only. No fix in this card.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 19:00 (senior). Log only. No fix in this card.
 
 Read:
 

@@ -1,6 +1,6 @@
 # Card 205: The digest reports an objective the host added a few ms after its snapshot
 
-Status: queued 2026-11-12, from c142-185-r2 (new WARN class). Budget: one run, batched. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c142-185-r2 (new WARN class). Budget: one run, batched. Static first.
 
 ## Why
 

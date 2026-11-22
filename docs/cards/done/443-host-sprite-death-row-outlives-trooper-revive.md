@@ -1,6 +1,6 @@
 # Card 443: the host's sprite death row outlives a trooper revive
 
-Opened 2026-11-16 15:31 by the senior, from a new client WARN class in run `c423b139a` (b139, FED_C2M1).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 15:31 by the senior, from a new client WARN class in run `c423b139a` (b139, FED_C2M1).
 
 ## Finding
 

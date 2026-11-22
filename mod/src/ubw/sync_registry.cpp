@@ -134,6 +134,7 @@ constexpr SyncMech kSyncMechs[] = {
     {"world events", nullptr, nullptr, c98_replay_events, nullptr, nullptr}, // rows counted by "world"
     {"door", door_map_end, nullptr, c95_replay, door_after_load, c95_live},
     {"world", world_map_end, nullptr, c98_replay, world_after_load, c98_live},
+    {"horde", c606_map_end, c606_arm_map, c606_join_replay, nullptr, nullptr}, // card 606: Active is read live
     {"levelend", levelend_map_end, nullptr, c260_join_replay, nullptr, nullptr}, // a flag: the map's EndLevel
     {"ext", ext_map_end, nullptr, c132_ext_replay, nullptr, c132_ext_live},
     {"pose", pose_map_end, nullptr, c132_pose_replay, nullptr, c132_pose_live},
@@ -387,9 +388,12 @@ void sync_quit(void* world) {
     c98_world_totals("quit totals");
     c308_journal_totals("quit");
     c41_relay_totals("quit totals");
+    c565_totals("quit totals");
+    c99_map_totals("quit"); // card 582: the card099 and card582 tallies of the map the run quits inside
     c304_map_end(); // card 304: the client audio tally of a map the run quits inside
     c408_map_end(); // card 477: the card408 and card419 totals of a map the run quits inside
     c161_map_end(); // card 161: the door totals of a map the run quits inside
+    c555_map_end(); // card 555: the radar hide tally of a map the run quits inside (c582b414b host had no row)
 }
 
 } // namespace ubw::hooks

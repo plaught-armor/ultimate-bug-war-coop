@@ -1,6 +1,6 @@
 # Card 227: Presence triggers that start an event wait for every player
 
-Status: queued 2026-11-12, from the user ("events like the CTF event in tutorial with the door need to wait for
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from the user ("events like the CTF event in tutorial with the door need to wait for
 multiple players to pass through instead of 1"). Static trace first (step 1 needs one logged run); no fix code until
 the senior accepts the list from step 1. Budget after that: three runs.
 

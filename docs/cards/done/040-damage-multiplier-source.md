@@ -1,6 +1,6 @@
 # Card 040: Where do the ×1.5 and ×0.1 hits come from?
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first ("Mod code rules", "Runtime facts"), then card 037's report (step 5, "Damage per shot") and its senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

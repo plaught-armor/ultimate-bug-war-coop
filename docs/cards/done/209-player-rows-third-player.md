@@ -1,6 +1,6 @@
 # Card 209: Player rows name any player's pawn, so a third player sees them
 
-Status: queued, static first. Split from card 208 (2026-11-12).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, static first. Split from card 208 (2026-11-12).
 
 ## Why
 

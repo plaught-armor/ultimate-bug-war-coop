@@ -939,9 +939,87 @@ void c132_relay(const void* cls, const double* transform, void* proj) {
     }
 }
 
+// Card 567 target 8: the GrenadeSpawn row is the costliest receive row per row (card330: 688 rows in 163.5 ms, 0.24 ms
+// each). Client split, one row per 30 s with rows: parse (text and sscanf), resolve (c50_resolve), spawn (the pooler
+// spawn), rest (velocity, tables, log).
+namespace {
+enum C567GPart { kC567GParse, kC567GResolve, kC567GSpawn, kC567GRest, kC567GParts };
+struct C567GSplit {
+    int64_t qpc[kC567GParts];
+    uint32_t rows;
+    uint32_t hits;   // pooler returns already seen in the ring (a reused actor)
+    uint32_t misses; // new actors, or ones that left the ring
+    ULONGLONG next_ms;
+};
+C567GSplit g_c567g = {};
+constexpr ULONGLONG kC567GSplitMs = 30000;
+// The last kC567GSeen pooler returns, kept across windows. A pointer match counts as a hit only when the weak ref
+// still resolves to it, so a freed and reallocated address is a miss.
+constexpr uint32_t kC567GSeen = 256;
+struct C567GSeenRing {
+    const void* ptr[kC567GSeen];
+    C31Weak weak[kC567GSeen];
+    uint32_t next;
+};
+C567GSeenRing g_c567g_seen = {}; // client game thread
+
+void c567g_pool_note(void* proj) {
+    if (proj == nullptr) {
+        return;
+    }
+    C567GSeenRing& r = g_c567g_seen;
+    for (uint32_t i = 0; i < kC567GSeen; ++i) {
+        if (r.ptr[i] == proj && c31_weak_get(r.weak[i]) == proj) {
+            ++g_c567g.hits;
+            return;
+        }
+    }
+    ++g_c567g.misses;
+    r.ptr[r.next] = proj;
+    c31_weak_set(r.weak[r.next], proj);
+    r.next = (r.next + 1) % kC567GSeen;
+}
+
+int64_t c567g_mark(C567GPart part, int64_t t) {
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    if (part < kC567GParts) {
+        g_c567g.qpc[part] += now.QuadPart - t;
+    }
+    return now.QuadPart;
+}
+
+void c567g_report() {
+    ++g_c567g.rows;
+    const ULONGLONG now = GetTickCount64();
+    if (g_c567g.next_ms == 0) {
+        g_c567g.next_ms = now + kC567GSplitMs;
+    }
+    if (now < g_c567g.next_ms) {
+        return;
+    }
+    LARGE_INTEGER f;
+    QueryPerformanceFrequency(&f);
+    const double ms = 1000.0 / static_cast<double>(f.QuadPart);
+    const int64_t* const q = g_c567g.qpc;
+    log::line("card567: client GrenadeSpawn split over %u rows (ms total): parse %.2f, resolve %.2f, spawn %.2f, "
+              "rest %.2f; pool hit %u, miss %u", g_c567g.rows, q[kC567GParse] * ms, q[kC567GResolve] * ms,
+              q[kC567GSpawn] * ms, q[kC567GRest] * ms, g_c567g.hits, g_c567g.misses);
+    g_c567g = C567GSplit{};
+    g_c567g.next_ms = now + kC567GSplitMs;
+}
+
+// Ends the row's split: the rest part, then the 30 s report.
+void c567g_end(int64_t t) {
+    c567g_mark(kC567GRest, t);
+    c567g_report();
+}
+} // namespace
+
 // Client: the host's GrenadeSpawn frame. A copy is spawned from the same init data class and transform through the
 // pooler, its movement takes the host projectile's velocity, and it waits in g_c74_live for the host's GrenadeExplode.
 void c74_receive(void* pc, const WireString* s) {
+    int64_t t_split = c567g_mark(kC567GParts, 0); // start mark only
     char text[kChanTextMax + 1];
     char path[kC74PathChars + kNameChars + 2]; // %225s below
     alignas(16) double t[12] = {}; // FTransform<double>: quat, translation (+pad), scale (+pad)
@@ -962,12 +1040,16 @@ void c74_receive(void* pc, const WireString* s) {
     } else {
         t[0] = t[1] = t[2] = 0.0, t[3] = 1.0;
     }
+    t_split = c567g_mark(kC567GParse, t_split);
     void* cls = c50_resolve(path); // found, or loaded: a mech round's init data class need not be loaded here yet
+    t_split = c567g_mark(kC567GResolve, t_split);
     const void* const world = g_actor_get_world(pc);
     c132_proj_copying(true);
     void* const proj = cls != nullptr && world != nullptr && g_c74_spawn_fn != nullptr ? g_c74_spawn_fn(&cls, t, world)
                                                                                        : nullptr;
     c132_proj_copying(false);
+    t_split = c567g_mark(kC567GSpawn, t_split);
+    c567g_pool_note(proj); // card 567 target 8: reused pool actor or a new spawn (counted in the rest part)
     void* const move = proj != nullptr ? read_ptr(proj, kProjMovement) : nullptr;
     const Vec3 spawned = c74_velocity(proj);
     // A zero velocity is an AI round sent before its Blueprint caller set one (card 132): the copy keeps the init
@@ -983,12 +1065,14 @@ void c74_receive(void* pc, const WireString* s) {
     }
     if (round && ((!g_c76_log && move != nullptr) ||
                                !note_event_cap(g_c76_mech.copy_lines, kC76MechLines, "card076 mech round copies"))) {
+        c567g_end(t_split);
         return; // a mech round's copy logs with UBWCOOP_C76_LOG=1, or when it failed
     }
     log::line("%scard074: client t=%llu GrenadeSpawn %s -> %s %s (%p), velocity at spawn (%.1f, %.1f, %.1f)%s",
               move != nullptr ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), text,
               cls != nullptr ? "copy" : "no such class", class_name(proj).text, proj, spawned.x, spawned.y, spawned.z,
               move != nullptr ? ", set to the host's" : ", no movement component");
+    c567g_end(t_split);
 }
 
 void c132_early_hit_send(const void* task); // below, after the round OnHit detour
@@ -2038,10 +2122,10 @@ void detour_c74_life(void* projectile) {
     const Vec3 at = c74_actor_loc(projectile);
     g_c74_fx_got = C74Fx{};
     g_c74_fx = true;
-    g_c74_pe = g_c74_log; // log only: the cue's ProcessEvents
+    pe_gate_set(kPeGate_c74_pe, g_c74_log); // log only: the cue's ProcessEvents
     g_orig_c74_proj[0](projectile);
     g_c74_fx = false;
-    g_c74_pe = false;
+    pe_gate_set(kPeGate_c74_pe, false);
     if (!round || g_c74_fx_got.system != nullptr || g_c74_fx_got.sound != nullptr || g_c74_fx_got.zone != nullptr) {
         c74_relay_explode(e.seq, projectile, at, g_c74_fx_got, e.skip_pc);
     }
@@ -2118,9 +2202,9 @@ void detour_c74_anim_activate(void* task) {
 
 void detour_c74_anim_do(void* task) {
     c74_log_anim(kC74AnimDo, task, _ReturnAddress());
-    g_c74_pe = g_c74_calls[kC74AnimDo] <= kC74Logs;
+    pe_gate_set(kPeGate_c74_pe, g_c74_calls[kC74AnimDo] <= kC74Logs);
     g_orig_c74_anim[1](task);
-    g_c74_pe = false;
+    pe_gate_set(kPeGate_c74_pe, false);
 }
 
 void detour_c74_anim_end(void* task) {

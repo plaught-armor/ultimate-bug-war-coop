@@ -1,0 +1,154 @@
+# Card 587 diag run (b420 b21991c7bfbe72b2; the c587_trooper_diag rows came in with b414+): FED_C3M1 FAST, lane 2.
+# Preamble and missile block from c372-c3m1.txt. The client takes the guided missile pickup by its own Use press,
+# then throws it 3 times (host charge refills slot 1 each time). c582b413b hit the race once in 1 throw: the throw's
+# LeftMouseButton also sent a Round and HitClaim that reached the host after the PC possessed the missile.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-70).
+# Predictions: if a throw hits the race, the host logs "WARN card181: ... pawn BP_GuidedMissile_C has no round row"
+# and a "card587: ... card181 no round row" diag row naming the mapped trooper through Instigator, RemoteRole 2
+# (simulated), Controller null. If no throw hits it in 3, the run reads 0 card181 and 0 card587 rows (no proof).
+# Card 581 rides (b421 = b420 + client SimulateMovement skip for attached characters): host seat ride, then client
+# seat ride (c372-c3m1 blocks 561h and 561c). Predictions: one "card581: client t=... <trooper> attached to
+# BP_MountableTurret_Gunner_C...: SimulateMovement skipped (first skip ...)" row per rider; no card245 rows at
+# (-158, 0, z) during either ride; no client-only gate passed on _8, _15 or _23; the map-end row "card581: client
+# attached characters not simulated: N calls, M actors" shows about 60 calls per ride second per rider; the client
+# trooper walks to the host after the seat leaves.
+# Card 585 rides: 0 "WARN card451: ... bark row dropped" rows; host bark rows print "culled <n>".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c587-c3m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c587b421a 1200
+# Expected wall: about 10 min.
+voidsoft
+void unless host dll b21991c7bfbe72b2
+void unless client dll b21991c7bfbe72b2
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- card 560: the client takes a guided missile pickup by its own Use press, throws it (tac slot 1, key Five),
+# flies the missile, and comes back to its trooper. Own trooper: no card028 sprite body, first person on return.
+host mark
+client mark
+host warp client BP_TacSuppPickup_GuidedMissile_C 80
+client look actor BP_TacSuppPickup_GuidedMissile_C 0 bounds focus=BP_TacSuppPickup_GuidedMissile_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*Config_TacSupp_GuidedMissile_C" since-mark timeout=5
+# --- throw 1
+host mark
+client mark
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+client wait log "card303: client t=\d+ possession SetPawn pawn BP_GuidedMissile_C" since-mark timeout=40
+client shot c587-throw1-flying-client
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=90
+try host wait log "card587: " since-mark timeout=1
+# --- throw 2
+host mark
+client mark
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+client wait log "card303: client t=\d+ possession SetPawn pawn BP_GuidedMissile_C" since-mark timeout=40
+client shot c587-throw2-flying-client
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=90
+try host wait log "card587: " since-mark timeout=1
+# --- throw 3
+host mark
+client mark
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+client wait log "card303: client t=\d+ possession SetPawn pawn BP_GuidedMissile_C" since-mark timeout=40
+client shot c587-throw3-flying-client
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=90
+try host wait log "card587: " since-mark timeout=1
+# --- card 561 (host seat): the host takes a Door Gunner pickup and calls it. Host: own fade runs, the seat flies
+# (shots at 2, 8, 20 s). Client: card561 fade skip on its copy, card561 tick-off row, its own camera unchanged.
+host mark
+client mark
+host warp actor BP_TacSuppPickup_DoorGunner_C 80
+host look actor BP_TacSuppPickup_DoorGunner_C 0 bounds focus=BP_TacSuppPickup_DoorGunner_C
+host key E
+host wait log "card032: host EquipTacticalSupportAbility: .*Config_TacSupp_DoorGunner_C" since-mark timeout=5
+# c582b412a: the host may take either Door Gunner pickup (nearest of two, near equal from the start); at the tower
+# one no client landing has a sightline ("no candidate held"). The client only needs to be in the map for the card561
+# rows, so a failed warp must not fail the group and cut the later waits to 1 s.
+try host warp client BP_PlayerCharacterMI_C 300
+host charge 1 20000 1
+host look 0 -35
+host key Five
+sleep 1.5
+host key LeftMouseButton
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_TurretMorita_C, .*\) = 1 on BP_MountableTurret_Gunner_C" since-mark timeout=40
+try client wait log "card561: client turret BP_MountableTurret_Gunner_C\S* at .* keeps its actor tick off" since-mark timeout=10
+try client wait log "card561: client t=\d+ skipped (StartCameraFade|SetManualCameraFade)" since-mark timeout=10
+sleep 2
+host shot c372-561h-2s-host
+client shot c372-561h-2s-client
+sleep 6
+host shot c372-561h-8s-host
+client shot c372-561h-8s-client
+sleep 12
+host shot c372-561h-20s-host
+client shot c372-561h-20s-client
+# The seat leaves by its own timer (Fly Away on unpossess); the wait is on the host's own pawn coming back.
+# c582b412a: a strict wait. The host must be back in its trooper before the client block, or `host down host` downs
+# the seat (card 586).
+host wait log "pawn-collision: host/standalone PossessedBy\(\S+ BP_PlayerCharacterMI_C" since-mark timeout=150
+sleep 1
+client wait log "card581: client t=\d+ \S+ attached to BP_MountableTurret_Gunner_C\S*: SimulateMovement skipped" timeout=5
+# --- card 561 (client seat) + 563: the client calls the second Door Gunner. Host: card561 fade skip, no black
+# screen. Client: tick-off row, camera not at the origin. Then the host is downed while the client sits (563): one
+# card081 hidden row, no restored row. Last block: the downed host may end the map.
+host mark
+client mark
+host warp client BP_TacSuppPickup_DoorGunner_C 80 live
+client look actor BP_TacSuppPickup_DoorGunner_C 0 bounds focus=BP_TacSuppPickup_DoorGunner_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*Config_TacSupp_DoorGunner_C" since-mark timeout=5
+host warp actor BP_PlayerCharacterMI_C 300
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_TurretMorita_C, .*\) = 1 on BP_MountableTurret_Gunner_C" since-mark timeout=40
+try host wait log "card561: host t=\d+ skipped (StartCameraFade|SetManualCameraFade)" since-mark timeout=10
+try client wait log "card561: client turret BP_MountableTurret_Gunner_C\S* at .* keeps its actor tick off" since-mark timeout=10
+sleep 2
+host shot c372-561c-2s-host
+client wait log "card581: client t=\d+ \S+ attached to BP_MountableTurret_Gunner_C\S*: SimulateMovement skipped" timeout=5
+client mark
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=150
+client wait state pawn=client-own timeout=10
+client shot c587-581-seat-back-client
+host warp actor BP_PlayerCharacterMI_C 500
+client goto actor BP_PlayerCharacterMI_C 150 timeout=40
+client shot c587-581-walked-client
+host travel checkpoint
+client wait log "card581: client attached characters not simulated: \d+ calls, \d+ actors" timeout=60
+host quit
+client quit

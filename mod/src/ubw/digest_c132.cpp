@@ -96,9 +96,14 @@ constexpr int32_t kC132AttachHint = 200;    // location gap in kC132LocStep step
 // guards.cpp gates on the client). Left out of the digest on both sides, counted per row at each round.
 // Card 517: STNavModifierVolume (placed, not replicated, nav only) is 23076 of 28094 actors on FED_C3M2 and most of
 // the 16 to 18 ms build there.
+// Card 550: bug spawners (placed, not replicated, no mesh). The host's spawn logic moves them (MoveToArea) and a
+// troop dropship's spawner is reattached keeping its world place, so its offset on the dropship changes on the host
+// only. The client never runs spawner logic (card 006 gates PerformSpawn and QueueSpawnRequest), so its copy keeps
+// the map's (0, 0, 800). Vanilla server-side state the client never reads.
 constexpr const char* kC132ServerOnly[] = {
     "RecastNavMesh",       "RecastNavMesh_Small", "RecastNavMesh_Medium", "RecastNavMesh_Large",
     "RecastNavMesh_Gigantic", "BP_AISpawnPoint_C", "STSpawnPoint", "STNavModifierVolume",
+    "BP_AISpawner_C",      "STAISpawner",
 };
 constexpr int32_t kC132ServerOnlyN = static_cast<int32_t>(sizeof(kC132ServerOnly) / sizeof(kC132ServerOnly[0]));
 
@@ -625,12 +630,56 @@ void c386_line(const C132Digest& d, int64_t qpc_ticks) {
               sum != 0 ? split : " split off");
 }
 
+// Card 517: per build, the class facts of each UClass met, so the class name is read once per class, not per actor
+// (the class phase was 36 to 43 percent of a 5 to 8 ms FED_C3M2 build over about 29,000 actors). Open addressing on
+// the class pointer; reset at the start of every build, so a class freed between builds is never looked up.
+constexpr int32_t kC517Slots = 1024; // power of two; FED_C3M2 meets about 150 named classes plus the server-only ones
+constexpr int16_t kC517NoIndex = -2; // cls index not looked up yet (the actor's name check comes first)
+struct C517Slot {
+    const void* cls;
+    int16_t skip;  // c132_server_only row, or -1
+    int16_t index; // d.cls index, -1 when the table was full, kC517NoIndex before the first named actor
+    char name[kNameChars];
+};
+C517Slot g_c517[kC517Slots];
+
+void c517_reset() {
+    for (int32_t i = 0; i < kC517Slots; ++i) {
+        g_c517[i].cls = nullptr;
+    }
+}
+
+// The slot of `cls`, filled on first sight; nullptr when the table is full (caller takes the uncached path).
+C517Slot* c517_slot(const void* cls) {
+    uint32_t h = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(cls) >> 4) * 2654435761u;
+    for (int32_t probe = 0; probe < kC517Slots; ++probe) {
+        C517Slot& s = g_c517[(h + static_cast<uint32_t>(probe)) & (kC517Slots - 1)];
+        if (s.cls == cls) {
+            return &s;
+        }
+        if (s.cls == nullptr) {
+            const ObjectName cname = object_name(cls);
+            s.cls = cls;
+            s.skip = static_cast<int16_t>(c132_server_only(cname.text));
+            s.index = kC517NoIndex;
+            snprintf(s.name, sizeof(s.name), "%s", cname.text);
+            return &s;
+        }
+    }
+    return nullptr;
+}
+
 void c132_add_actor(C132Digest& d, const void* actor, int32_t level, uint32_t lvl) {
     uint64_t t = c386_on() ? __rdtsc() : 0;
     ++g_c386.actors;
-    // Card 517: the server-only check comes before the name, so a left-out actor costs one class name read.
-    const ObjectName cname = class_name(actor);
-    const int32_t skip = c132_server_only(cname.text);
+    // Card 517: the server-only check comes before the name, so a left-out actor costs one class lookup.
+    const void* const cls_ptr = read_ptr(actor, kObjectClass);
+    C517Slot* const slot = cls_ptr != nullptr ? c517_slot(cls_ptr) : nullptr;
+    ObjectName cname{};
+    if (slot == nullptr) {
+        cname = class_name(actor);
+    }
+    const int32_t skip = slot != nullptr ? slot->skip : c132_server_only(cname.text);
     if (skip >= 0) {
         ++d.server_only[skip];
         c386_lap(t, kC386Class);
@@ -647,7 +696,12 @@ void c132_add_actor(C132Digest& d, const void* actor, int32_t level, uint32_t lv
         return;
     }
     c386_lap(t, kC386Name);
-    const int32_t cls = c132_name_index(d.cls, cname.text, kC132DigestClasses);
+    if (slot != nullptr && slot->index == kC517NoIndex) {
+        slot->index = static_cast<int16_t>(c132_name_index(d.cls, slot->name, kC132DigestClasses));
+    } else if (slot != nullptr && slot->index < 0) {
+        ++d.cls.dropped; // same count as the uncached path: one per actor of a class the full table left out
+    }
+    const int32_t cls = slot != nullptr ? slot->index : c132_name_index(d.cls, cname.text, kC132DigestClasses);
     c386_lap(t, kC386Class);
     if (cls < 0) {
         return;
@@ -1003,6 +1057,7 @@ void c132_build(C132Digest& d, const void* world) {
     QueryPerformanceCounter(&q0);
     memset(g_c386.ticks, 0, sizeof(g_c386.ticks));
     g_c386.actors = 0;
+    c517_reset();
     d.n = 0;
     d.dropped = 0;
     d.unnamed = 0;

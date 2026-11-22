@@ -1,4 +1,5 @@
 # 246: Full-objective soak, FED_C5M1
+Status 2026-11-22: open, parked until after the user's playtest.
 
 Same shape and rules as card 240 (read `docs/cards/done/240-*.md` or `docs/cards/240-*.md` first: no
 `objective complete`, wait on the host Complete row and the client replay, both players in presence volumes,

@@ -1,6 +1,6 @@
 # 502: Four players (host and three clients)
 
-Status: open (written 2026-11-19, senior). User: "I also wanted 4 player". Batch into the next build after b260.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-19, senior). User: "I also wanted 4 player". Batch into the next build after b260.
 
 ## Goal
 

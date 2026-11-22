@@ -109,6 +109,7 @@ constexpr uint16_t kBitConc = 1u << 15;
 constexpr uint32_t kClientLines = 200000;
 constexpr uint32_t kWarnLines = 8;
 constexpr uint32_t kC304HostLines = 16; // b9: card304 host owner rows per map
+constexpr uint32_t kC582MeleeLines = 8; // card 582 G3 b453: knife rows named per map
 constexpr int32_t kPassSlots = 13; // c136_pass_play's slot count (proj_c132.cpp kC132PassSlots)
 constexpr uint8_t kAttachKeepRelative = 0; // EAttachLocation::KeepRelativeOffset
 constexpr uint8_t kAttachKeepWorld = 1;    // EAttachLocation::KeepWorldPosition
@@ -657,7 +658,13 @@ struct FxMeta {
     FxKind kind;
     uint32_t id; // a journal row's E or R row: that row's id (its send is marked per PC), 0 none
     uint32_t of; // an end row (D or X): the journal row it ends, 0 none (a stop sent as a full E row)
+    bool keyed_sound = false; // card 518 a: a sound E row keyed to an owner (NetGUID or placed name)
+    bool guid_keyed = false;  // card 598: that owner is a NetGUID (not a placed name)
+    bool repeat = false;      // card 598 b452: a placed-keyed one-shot sound re-fired within kC598RepeatMs
 };
+// Card 518 a (diagnostic): the host's net cull distance. A keyed sound row sent to a PC whose pawn is past it from
+// the event's world point names an owner that PC most likely does not have (card 597: "actor missing").
+constexpr double kC518CullUu = 15000.0;
 
 struct QueueRow {
     FxFilter filter;
@@ -727,6 +734,14 @@ struct HostCounts { // per map
     double normal_err_sum;
     uint32_t defaulted[5];         // card 518 steps j, m: flags, physmat, atten, conc, comp left to the asset's default
     uint32_t world_unsent;         // card 518 step g: attached Niagara spawn and decal bodies sent with no world point
+    uint32_t culled_sound_rows;    // card 518 a: keyed sound rows sent to a PC whose pawn is past kC518CullUu
+    uint64_t culled_sound_bytes;   // card 518 a: their bytes in the frames
+    uint32_t far_skipped_rows;     // card 598: NetGUID-keyed one-shot sound rows not sent to a PC past kC518CullUu
+    uint64_t far_skipped_bytes;    // card 598: their row bytes (name rows they would have pulled not counted)
+    uint32_t far_placed_lines;     // card 598 (diagnostic): placed-keyed far sound rows named, capped per map
+    uint32_t far_repeat_rows;      // card 598 b452: placed-keyed one-shot re-fires not sent to a PC past kC518CullUu
+    uint64_t far_repeat_bytes;     // card 598 b452: their row bytes
+    uint32_t melee_rows;           // card 582 G3 b453: rows of a server copy's knife hit, sent to its own PC too
 };
 
 // Card 329 B (diagnostic, host, per map): rows and bytes sent to all PCs by asset, and by kind and distance band from
@@ -1627,6 +1642,83 @@ void frame_assets(Frame& fr, Peer& peer) {
     peer.table_sent = a.n;
 }
 
+// Card 518 a: a keyed sound row whose point is past the net cull from the PC's pawn at `pawn_at` (no pawn, or a row
+// with no point: false).
+bool c518_past_cull(const FxMeta& m, const Vec3* pawn_at) {
+    if (!m.keyed_sound || pawn_at == nullptr || is_zero(m.at)) {
+        return false;
+    }
+    const double dx = pawn_at->x - m.at.x;
+    const double dy = pawn_at->y - m.at.y;
+    const double dz = pawn_at->z - m.at.z;
+    return dx * dx + dy * dy + dz * dz > kC518CullUu * kC518CullUu;
+}
+
+// Card 598: a far keyed sound row (c518_past_cull) is not sent when it is a one-shot keyed by NetGUID: past the net
+// cull that owner has no actor on the client (card 530), so the row plays nothing there. Placed-keyed rows still go:
+// the placed owner exists on the client, and sounds are never journaled (is_spawn is Niagara only), so a looping
+// placed sound skipped now would never play when the player walks in. Those are named (capped) to see if any loop.
+constexpr uint32_t kC598PlacedLines = 16;
+
+// Card 598 b452: a placed-keyed one-shot sound whose (asset, placed owner) pair already queued a row within
+// kC598RepeatMs is a repeater (run c582b451a: MS_EMIT_Gate_Large_MilitaryBase_Malfunction, a new attached sound every
+// 1000 ms from the gate's malfunction montage). Its far rows are skipped: the next re-fire reaches a player who walks
+// in. A pair's first row is never a repeat, so a placed loop start (fired once) is still sent. Keys are host asset and
+// name rows, so the table starts over with them (c136_net_arm_map without keep_state). Full: the oldest row is reused.
+constexpr ULONGLONG kC598RepeatMs = 2500;
+constexpr int32_t kC598Repeats = 32;
+struct C598Repeat {
+    int32_t asset;
+    int32_t placed;
+    ULONGLONG last_ms;
+};
+struct C598Repeats {
+    int32_t n;
+    C598Repeat rows[kC598Repeats];
+};
+C598Repeats g_c598_repeats{}; // game thread only
+
+bool c598_repeat(int32_t asset, int32_t placed, ULONGLONG now) {
+    C598Repeats& t = g_c598_repeats;
+    int32_t oldest = 0;
+    for (int32_t i = 0; i < t.n; ++i) {
+        C598Repeat& r = t.rows[i];
+        if (r.asset == asset && r.placed == placed) {
+            const bool repeat = now - r.last_ms <= kC598RepeatMs;
+            r.last_ms = now;
+            return repeat;
+        }
+        oldest = r.last_ms < t.rows[oldest].last_ms ? i : oldest;
+    }
+    const int32_t at = t.n < kC598Repeats ? t.n++ : oldest;
+    t.rows[at] = C598Repeat{asset, placed, now};
+    return false;
+}
+bool c598_skip_far(const QueueRow& r, const void* pc) {
+    if (r.meta.kind != FxKind::OneShot) {
+        return false;
+    }
+    if (r.meta.guid_keyed) {
+        ++g_host.counts.far_skipped_rows;
+        g_host.counts.far_skipped_bytes += static_cast<uint64_t>(r.row.n);
+        return true;
+    }
+    if (r.meta.repeat) {
+        ++g_host.counts.far_repeat_rows;
+        g_host.counts.far_repeat_bytes += static_cast<uint64_t>(r.row.n);
+        return true;
+    }
+    if (g_host.counts.far_placed_lines < kC598PlacedLines) {
+        ++g_host.counts.far_placed_lines;
+        const char* const name = r.meta.asset >= 0 && r.meta.asset < g_host.assets.n ? g_host.assets.rows[r.meta.asset].text
+                                                                                      : "-";
+        log::line("card598: host t=%llu far placed-keyed sound %s at (%.0f, %.0f, %.0f) sent to %s (past %.0f uu)",
+                  static_cast<unsigned long long>(GetTickCount64()), name, r.meta.at.x, r.meta.at.y, r.meta.at.z,
+                  object_name(pc).text, kC518CullUu);
+    }
+    return false;
+}
+
 void host_flush(const void* world) {
     HostQueue& q = g_host.queue;
     for (int s = 0; s < kC17Slots; ++s) {
@@ -1654,9 +1746,15 @@ void host_flush(const void* world) {
             if (filter_hits(q.rows[i].filter, pc, pawn)) {
                 continue;
             }
+            const bool past = c518_past_cull(q.rows[i].meta, pawn_at);
+            if (past && c598_skip_far(q.rows[i], pc)) {
+                continue;
+            }
             const int32_t sent = frame_add_named(fr, q.rows[i].names, q.rows[i].row);
             if (sent > 0) {
                 fx_stat(q.rows[i].meta, sent, pawn_at, slot);
+                g_host.counts.culled_sound_rows += past ? 1u : 0u;
+                g_host.counts.culled_sound_bytes += past ? static_cast<uint64_t>(sent) : 0u;
             }
         }
         frame_send(fr);
@@ -1950,10 +2048,15 @@ void client_key_miss(const FxRow& r, void* actor) {
     const char* const asset = r.asset >= 0 && r.asset < kAssets ? g_client.assets[r.asset].text : "-";
     // Card 518 step k: every caller plays a world-keyed miss at the world point and drops any other (no point sent).
     const bool world_key = r.guid == 0 && r.placed < 0;
-    log::line("card518: client key miss point %d asset %s key %s guid %llu comp %d actor %s, %s", r.point, asset,
-              r.guid != 0 ? "guid" : (r.placed >= 0 ? "placed" : "world"), static_cast<unsigned long long>(r.guid),
-              r.comp, actor != nullptr ? "found" : "missing",
-              world_key ? "played at world (key miss)" : "not played (key miss, no world point)");
+    // Card 530: the client pawn position, to check that an actor-missing owner is past the host's 15000 uu net cull
+    // (compare with the host's audit row for that owner at the same time).
+    const Vec3 pawn_at = g_client.pawn != nullptr ? actor_location(g_client.pawn) : Vec3{};
+    log::line("card518: client key miss point %d asset %s key %s guid %llu comp %d actor %s, %s; client pawn %s at "
+              "(%.0f, %.0f, %.0f)",
+              r.point, asset, r.guid != 0 ? "guid" : (r.placed >= 0 ? "placed" : "world"),
+              static_cast<unsigned long long>(r.guid), r.comp, actor != nullptr ? "found" : "missing",
+              world_key ? "played at world (key miss)" : "not played (key miss, no world point)",
+              g_client.pawn != nullptr ? "found" : "none", pawn_at.x, pawn_at.y, pawn_at.z);
 }
 
 int32_t client_live_find(uint32_t id) {
@@ -2196,7 +2299,10 @@ const char* client_play_cue(const FxRow& r) {
     if (physmat != nullptr && g_weak_assign != nullptr) {
         g_weak_assign(params + kCuePhysMat, &physmat);
     }
+    const bool player = flag(r, kC136FlagPlayerSource); // card 551: a remote player's cue
+    g_c551_relayed_player_cue += player ? 1u : 0u;
     g_orig_c136_cue_local(target, tag, params);
+    g_c551_relayed_player_cue -= player ? 1u : 0u;
     g_c136_cue_params_dtor(params);
     return result;
 }
@@ -2590,7 +2696,7 @@ static C438 g_c438{}; // game thread only
 // it. b136: held 2439, ended while held 2411 (b135b 494 / 257); this names the systems behind the rise.
 struct C438BySystem {
     uint32_t held, ended;
-    const void* owner_class; // a UClass, alive for the session
+    uint64_t owner_class; // card 608: the class's FName (a Blueprint class can be freed mid-map); 0 no owner yet
 };
 constexpr int32_t kC438TopSystems = 8;
 static C438BySystem g_c438_sys[kAssets]{}; // game thread only, per map
@@ -2603,7 +2709,9 @@ static void c438_sys_held(const Pending& p, const void* owner) {
     }
     C438BySystem& s = g_c438_sys[p.asset];
     ++s.held;
-    s.owner_class = s.owner_class == nullptr && owner != nullptr ? read_ptr(owner, kObjectClass) : s.owner_class;
+    if (s.owner_class == 0 && owner != nullptr) {
+        s.owner_class = object_fname(read_ptr(owner, kObjectClass));
+    }
 }
 
 static void c438_sys_ended(const Pending& p) {
@@ -2741,9 +2849,9 @@ static void c438_report_systems(const char* when) {
         used += n > 0 && static_cast<size_t>(n) < sizeof(text) - used ? static_cast<size_t>(n) : 0;
     }
     if (top >= 0 || g_c438_no_asset != 0) {
-        const void* const cls = top >= 0 ? g_c438_sys[top].owner_class : nullptr;
+        const uint64_t cls = top >= 0 ? g_c438_sys[top].owner_class : 0;
         log::line("card438: host Fx held by system (%s):%s; no asset row %u; owner class of the top one %s", when,
-                  used > 0 ? text : " none", g_c438_no_asset, cls != nullptr ? object_name(cls).text : "-");
+                  used > 0 ? text : " none", g_c438_no_asset, cls != 0 ? fname_text(&cls).text : "-");
     }
     memset(g_c438_sys, 0, sizeof(g_c438_sys));
     g_c438_no_asset = 0;
@@ -2780,8 +2888,8 @@ void c136_net_queue(uint32_t id, const C136Call& c, const void* owner, const voi
         ++g_host.counts.off_thread; // the queue and journal are game thread only
         return;
     }
-    if (is_decal(c.point) && c132_decal_gore(c.asset)) {
-        ++g_host.counts.gore; // card 132's Decal rows relay the gore decals
+    if (is_decal(c.point) && c132_decal_relayed(c.asset)) {
+        ++g_host.counts.gore; // card 132's Decal rows relay every decal (card 566)
         return;
     }
     if (local_only(c, owner, instigator)) {
@@ -2832,6 +2940,8 @@ void c136_net_queue(uint32_t id, const C136Call& c, const void* owner, const voi
                       static_cast<unsigned long long>(GetTickCount64()), object_name(c.asset).text,
                       object_name(owner).text, class_name(owner).text, key);
         }
+    } else if (is_cue(c.point) && c551_is_player(instigator)) {
+        p.flags |= kC136FlagPlayerSource; // card 551: a player's cue; the client skips its shake and force feedback
     }
     p.of = of;
     p.asset = host_asset(c.asset, c.asset != nullptr ? 0 : c.tag);
@@ -2840,6 +2950,16 @@ void c136_net_queue(uint32_t id, const C136Call& c, const void* owner, const voi
     p.conc = host_asset(c.conc, 0);
     p.component = c.component;
     p.filter = make_filter(c, owner, instigator);
+    if (c582_copy_melee()) {
+        // Card 582 G3 b453: a server copy's knife hit runs only on the host (ApplyDamageAtLocation), so its rows are
+        // not the copy's PC's own effect: no PC is skipped.
+        p.filter = FxFilter{};
+        if (note_event_cap(g_host.counts.melee_rows, kC582MeleeLines, "card582 melee rows")) {
+            log::line("card582: host t=%llu knife row %s (%s) of %s sent to its own PC too",
+                      static_cast<unsigned long long>(GetTickCount64()), object_name(c.asset).text,
+                      object_name(owner).text, object_name(instigator).text);
+        }
+    }
     p.at = c.at;
     p.rot = c.rot;
     p.scale = c.scale;
@@ -2914,10 +3034,13 @@ static void host_emit(const Pending& p, const void* made, int32_t seed) {
         host_enqueue(p.filter, row, FxMeta{p.asset, p.world, FxKind::End, 0, of}, kNoNames);
         return;
     }
-    host_enqueue(p.filter, tagged(kTagEvent, body),
-                 FxMeta{p.asset, p.world, kept ? FxKind::Journal : (is_stop(p.point) ? FxKind::End : FxKind::OneShot),
-                        kept ? p.id : 0u, 0u},
-                 name_refs(p));
+    FxMeta meta{p.asset, p.world, kept ? FxKind::Journal : (is_stop(p.point) ? FxKind::End : FxKind::OneShot),
+                kept ? p.id : 0u, 0u};
+    meta.keyed_sound = is_sound(p.point) && (p.guid != 0 || p.placed >= 0);
+    meta.guid_keyed = meta.keyed_sound && p.guid != 0;
+    meta.repeat = meta.keyed_sound && !meta.guid_keyed && meta.kind == FxKind::OneShot &&
+                  c598_repeat(p.asset, p.placed, GetTickCount64());
+    host_enqueue(p.filter, tagged(kTagEvent, body), meta, name_refs(p));
 }
 
 void c136_client_extra(const void* asset) {
@@ -2973,6 +3096,8 @@ bool c136_client_own(const C136Call& c, const void* owner, const void* instigato
     return filter_hits(make_filter(c, owner, instigator), g_client.pc, g_client.pawn);
 }
 
+void host_totals_rows(const char* when);
+
 void c136_step(void* engine) {
     void* const world = g_get_game_world != nullptr ? g_get_game_world(engine) : nullptr;
     if (g_client_session) {
@@ -3004,6 +3129,14 @@ void c136_step(void* engine) {
     if (now - flushed >= kFlushMs || g_host.queue.n >= kQueue / 2) {
         host_flush(world);
         flushed = now;
+    }
+    // Card 518 b (diagnostic): the totals rows every minute, counted since the map was armed, so a run killed before
+    // the map's end still logs the gameplay map's fx bytes.
+    constexpr ULONGLONG kC518TotalsMs = 60000;
+    static ULONGLONG totals_at = now; // game thread only
+    if (now - totals_at >= kC518TotalsMs) {
+        totals_at = now;
+        host_totals_rows("60 s");
     }
 }
 
@@ -3085,6 +3218,71 @@ void c136_join_replay(void* pc) {
     niagara_count_row(g_actor_get_world(pc), object_name(pc).text);
 }
 
+// Card 136 and 518: the host fx totals rows, counted since the map was armed. Map arm and end print them before the
+// counts reset; card 518 b prints them every kC518TotalsMs as well (no reset), since a run kills the pair before the
+// gameplay map's end.
+void host_totals_rows(const char* when) {
+    const HostCounts& k = g_host.counts;
+    log::line("card518: host bug footstep calls kept local, not sent (%s): %u (%u cues)", when, k.steps, k.steps_cue);
+    log::line("card136: host fx net map totals (%s): %u rows queued, %u rows sent in %u frames (%u failed), %u assets, "
+              "journal %d (peak %d), %u ended, %u replays (%u rows, %u replay skipped (run-time target)), dropped: %u off thread, %u queue full, %u "
+              "asset table full, %u journal full, %u bad; %u gore decals left to card 132; %u stale asset rows, %u "
+              "local only, %u local trail, %u card 408 local, %u no asset, %u finished, first person %u remapped (%u at world), %u not "
+              "sent; %u bad (too long), %d names of %d (%u table full), %u event rows %llu bytes (average %.1f)",
+              when, k.queued, k.rows_sent, k.frames, k.frames_failed, g_host.assets.n, g_host.journal.n,
+              g_host.journal.peak, k.ended, k.replays, k.replay_rows, k.replay_skipped, k.off_thread, k.overflow, k.assets_full,
+              k.journal_full, k.bad_rows, k.gore, k.assets_stale, k.local, k.trail, k.attack, k.no_asset, k.finished,
+              k.fp_remap, k.fp_miss,
+              k.fp_drop, k.too_long, g_host.names.n, kNames, k.names_full, k.event_rows,
+              static_cast<unsigned long long>(k.event_bytes),
+              k.event_rows != 0 ? static_cast<double>(k.event_bytes) / k.event_rows : 0.0);
+    log::line("card518: host fx bytes by tag (%s): A %u rows %llu B, N %u rows %llu B, E %u rows %llu B, R %u rows "
+              "%llu B, X %u rows %llu B, D %u rows %llu B; %u frames %llu blob bytes",
+              when, k.tag_rows[kTagAsset], static_cast<unsigned long long>(k.tag_bytes[kTagAsset]),
+              k.tag_rows[kTagName], static_cast<unsigned long long>(k.tag_bytes[kTagName]),
+              k.tag_rows[kTagEvent], static_cast<unsigned long long>(k.tag_bytes[kTagEvent]),
+              k.tag_rows[kTagReplay], static_cast<unsigned long long>(k.tag_bytes[kTagReplay]),
+              k.tag_rows[kTagEnd], static_cast<unsigned long long>(k.tag_bytes[kTagEnd]),
+              k.tag_rows[kTagStop], static_cast<unsigned long long>(k.tag_bytes[kTagStop]), k.frames,
+              static_cast<unsigned long long>(k.frame_bytes));
+    // Card 518 b: E body bytes by field (rows with the bit, bytes), in mask bit order.
+    log::line("card518: host fx body bytes by field (%s): loc %u/%llu, rot %u/%llu, scale %u/%llu, comp %u/%llu, "
+              "socket %u/%llu, guid %u/%llu, placed %u/%llu, owner %u/%llu, look %u/%llu, seed %u/%llu, world "
+              "%u/%llu, of %u/%llu, flags %u/%llu, physmat %u/%llu, atten %u/%llu, conc %u/%llu",
+              when, k.bit_rows[0], static_cast<unsigned long long>(k.bit_bytes[0]), k.bit_rows[1],
+              static_cast<unsigned long long>(k.bit_bytes[1]), k.bit_rows[2],
+              static_cast<unsigned long long>(k.bit_bytes[2]), k.bit_rows[3],
+              static_cast<unsigned long long>(k.bit_bytes[3]), k.bit_rows[4],
+              static_cast<unsigned long long>(k.bit_bytes[4]), k.bit_rows[5],
+              static_cast<unsigned long long>(k.bit_bytes[5]), k.bit_rows[6],
+              static_cast<unsigned long long>(k.bit_bytes[6]), k.bit_rows[7],
+              static_cast<unsigned long long>(k.bit_bytes[7]), k.bit_rows[8],
+              static_cast<unsigned long long>(k.bit_bytes[8]), k.bit_rows[9],
+              static_cast<unsigned long long>(k.bit_bytes[9]), k.bit_rows[10],
+              static_cast<unsigned long long>(k.bit_bytes[10]), k.bit_rows[11],
+              static_cast<unsigned long long>(k.bit_bytes[11]), k.bit_rows[12],
+              static_cast<unsigned long long>(k.bit_bytes[12]), k.bit_rows[13],
+              static_cast<unsigned long long>(k.bit_bytes[13]), k.bit_rows[14],
+              static_cast<unsigned long long>(k.bit_bytes[14]), k.bit_rows[15],
+              static_cast<unsigned long long>(k.bit_bytes[15]));
+    log::line("card518: host fx loc on the wire (%s): %u rows %llu B (average %.1f), frame-local deltas", when,
+              k.loc_rows, static_cast<unsigned long long>(k.loc_wire_bytes),
+              k.loc_rows != 0 ? static_cast<double>(k.loc_wire_bytes) / k.loc_rows : 0.0);
+    log::line("card518: host fx mask bytes (%s): 1 B %u rows, 2 B %u, 3 B %u; cue normals not unit %u; world "
+              "unsent %u; cue normal decode error over %u rows: max %.2f deg, mean %.2f deg",
+              when, k.mask_rows[0], k.mask_rows[1], k.mask_rows[2], k.normal_not_unit, k.world_unsent,
+              k.normal_rows, k.normal_err_max, k.normal_rows != 0 ? k.normal_err_sum / k.normal_rows : 0.0);
+    log::line("card518: host fx asset defaults (%s): rows that left the field to the asset's default: flags %u, "
+              "physmat %u, atten %u, conc %u, comp %u",
+              when, k.defaulted[0], k.defaulted[1], k.defaulted[2], k.defaulted[3], k.defaulted[4]);
+    log::line("card518: host fx keyed sound rows sent to a pc whose pawn is past the %.0f uu net cull from the "
+              "event (%s): %u rows %llu B; card598 NetGUID-keyed one-shots not sent %u rows %llu B, placed "
+              "re-fires not sent %u rows %llu B",
+              kC518CullUu, when, k.culled_sound_rows, static_cast<unsigned long long>(k.culled_sound_bytes),
+              k.far_skipped_rows, static_cast<unsigned long long>(k.far_skipped_bytes), k.far_repeat_rows,
+              static_cast<unsigned long long>(k.far_repeat_bytes));
+}
+
 // Per map, from c136_report: the totals line, then the host's table, journal and peers start over (card 325: with
 // keep_state, the host's map arm, only the counts start over). The client keeps its asset table (the host resends each
 // map's rows by index before using them) and drops its live map.
@@ -3100,58 +3298,7 @@ void c136_net_arm_map(const char* when, bool keep_state) {
         if (k.wound != 0) {
             log::line("card438: host wound shading calls kept local, not sent (%s): %u", when, k.wound);
         }
-        log::line("card518: host bug footstep calls kept local, not sent (%s): %u (%u cues)", when, k.steps, k.steps_cue);
-        log::line("card136: host fx net map totals (%s): %u rows queued, %u rows sent in %u frames (%u failed), %u assets, "
-                  "journal %d (peak %d), %u ended, %u replays (%u rows, %u replay skipped (run-time target)), dropped: %u off thread, %u queue full, %u "
-                  "asset table full, %u journal full, %u bad; %u gore decals left to card 132; %u stale asset rows, %u "
-                  "local only, %u local trail, %u card 408 local, %u no asset, %u finished, first person %u remapped (%u at world), %u not "
-                  "sent; %u bad (too long), %d names of %d (%u table full), %u event rows %llu bytes (average %.1f)",
-                  when, k.queued, k.rows_sent, k.frames, k.frames_failed, g_host.assets.n, g_host.journal.n,
-                  g_host.journal.peak, k.ended, k.replays, k.replay_rows, k.replay_skipped, k.off_thread, k.overflow, k.assets_full,
-                  k.journal_full, k.bad_rows, k.gore, k.assets_stale, k.local, k.trail, k.attack, k.no_asset, k.finished,
-                  k.fp_remap, k.fp_miss,
-                  k.fp_drop, k.too_long, g_host.names.n, kNames, k.names_full, k.event_rows,
-                  static_cast<unsigned long long>(k.event_bytes),
-                  k.event_rows != 0 ? static_cast<double>(k.event_bytes) / k.event_rows : 0.0);
-        log::line("card518: host fx bytes by tag (%s): A %u rows %llu B, N %u rows %llu B, E %u rows %llu B, R %u rows "
-                  "%llu B, X %u rows %llu B, D %u rows %llu B; %u frames %llu blob bytes",
-                  when, k.tag_rows[kTagAsset], static_cast<unsigned long long>(k.tag_bytes[kTagAsset]),
-                  k.tag_rows[kTagName], static_cast<unsigned long long>(k.tag_bytes[kTagName]),
-                  k.tag_rows[kTagEvent], static_cast<unsigned long long>(k.tag_bytes[kTagEvent]),
-                  k.tag_rows[kTagReplay], static_cast<unsigned long long>(k.tag_bytes[kTagReplay]),
-                  k.tag_rows[kTagEnd], static_cast<unsigned long long>(k.tag_bytes[kTagEnd]),
-                  k.tag_rows[kTagStop], static_cast<unsigned long long>(k.tag_bytes[kTagStop]), k.frames,
-                  static_cast<unsigned long long>(k.frame_bytes));
-        // Card 518 b: E body bytes by field (rows with the bit, bytes), in mask bit order.
-        log::line("card518: host fx body bytes by field (%s): loc %u/%llu, rot %u/%llu, scale %u/%llu, comp %u/%llu, "
-                  "socket %u/%llu, guid %u/%llu, placed %u/%llu, owner %u/%llu, look %u/%llu, seed %u/%llu, world "
-                  "%u/%llu, of %u/%llu, flags %u/%llu, physmat %u/%llu, atten %u/%llu, conc %u/%llu",
-                  when, k.bit_rows[0], static_cast<unsigned long long>(k.bit_bytes[0]), k.bit_rows[1],
-                  static_cast<unsigned long long>(k.bit_bytes[1]), k.bit_rows[2],
-                  static_cast<unsigned long long>(k.bit_bytes[2]), k.bit_rows[3],
-                  static_cast<unsigned long long>(k.bit_bytes[3]), k.bit_rows[4],
-                  static_cast<unsigned long long>(k.bit_bytes[4]), k.bit_rows[5],
-                  static_cast<unsigned long long>(k.bit_bytes[5]), k.bit_rows[6],
-                  static_cast<unsigned long long>(k.bit_bytes[6]), k.bit_rows[7],
-                  static_cast<unsigned long long>(k.bit_bytes[7]), k.bit_rows[8],
-                  static_cast<unsigned long long>(k.bit_bytes[8]), k.bit_rows[9],
-                  static_cast<unsigned long long>(k.bit_bytes[9]), k.bit_rows[10],
-                  static_cast<unsigned long long>(k.bit_bytes[10]), k.bit_rows[11],
-                  static_cast<unsigned long long>(k.bit_bytes[11]), k.bit_rows[12],
-                  static_cast<unsigned long long>(k.bit_bytes[12]), k.bit_rows[13],
-                  static_cast<unsigned long long>(k.bit_bytes[13]), k.bit_rows[14],
-                  static_cast<unsigned long long>(k.bit_bytes[14]), k.bit_rows[15],
-                  static_cast<unsigned long long>(k.bit_bytes[15]));
-        log::line("card518: host fx loc on the wire (%s): %u rows %llu B (average %.1f), frame-local deltas", when,
-                  k.loc_rows, static_cast<unsigned long long>(k.loc_wire_bytes),
-                  k.loc_rows != 0 ? static_cast<double>(k.loc_wire_bytes) / k.loc_rows : 0.0);
-        log::line("card518: host fx mask bytes (%s): 1 B %u rows, 2 B %u, 3 B %u; cue normals not unit %u; world "
-                  "unsent %u; cue normal decode error over %u rows: max %.2f deg, mean %.2f deg",
-                  when, k.mask_rows[0], k.mask_rows[1], k.mask_rows[2], k.normal_not_unit, k.world_unsent,
-                  k.normal_rows, k.normal_err_max, k.normal_rows != 0 ? k.normal_err_sum / k.normal_rows : 0.0);
-        log::line("card518: host fx asset defaults (%s): rows that left the field to the asset's default: flags %u, "
-                  "physmat %u, atten %u, conc %u, comp %u",
-                  when, k.defaulted[0], k.defaulted[1], k.defaulted[2], k.defaulted[3], k.defaulted[4]);
+        host_totals_rows(when);
         fx_stats_rows(when);
         g_host.counts = HostCounts{};
         if (keep_state) {
@@ -3161,6 +3308,7 @@ void c136_net_arm_map(const char* when, bool keep_state) {
         g_host.assets.n = 0;
         g_host.names.n = 0;
         memset(g_host.names.slots, 0, sizeof(g_host.names.slots));
+        g_c598_repeats.n = 0; // card 598 b452: keyed by the asset and name rows just cleared
         g_host.queue.n = 0;
         g_host.journal.n = 0;
         g_host.journal.peak = 0;

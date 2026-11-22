@@ -24,14 +24,16 @@ Step 1. Double-click PLAY-COOP.sh.
 Step 2. A box says "Authentication failed". Click it away.
 Step 3. A box says "controller disconnected". Click it away.
 Step 4. You are at the title screen. Decide who hosts:
-          one player does PART 3, the other does PART 4.
+          one player does PART 3, up to three others do PART 4.
 
 PART 3: HOST
 ------------
 Step 1. Press H.
 Step 2. The box in the top-left now says "Host co-op: ON".
-        Under it is your address, like 192.168.1.20.
-        Tell your friend that address.
+        Under it are your addresses: "Internet" for friends elsewhere,
+        "LAN" for PCs in your home. Tell your friends the one they need,
+        with the port (47000).
+        Want infinite stamina for the session? Press I.
 Step 3. Press any key.
 Step 4. Choose Human Missions.
 Step 5. Press Enter.
@@ -39,7 +41,7 @@ Step 6. Press Enter.
 Step 7. Press Enter.
 Step 8. Movies play. Press Enter until they stop.
 Step 9. At "PRESS ANY KEY", press Space.
-Step 10. Tell your friend: "I'm in, join now."
+Step 10. Tell your friends: "I'm in, join now."
 
 PART 4: JOIN
 ------------
@@ -65,7 +67,8 @@ PROBLEMS
 "install innoextract"        Do PART 1, Step 2.
 "Could not find the game"    Do PART 1, Step 4.
 "Wrong game version"         You need the GOG version 1.2.0 files.
-Both players must use the same zip (the version is in build/VERSION.txt).
+All players must use the same zip (the version is in build/VERSION.txt).
 Updates: at each start PLAY-COOP.sh checks GitHub for a newer release and asks before it
 updates. Without internet it starts as is. To skip the check: UBW_NO_UPDATE=1 ./PLAY-COOP.sh
-Not on the same home network? You need a VPN like Tailscale to connect.
+Not on the same home network? Use the "Internet" address the host's panel shows. If the panel says
+"forward UDP port 47000 by hand", do that in the router, or use a VPN like Tailscale.

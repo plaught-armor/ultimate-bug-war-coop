@@ -1,6 +1,6 @@
 # Card 031: Lobby overlay render test (no network)
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, and milestone 5 ("Overlay groundwork"). Then read `docs/design/coop-channel-lobby-downed.md` section 2. Repo root: `/path/to/ultimate-bug-war-coop`.
 

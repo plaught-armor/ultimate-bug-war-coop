@@ -1,6 +1,6 @@
 # 510: The focus scan misses actors whose bounds sit off the body
 
-Opened 2026-11-19 by the senior, from card 504 runs c504b2, c504b3 and c504b4 (DLL 4c265abd554c8232). Test-only code
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from card 504 runs c504b2, c504b3 and c504b4 (DLL 4c265abd554c8232). Test-only code
 (`testrun.cpp` b14 scan). Goes into the next real-bug build batch, not a build of its own.
 
 ## Finding

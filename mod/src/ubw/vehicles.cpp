@@ -509,7 +509,7 @@ constexpr size_t kTurretLookGate = 0xF9; // from the input-receiver subobject
 // Enter the nearest mech (or mount the nearest turret) through its OnInteraction with the pawn's interactor.
 void c29_vehicle_enter(const void* world, void* pawn, bool mech, ULONGLONG now) {
     void* const vehicle = c29_nearest_vehicle(world, pawn, mech);
-    void* const interactor = read_ptr(pawn, kCharacterInteractor);
+    void* const interactor = pawn_interactor(pawn);
     g_c29.vehicle = object_index(vehicle);
     g_c29.stage = mech ? C29Stage::MechOut : C29Stage::TurretOut;
     g_c29.stage_ms = now;
@@ -638,7 +638,6 @@ C306Equip g_c306_equip{}; // game thread
 
 BlockingVolumeFn g_in_blocking_volume = nullptr;
 C29InteractFn g_orig_mech_on_interaction = nullptr;
-bool g_c32_pe = false; // ProcessEvent filter open: c32 armed on this map
 
 constexpr size_t kDataTableSubsystemPickups = 0x58; // USTDataTableSubsystem pickups table (TWeakObjectPtr)
 constexpr size_t kPickupRowSoftWeak = 0x08;    // row TSoftClassPtr: its TWeakObjectPtr (null until loaded)
@@ -1091,7 +1090,7 @@ void c32_await(ULONGLONG now) {
 
 void c32_enter(void* world, void* pc, void* pawn, ULONGLONG now) {
     void* const mech = c32_find(world, g_c32.mech);
-    void* const interactor = read_ptr(pawn, kCharacterInteractor);
+    void* const interactor = pawn_interactor(pawn);
     c32_line("enter: mech %s at %.0f units, AutoPossessAI %d, mech controller %s, interactor %s, PC pawn %s",
              object_name(mech).text, mech != nullptr ? vec_dist(actor_location(mech), actor_location(pawn)) : -1.0,
              c32_byte_field(mech, "AutoPossessAI"), object_name(mech != nullptr ? read_ptr(mech, kPawnController) : nullptr).text,
@@ -1180,7 +1179,7 @@ void c32_client_step(void* world, void* pc, void* pawn, ULONGLONG now) {
         g_c32.client_interacted = true;
         g_c32.interact_ms = now;
         void* const mech = c32_find(world, g_c32.mech);
-        void* const interactor = read_ptr(pawn, kCharacterInteractor);
+        void* const interactor = pawn_interactor(pawn);
         c32_line("client OnInteraction: mech %s at %.0f units, interactor %s", object_name(mech).text,
                  mech != nullptr ? vec_dist(actor_location(mech), actor_location(pawn)) : -1.0, object_name(interactor).text);
         if (mech != nullptr && interactor != nullptr) {
@@ -1801,6 +1800,9 @@ void detour_c75_leave_mech(void* mech) {
     c29_vehicle_event("LeaveMech", "before", mech, pilot);
     c32_mech_event("LeaveMech", "before", mech, pilot, caller);
     c75_mech_line("LeaveMech", "before", mech, soldier);
+    if (g_c79_log) {
+        c591_leave_note(mech, pc != nullptr); // card 591 diag: the game's eject has no weak PC
+    }
     g_orig_leave_mech(mech);
     c29_vehicle_event("LeaveMech", "after", mech, pilot);
     c32_mech_event("LeaveMech", "after", mech, pilot, caller);
@@ -1949,7 +1951,7 @@ void* c75_sender_copy(void* pc, const char* what) {
 void c75_receive_enter(void* pc, const WireString* s) {
     Vec3 at{};
     void* const copy = c75_frame_loc(s, "MechEnter", &at) ? c75_sender_copy(pc, "MechEnter") : nullptr;
-    void* const interactor = copy != nullptr ? read_ptr(copy, kCharacterInteractor) : nullptr;
+    void* const interactor = pawn_interactor(copy);
     if (interactor == nullptr) {
         return;
     }
@@ -2098,7 +2100,7 @@ void* c123_nearest_turret(const void* world, const Vec3& loc, double* dist) {
 void c123_receive_mount(void* pc, const WireString* s) {
     Vec3 at{};
     void* const copy = c75_frame_loc(s, "TurretMount", &at) ? c75_sender_copy(pc, "TurretMount") : nullptr;
-    void* const interactor = copy != nullptr ? read_ptr(copy, kCharacterInteractor) : nullptr;
+    void* const interactor = pawn_interactor(copy);
     if (interactor == nullptr) {
         return;
     }
@@ -2180,6 +2182,152 @@ void c447_seat_leave(void* pc) {
               after == seat ? "WARN " : "", static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text,
               mech ? "mech" : "turret", object_name(seat).text, object_name(after).text,
               after == seat ? "leave refused, the seat goes with the player" : "the seat stays");
+}
+
+// ---- Card 586: a player held by a seat or a guided missile ----
+// A turret seat or a guided missile is possessed in place of the trooper; the trooper stays in the world unpossessed
+// (no Controller, RemoteRole no longer AutonomousProxy). Host: g_c586 lists the trooper of each connected client's PC
+// whose pawn is one, rebuilt each frame from c24_step. sprint_side reads such a trooper as its server copy and
+// c99_copy_pc resolves it to the holding PC. A down ends the hold first, so the down runs on a possessed trooper.
+C586Holds g_c586{};
+static uint64_t g_c586_rtc = 0;      // FName "Return to Character" (BP_GuidedMissile_C ubergraph event)
+static uint32_t g_c586_lines = 0;
+static constexpr uint32_t kC586Lines = 40;
+
+static void* c586_return_fn(const void* missile) {
+    return fname_cached(g_c586_rtc, L"Return to Character") != 0 ? g_find_function(missile, g_c586_rtc) : nullptr;
+}
+
+// The trooper `pawn` (a turret seat or a guided missile) holds, its kind in *kind; null when it holds none.
+static void* c586_held_by(const void* pawn, C586Kind* kind) {
+    if (pawn == nullptr || is_a(pawn, g_player_character_class())) {
+        return nullptr; // early out: the trooper itself (the common case)
+    }
+    if (is_a(pawn, g_turret_class())) {
+        const uint8_t* prop = nullptr;
+        const void* const target = prop_object_field(pawn, "Target", &prop);
+        *kind = C586Kind::Seat;
+        return target != pawn && is_a(target, g_player_character_class()) ? const_cast<void*>(target) : nullptr;
+    }
+    if (c586_return_fn(pawn) == nullptr) {
+        return nullptr; // not a guided missile (a mech, a dropship)
+    }
+    // PlayerChar: the trooper "Return to Character" possesses (GA_TacSupp_GuidedMissile sets it and Instigator alike)
+    const uint8_t* prop = nullptr;
+    const void* const player = prop_object_field(pawn, "PlayerChar", &prop);
+    *kind = C586Kind::Missile;
+    return player != pawn && is_a(player, g_player_character_class()) ? const_cast<void*>(player) : nullptr;
+}
+
+// Possessed on a guided missile: 1 or 0, -1 when the class has no such bool.
+static int32_t c586_possessed(const void* missile) {
+    const uint8_t* const f = prop_find_prop(read_ptr(missile, kObjectClass), "Possessed");
+    if (f == nullptr || !prop_kind_is(f, "BoolProperty") || !prop_bool_ok(f)) {
+        return -1;
+    }
+    const auto* const base = static_cast<const uint8_t*>(missile);
+    const int32_t off = read_i32(f, kPropertyOffset);
+    return (base[off + f[kBoolByteOffset]] & f[kBoolFieldMask]) != 0 ? 1 : 0;
+}
+
+void c586_frame(const void* world) {
+    C586Holds next{};
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        void* const pc = g_get_player_controller(world, s);
+        if (pc == nullptr || !c26_is_remote_pc(pc)) {
+            continue;
+        }
+        C586Kind kind = C586Kind::Seat;
+        void* const holder = read_ptr(pc, kControllerPawn);
+        void* const trooper = c586_held_by(holder, &kind);
+        if (trooper != nullptr && next.count < kC586Max) {
+            next.h[next.count++] = C586Hold{trooper, pc, holder, kind};
+        }
+    }
+    bool changed = next.count != g_c586.count; // card 572 step 8: a hold a memo pick reads started or ended
+    for (uint32_t i = 0; i < next.count; ++i) { // one row per new hold
+        bool known = false;
+        for (uint32_t j = 0; j < g_c586.count; ++j) {
+            known = known || (g_c586.h[j].trooper == next.h[i].trooper && g_c586.h[j].holder == next.h[i].holder);
+        }
+        changed = changed || !known;
+        if (!known && note_event_cap(g_c586_lines, kC586Lines, "card586")) {
+            log::line("card586: host t=%llu %s held by %s %s of %s: read as server copy",
+                      static_cast<unsigned long long>(GetTickCount64()), object_name(next.h[i].trooper).text,
+                      next.h[i].kind == C586Kind::Seat ? "seat" : "missile", object_name(next.h[i].holder).text,
+                      object_name(next.h[i].pc).text);
+        }
+    }
+    if (changed) {
+        c572_input_bump(kC572InputHold);
+    }
+    g_c586 = next;
+}
+
+void* c586_holder_pc(const void* trooper) {
+    for (uint32_t i = 0; i < g_c586.count; ++i) {
+        if (g_c586.h[i].trooper == trooper) {
+            return g_c586.h[i].pc;
+        }
+    }
+    return nullptr;
+}
+
+// Host: ends the hold of `holder` (a seat or a missile possessed by any PC, the host's own too) before a down, and
+// returns the trooper it held; `pawn` itself when it holds none. Seat: the game's LeaveTurret, as card 123's
+// TurretLeave. Missile: "Return to Character" only when Possessed is still set (the missile's own PlayerDamaged may
+// have handed control back already).
+static void* c586_end(void* holder, const char* why) {
+    C586Kind kind = C586Kind::Seat;
+    void* const trooper = c586_held_by(holder, &kind);
+    void* const pc = trooper != nullptr ? read_ptr(holder, kPawnController) : nullptr;
+    if (pc == nullptr) {
+        return trooper != nullptr ? trooper : holder;
+    }
+    const char* action = "LeaveTurret";
+    c572_input_bump(kC572InputHold); // card 572 step 8: the hold ends here, before the next c586_frame sees it
+    c24_release_pawn(holder, "release (card 586 down)"); // card 125: a held relay on the holder goes before its rider
+    if (kind == C586Kind::Seat) {
+        detour_leave_turret(holder);
+    } else {
+        const int32_t possessed = c586_possessed(holder);
+        void* const fn = c586_return_fn(holder);
+        const uint32_t size = fn != nullptr ? static_cast<uint32_t>(read_i32(fn, kFunctionParmsSize) & 0xFFFF) : 0u;
+        alignas(16) uint8_t parms[64] = {};
+        if (possessed != 1) {
+            action = possessed == 0 ? "none (Possessed already clear)" : "none (no Possessed property)";
+        } else if (size > sizeof(parms)) {
+            action = "none (Return to Character parms too large)";
+        } else {
+            g_orig_process_event(holder, fn, parms);
+            action = "Return to Character";
+        }
+    }
+    const void* const after = read_ptr(pc, kControllerPawn);
+    log::line("%scard586: host t=%llu %s: %s down while in %s %s: %s; PC %s pawn now %s", after != trooper ? "WARN " : "",
+              static_cast<unsigned long long>(GetTickCount64()), why, object_name(trooper).text,
+              kind == C586Kind::Seat ? "seat" : "missile", object_name(holder).text, action, object_name(pc).text,
+              object_name(after).text);
+    return trooper;
+}
+
+void* c586_end_hold(void* pawn, const char* why) {
+    return g_client_session || pawn == nullptr ? pawn : c586_end(pawn, why);
+}
+
+void c586_end_hold_of(const void* trooper, const void* world, const char* why) {
+    if (g_client_session || world == nullptr || trooper == nullptr) {
+        return;
+    }
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        void* const pc = g_get_player_controller(world, s);
+        void* const holder = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+        C586Kind kind = C586Kind::Seat;
+        if (holder != nullptr && holder != trooper && c586_held_by(holder, &kind) == trooper) {
+            c586_end(holder, why);
+            return;
+        }
+    }
 }
 
 // Host: true = EnterMech is skipped because card 043 holds `pawn` Downed, Out or Dead (its entry stays).

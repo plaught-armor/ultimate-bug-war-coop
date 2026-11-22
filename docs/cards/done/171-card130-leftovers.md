@@ -1,6 +1,6 @@
 # Card 171: Which 2026-11-07 playtest items still happen
 
-Status: queued 2026-11-11. Budget: static first, then one run. Output is findings, not fixes.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11. Budget: static first, then one run. Output is findings, not fixes.
 
 Read: docs/cards/done/130-playtest-settings-lag-tacsupport-popups-audio.md items 1, 2, 4, 11, 13, 14 only.
 

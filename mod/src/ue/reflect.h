@@ -155,6 +155,11 @@ uint32_t fname_refusals();
 ObjectName fname_text(const void* fname);
 ObjectName object_name(const void* object);
 ObjectName class_name(const void* object);
+// Card 608: the FName of a live `object` (0 for null), for a row printed later, when the object may be freed. Print
+// the copy with fname_text; the row's pointer stays a compare key, so a reused address merges two objects in it.
+inline uint64_t object_fname(const void* object) {
+    return object != nullptr ? read_u64(object, kObjectName) : 0;
+}
 
 // The FName for `text`, built once through g_fname_ctor and kept in `cache`; 0 until g_fname_ctor resolves.
 uint64_t fname_cached(uint64_t& cache, const wchar_t* text);
@@ -171,6 +176,10 @@ bool object_listed(const void* object);
 // Card 476 (b179): true while `object` is still the GUObjectArray entry at its InternalIndex, flagged unreachable or
 // garbage or not: false only when it is really freed (index out of range, or the entry no longer points at it).
 bool object_present(const void* object);
+// Card 594: the GUObjectArray serial number of `object` (0 while nothing ever weakly referenced it), or -1 when
+// `object` is no live entry (not listed, or flagged unreachable or garbage). With the index, it names one object for
+// its whole life: a later object at the same address and index gets a new serial once it is weakly referenced.
+int32_t object_serial(const void* object);
 // Card 496: UObject::AddToRoot: FUObjectItem::SetRootFlags(RootSet) on `object`'s GUObjectArray item, which adds the
 // item to the GC root list (GC marks roots from that list, not from the flag), so GC keeps it. `flags_out` gets the
 // item's flags word after the call. False when `object` is no live entry (not listed, or flagged unreachable or

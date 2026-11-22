@@ -67,6 +67,16 @@ LITERAL = {
     "Finale_SO1": [x for _ in range(6) for x in (CLEAR, "try host objective wait Finale_SO1 15")]
     + ["host objective wait Finale_SO1 30"],
 }
+# FED_C3M1 Resort_SO2 (kind marker, actor ActorReference_C_9): the level script counts satchel pickups and completes
+# it at satchelCount == 3 (card 242 row 8). soak3m1b366c ran the presence routine at the marker for 309 s with no
+# Complete row; it completed only when the Resort_SO3 satchel routine took the third pickup (host 97077404). The
+# client takes each live pickup the way drive.py satchel_take does; `try` because a pickup taken earlier is gone.
+TAKE = [
+    "try host warp client BP_SatchelItemPickup_C 100 live",
+    "try client look actor BP_SatchelItemPickup_C 0 bounds live focus=BP_SatchelItemPickup_C",
+    "try client key E",
+]
+LITERAL["Resort_SO2"] = [x for _ in range(3) for x in TAKE] + ["host objective wait Resort_SO2 15"]
 WAIT_ON = {"BrainBug_SO7": "BrainBug_O1"}
 
 

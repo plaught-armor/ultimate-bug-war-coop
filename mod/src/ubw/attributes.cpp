@@ -737,7 +737,7 @@ void log_c20_weapon(uint32_t k, const char* who, const char* act, const uint8_t*
     const void* const weapon = weapons != nullptr ? g_get_equipped_weapon(weapons) : nullptr;
     const void* const items = read_ptr(pawn, kCharacterItemInventory);
     const void* const item = items != nullptr ? g_get_equipped_item(items) : nullptr;
-    const auto* const interactor = static_cast<const uint8_t*>(read_ptr(pawn, kCharacterInteractor));
+    const auto* const interactor = static_cast<const uint8_t*>(pawn_interactor(pawn));
     const void* const target = interact_target(interactor);
     const void* const source = interactor != nullptr ? read_ptr(interactor, kInteractorTraceSource) : nullptr;
     const Vec3 src = source != nullptr ? read_vec3(source, kComponentTranslation) : Vec3{};
@@ -1233,7 +1233,13 @@ void c50_send_use_name(void* interactor, void* pc) {
     const Vec3 copy_at = actor_location(target);
     const bool by_id = copy_id != 0 && snprintf(text, sizeof(text), "#%u %.1f %.1f %.1f", copy_id, copy_at.x,
                                                 copy_at.y, copy_at.z) > 0;
-    if (len > 0 && (by_id || (placed && relayable && c95_wire_target(target, text, sizeof(text)) > 0))) { // card 133
+    // Card 559: a client-local pickup (the client's own spawn, such as supply drop contents: neither placed nor a card
+    // 104 copy) goes by class and point ("$class x y z"); the host takes its own nearest live pickup of that class.
+    // Before, the client armed itself alone and the host's next weapon list took the weapon away.
+    const bool by_class = !placed && relayable && copy_id == 0 && target != nullptr &&
+                          snprintf(text, sizeof(text), "$%s %.1f %.1f %.1f", class_name(target).text, copy_at.x,
+                                   copy_at.y, copy_at.z) > 0;
+    if (len > 0 && (by_id || by_class || (placed && relayable && c95_wire_target(target, text, sizeof(text)) > 0))) { // card 133
         wchar_t wire[kChanTextFrame];
         const WireString w = chan_text_frame(ChanOp::UseName, text, wire);
         sent = w.num > 0 && chan_send_host(pc, w);
@@ -1243,8 +1249,8 @@ void c50_send_use_name(void* interactor, void* pc) {
                   "UseName %s",
                   static_cast<unsigned long long>(GetTickCount64()), len > 0 ? name : object_name(target).text,
                   class_name(target).text, placed ? 1 : 0, relayable ? 1 : 0,
-                  sent ? (by_id ? "sent by host id" : "sent")
-                       : (relayable && (placed || by_id) ? "WARN not sent" : "not sent (not a placed relayed class or copy)"));
+                  sent ? (by_id ? "sent by host id" : by_class ? "sent by class and point (card 559)" : "sent")
+                       : (relayable && (placed || by_id || by_class) ? "WARN not sent" : "not sent (not a relayed class)"));
     }
 }
 
@@ -1288,10 +1294,13 @@ constexpr int32_t kC297MaxTags = 32;
 constexpr uint32_t kC297TagLines = 60;     // tag change rows per map
 constexpr uint32_t kC298Lines = 12;        // mount rows per map
 constexpr size_t kMechFirstPersonMesh = 0x848; // ASTPlayerCharacter FirstPersonMesh (SetMeshVisibility callers)
+constexpr size_t kC558SetTickEnabledVfn = 0x410; // UActorComponent::SetComponentTickEnabled (pose_c132.cpp)
 constexpr size_t kMechSecondMesh = 0xC20;      // the mech's other mesh: shown on foot, hidden while piloted
 constexpr ULONGLONG kC297CheckMs = 1000;
 constexpr uint32_t kC297FixLines = 40;
 constexpr uint32_t kC297ShotLines = 40;
+constexpr uint32_t kC558RemoteLines = 120; // card 558 remote mech rows per map (2 min at 1 per s)
+constexpr int32_t kC558MaxComponents = 64; // card 558 remote row: owned components read per mech
 // The cockpit ABP (ABP_Player_RazorbackMech_Cockpit) blends its attack poses on HasMatchingGameplayTag; its only
 // tag literals are WeaponSystem.EquippedWeapon.Fire and WeaponSystem.EquippedWeapon.Melee.
 constexpr const char* kC297AttackTag = "WeaponSystem.EquippedWeapon.Fire";
@@ -1308,6 +1317,8 @@ struct C297State {
     ULONGLONG check_ms;            // the next 1 s check of the piloted mech's arms
     uint32_t fix_lines;            // enter, exit and WARN rows per map
     uint32_t shot_lines;           // per-shot attack tag rows per map
+    ULONGLONG remote_ms;           // card 558: the next remote mech row
+    uint32_t remote_lines;         // card 558: remote mech rows per map
 };
 C297State g_c297{};
 
@@ -1763,16 +1774,23 @@ void c297_swap(void* mech, bool enter, const char* why) {
         g_c297_set_mesh_visibility(mech, arms, enter);
         g_c297_set_mesh_visibility(mech, body, !enter);
     }
+    // Card 558: the game's enter (OnBoardingComplete -> SetMeshVisibility) only sets visibility; on the client the
+    // arms' component tick stays off (card297 enter rows: IsComponentTickEnabled 0), so the cockpit anim never updates.
+    const int32_t tick_before = c297_bool_call(arms, g_c297.tick_fname, L"IsComponentTickEnabled");
+    if (enter && arms != nullptr && tick_before == 0) {
+        using SetTickFn = void (*)(void*, bool);
+        reinterpret_cast<SetTickFn>(read_ptr(read_ptr(arms, 0), kC558SetTickEnabledVfn))(arms, true);
+    }
     if (!note_event_cap(g_c297.fix_lines, kC297FixLines, "card297 fix row")) {
         return;
     }
     const void* const anim = arms != nullptr ? c31_object_prop(arms, "AnimScriptInstance") : nullptr;
     log::line("card297: client t=%llu mech %llu %s (%s): FirstPersonMesh visible %d -> %d, second mesh visible %d -> "
-              "%d, anim instance %s, attack tag %s count %d%s",
+              "%d, arms tick %d -> %d, anim instance %s, attack tag %s count %d%s",
               static_cast<unsigned long long>(GetTickCount64()), static_cast<unsigned long long>(c41_guid(mech)),
               enter ? "enter" : "exit", why, arms_before, c297_bool_call(arms, g_c297.visible_fname, L"IsVisible"),
-              body_before, c297_bool_call(body, g_c297.visible_fname, L"IsVisible"),
-              anim != nullptr ? class_name(anim).text : "null", kC297AttackTag, c297_attack_count(mech),
+              body_before, c297_bool_call(body, g_c297.visible_fname, L"IsVisible"), tick_before,
+              c297_bool_call(arms, g_c297.tick_fname, L"IsComponentTickEnabled"), anim != nullptr ? class_name(anim).text : "null", kC297AttackTag, c297_attack_count(mech),
               g_c297_set_mesh_visibility == nullptr ? " (WARN SetMeshVisibility unbound: not applied)" : "");
 }
 
@@ -1848,6 +1866,54 @@ void c297_tags_step() {
     }
     memcpy(g_c297.tags, now_tags, static_cast<size_t>(n) * sizeof(uint64_t));
     g_c297.tag_n = n;
+}
+
+// Card 558 candidate 2 (diagnostic, UBWCOOP_C76_LOG=1): the user sees the host's mech walk on the client with no leg
+// animation. Once a second per remote mech (called from c28_visit), the state the third-person ABP depends on: each
+// mesh's visibility, component tick and anim instance, and the CMC velocity the ABP's speed comes from.
+void c558_remote_row(void* mech) {
+    if (!g_c76_log || mech == nullptr || read_ptr(mech, kPawnPlayerState) == nullptr) { // piloted only (card 557)
+        return;
+    }
+    const ULONGLONG now = GetTickCount64();
+    if (now < g_c297.remote_ms || !note_event_cap(g_c297.remote_lines, kC558RemoteLines, "card558 remote row")) {
+        return;
+    }
+    g_c297.remote_ms = now + kC297CheckMs;
+    // c558b429a: ACharacter::Mesh is null on the mech and +0xC20 is a hidden SpriteComponent; the shown body is the
+    // "Mech" StaticMeshComponent (card 075). Every skeletal mesh component is listed, so the row names whichever one
+    // could carry the leg animation, with its visibility, component tick and anim instance.
+    static void* skeletal_class = nullptr;
+    skeletal_class = skeletal_class != nullptr ? skeletal_class : find_class(L"/Script/Engine.SkeletalMeshComponent");
+    const void* owned[kC558MaxComponents]{};
+    const int32_t n = owned_components(mech, owned, kC558MaxComponents);
+    char list[720] = "";
+    size_t used = 0;
+    int32_t listed = 0;
+    for (int32_t i = 0; i < n && used < sizeof(list); ++i) {
+        const void* const c = owned[i];
+        const bool body = strcmp(object_name(c).text, "Mech") == 0;
+        if (!body && (skeletal_class == nullptr || !is_a(c, skeletal_class))) {
+            continue;
+        }
+        const void* const anim = body ? nullptr : c31_object_prop(c, "AnimScriptInstance");
+        const int written = snprintf(list + used, sizeof(list) - used, "%s%s (%s) visible %d tick %d anim %s",
+                                     listed != 0 ? "; " : "", object_name(c).text, class_name(c).text,
+                                     c297_bool_call(const_cast<void*>(c), g_c297.visible_fname, L"IsVisible"),
+                                     c297_bool_call(const_cast<void*>(c), g_c297.tick_fname, L"IsComponentTickEnabled"),
+                                     anim != nullptr ? class_name(anim).text : "null");
+        used += written > 0 ? static_cast<size_t>(written) : 0;
+        ++listed;
+    }
+    const auto* const cmc = static_cast<const uint8_t*>(read_ptr(mech, kCharacterMovement));
+    Vec3 vel{};
+    if (cmc != nullptr) {
+        memcpy(&vel, cmc + kMoveVelocity, sizeof(vel));
+    }
+    log::line("card558: %s t=%llu remote mech %llu role %d: %d components, %d listed: %s; CMC velocity (%.0f, %.0f, %.0f)",
+              side(), static_cast<unsigned long long>(now), static_cast<unsigned long long>(c41_guid(mech)),
+              static_cast<int>(static_cast<const uint8_t*>(mech)[kActorLocalRole]), n, listed, list, vel.x, vel.y,
+              vel.z);
 }
 
 void c297_map_end() {

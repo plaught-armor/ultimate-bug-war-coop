@@ -1,6 +1,6 @@
 # Card 218: Dropship AI spawners sit at a different place on the client
 
-Status: queued 2026-11-12, from c147-r1 (new WARN class, seen once; not seen in c147-r2 on the same route).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c147-r1 (new WARN class, seen once; not seen in c147-r2 on the same route).
 Static trace first, no code and no run until the cause is named. Budget after that: three runs.
 
 ## Seen

@@ -1,6 +1,6 @@
 # Card 179: The client takes the host's hazard damage and hears it (finding 1)
 
-Status: queued 2026-11-11, split from card 144. Budget: three runs. One goal: a client pawn standing in a hazard zone
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, split from card 144. Budget: three runs. One goal: a client pawn standing in a hazard zone
 the host owns takes the host's damage and plays the hazard sound.
 
 Read: card 144 (the client's own hazard logic; run 179 after it, since 144 decides who owns the zone's collision),

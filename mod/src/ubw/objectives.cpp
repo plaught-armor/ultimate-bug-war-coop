@@ -2045,7 +2045,7 @@ C345bState g_c345b;
 void c345b_arm(void* game_instance) {
     g_c345b = C345bState{};
     g_c345b.game_instance = game_instance;
-    g_c345b_pe = true;
+    pe_gate_set(kPeGate_c345b_pe, true);
 }
 
 void c345b_drop_wait() {
@@ -2092,7 +2092,6 @@ void c345b_host_relay() {
 }
 } // namespace
 
-bool g_c345b_pe = false;
 
 bool c345b_pe(void* object, void* function) {
     if (function != g_c345b.fn || g_c345b.fn == nullptr || object != c31_weak_get(g_c345b.widget)) {
@@ -2114,7 +2113,7 @@ bool c345b_pe(void* object, void* function) {
 }
 
 void c345b_step(void* pc) {
-    if (!g_c345b_pe) {
+    if (!pe_gate(kPeGate_c345b_pe)) {
         return;
     }
     if (g_c345b.fn == nullptr || c31_weak_get(g_c345b.widget) == nullptr) {
@@ -2203,7 +2202,7 @@ void c260_map_end() {
     g_c260 = C260State{};
     c345b_drop_wait();
     g_c345b = C345bState{};
-    g_c345b_pe = false;
+    pe_gate_set(kPeGate_c345b_pe, false);
 }
 
 // Card 290 part B, host: a client that joins after this map's EndLevel gets it once it has loaded (first Pong).
@@ -2840,11 +2839,16 @@ bool c46_host_below(void* pawn) {
 // Falling at every sample for kC389FallMs goes beside a grounded Up player who is not on a dropship (the kill floor
 // warp, no damage). With no such player yet (the host still rides) it keeps falling and is warped at the first
 // sample after one lands. Rows are keyed by pawn id, so a map change starts them over.
+// Card 554: a player who jumps every 1-3 s reads Falling at most once-a-second samples, so the time test alone warped
+// the playtest host 8 times at normal height. The warp also needs the pawn kC389DropUu below the z of its first
+// Falling sample: a real fall off the map drops that far in well under kC389FallMs, a run of jumps never does.
 constexpr ULONGLONG kC389FallMs = 6000;
+constexpr double kC389DropUu = 5000.0;
 constexpr ULONGLONG kC389StepMs = 1000;
 struct C389Fall {
     int32_t id;        // the slot's pawn at the last sample (0: none)
     ULONGLONG since;   // first Falling sample of the run (0: not falling)
+    double z0;         // card 554: the pawn's z at that first sample
     bool waited;       // the one "no grounded Up player" row of this fall is out
 };
 C389Fall g_c389[kC43Max]{};
@@ -2883,10 +2887,10 @@ void c389_step(void* world, ULONGLONG now) {
         const int32_t id = falling ? object_index(pawn) : 0;
         // Card 395: under the card 320 load hold the world is paused (z stays), so the fall count starts over.
         if (id == 0 || id != f.id || c320_holding()) {
-            f = C389Fall{id, id != 0 ? now : 0, false};
+            f = C389Fall{id, id != 0 ? now : 0, id != 0 ? actor_location(pawn).z : 0.0, false};
             continue;
         }
-        if (now - f.since < kC389FallMs) {
+        if (now - f.since < kC389FallMs || f.z0 - actor_location(pawn).z < kC389DropUu) {
             continue;
         }
         void* const target = c389_target(r, pawn);
@@ -2900,9 +2904,10 @@ void c389_step(void* world, ULONGLONG now) {
             }
             continue;
         }
-        log::line("card389: host t=%llu %s (slot %d) Falling for %llu ms at z %.0f: kill floor warp beside %s",
-                  static_cast<unsigned long long>(now), object_name(pawn).text, s,
-                  static_cast<unsigned long long>(now - f.since), actor_location(pawn).z, object_name(target).text);
+        log::line("card389: host t=%llu %s (slot %d) Falling for %llu ms at z %.0f (from z %.0f): kill floor warp "
+                  "beside %s", static_cast<unsigned long long>(now), object_name(pawn).text, s,
+                  static_cast<unsigned long long>(now - f.since), actor_location(pawn).z, f.z0,
+                  object_name(target).text);
         c46_warp(pawn, target, r, s, now);
         f = C389Fall{};
     }
@@ -4187,7 +4192,17 @@ void c245_entered_row(const void* presence, const void* actor, const char* what)
 
 void detour_c245_overlap(void* presence, void* comp, void* other, void* other_comp, int32_t body, bool sweep,
                          const void* hit) {
-    if (g_c245_rows >= kC245OverlapRows || !c321_player_body(other)) {
+    if (!c321_player_body(other)) {
+        g_orig_c245_overlap(presence, comp, other, other_comp, body, sweep, hit);
+        return;
+    }
+    const void* const parent = g_get_attach_parent_actor != nullptr ? g_get_attach_parent_actor(other) : nullptr;
+    // Card 581: the attachment owns that body's place, the host the entry. Card 220 prompt triggers stay per machine.
+    if (g_client_session && parent != nullptr && !c220_per_player(presence)) {
+        c581_note_reject(presence, other, parent);
+        return;
+    }
+    if (g_c245_rows >= kC245OverlapRows) {
         g_orig_c245_overlap(presence, comp, other, other_comp, body, sweep, hit);
         return;
     }
@@ -4196,12 +4211,17 @@ void detour_c245_overlap(void* presence, void* comp, void* other, void* other_co
     const auto* const oc = static_cast<const uint8_t*>(other_comp);
     int load = -1;
     const char* const gate = c245_gate(p, oc, load);
-    log::line("card245: %s t=%llu presence %s begin overlap by %s comp %s: enabled %u, +0x5D 0x%02x, +0x2C0 %u, "
-              "load in progress %d, other comp byte +0x97 0x%02x: gate %s (row %u of %u)",
+    // Card 581: where the body is and what it rides (c582b414b: the client's copy of the host's seated trooper
+    // entered BP_PlayerPresence_C_8, which the host's trooper never entered).
+    const Vec3 at = actor_location(other);
+    log::line("card245: %s t=%llu presence %s begin overlap by %s comp %s at (%.0f, %.0f, %.0f) attached to %s: "
+              "enabled %u, +0x5D 0x%02x, +0x2C0 %u, load in progress %d, other comp byte +0x97 0x%02x: gate %s "
+              "(row %u of %u)",
               side_text(), static_cast<unsigned long long>(GetTickCount64()),
               prop_name(p + kObjectName, 8).text, prop_name(static_cast<const uint8_t*>(other) + kObjectName, 8).text,
-              oc != nullptr ? prop_name(oc + kObjectName, 8).text : "null", p[kPresenceEnabled], p[0x5D], p[0x2C0],
-              load, oc != nullptr ? oc[0x97] : 0u, gate, g_c245_rows, kC245OverlapRows);
+              oc != nullptr ? prop_name(oc + kObjectName, 8).text : "null", at.x, at.y, at.z,
+              parent != nullptr ? object_name(parent).text : "none", p[kPresenceEnabled], p[0x5D], p[0x2C0], load,
+              oc != nullptr ? oc[0x97] : 0u, gate, g_c245_rows, kC245OverlapRows);
     const bool passed = gate[0] == 'p';
     g_c245_in = passed ? presence : nullptr;
     g_orig_c245_overlap(presence, comp, other, other_comp, body, sweep, hit);
@@ -4313,8 +4333,92 @@ void detour_c227_entered(void* presence, void* self, void* actor) {
     }
 }
 
+// Card 596: OnTriggerExited (0x050FA1A0) broadcasts the exit script delegate (+0x2D8), runs the LTOnExit reactions and,
+// for a once-exit presence (+0x309), clears the enabled byte. It never asks whether another player is still inside, so
+// on a presence card 227 does not gate the first player out wins (FED_C3M1 C_19 inMonorailArea, FED_C4M1 C_191
+// atMetro, FED_C5M2 C_402 atWhiskey: each holds back its horde while false). Host: an exit by a player body runs the
+// original only when no other living, not downed player body still overlaps the presence; a held exit leaves the
+// presence as it was (once-exit included), and the last player's exit runs it once.
+constexpr int32_t kC596Held = 16;      // presences with a held exit at once
+constexpr uint32_t kC596Lines = 64;    // card 596 rows per session
+struct C596Held {
+    C31Weak presence;
+    uint32_t held; // exits held since the last one that ran
+};
+C596Held g_c596[kC596Held]{};
+uint32_t g_c596_lines = 0;
+
+int32_t c596_find(const void* presence) {
+    for (int32_t i = 0; i < kC596Held; ++i) {
+        if (g_c596[i].presence.serial != 0 && c31_weak_get(g_c596[i].presence) == presence) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// The other living player bodies that overlap `presence` (the leaving actor and its own pawn left out). With
+// `comp` set (card 600), the test is that component's overlap instead of the actor's.
+int32_t c596_others_inside(void* presence, const void* comp, const void* actor) {
+    const C43Roster r = c43_roster(g_actor_get_world(presence));
+    int32_t inside = 0;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        void* const pawn = r.p[s].pawn;
+        const void* const body = pawn != nullptr ? c75_pilot_body(pawn) : nullptr; // card 300: the riding soldier
+        if (pawn == nullptr || pawn == actor || body == actor || c43_is_down(pawn) || !c321_player_body(pawn)) {
+            continue;
+        }
+        const bool in = comp != nullptr ? g_c321_prim_overlapping(comp, pawn) ||
+                                              (body != nullptr && g_c321_prim_overlapping(comp, body))
+                                        : g_c227_is_overlapping(presence, pawn) ||
+                                              (body != nullptr && g_c227_is_overlapping(presence, body));
+        inside += in ? 1 : 0;
+    }
+    return inside;
+}
+
+// Host, an exit on a presence card 227 does not gate: true when it is held (another living player is inside).
+bool c596_hold_exit(void* presence, void* actor) {
+    if (g_client_session || g_c227_is_overlapping == nullptr || !c321_player_body(actor)) {
+        return false;
+    }
+    const auto* const p = static_cast<const uint8_t*>(presence);
+    const ULONGLONG now = GetTickCount64();
+    const int32_t inside = c596_others_inside(presence, nullptr, actor);
+    int32_t i = c596_find(presence);
+    if (inside == 0) {
+        if (i >= 0 && note_event_cap(g_c596_lines, kC596Lines, "card596")) {
+            log::line("card596: host t=%llu exit on %s by %s runs: last living player out after %u held exit(s), "
+                      "once-exit %u, enabled %u",
+                      static_cast<unsigned long long>(now), prop_name(p + kObjectName, 8).text, object_name(actor).text,
+                      g_c596[i].held, p[kPresenceOnceExit], p[kPresenceEnabled]);
+        }
+        if (i >= 0) {
+            g_c596[i] = C596Held{};
+        }
+        return false;
+    }
+    for (int32_t k = 0; i < 0 && k < kC596Held; ++k) {
+        i = g_c596[k].presence.serial == 0 || c31_weak_get(g_c596[k].presence) == nullptr ? k : -1;
+    }
+    if (i >= 0) {
+        if (g_c596[i].presence.serial == 0 || c31_weak_get(g_c596[i].presence) != presence) {
+            g_c596[i] = C596Held{};
+            c31_weak_set(g_c596[i].presence, presence);
+        }
+        ++g_c596[i].held;
+    }
+    if (note_event_cap(g_c596_lines, kC596Lines, "card596")) {
+        log::line("%scard596: host t=%llu exit held on %s: %s left, %d player%s inside (once-exit %u, enabled %u)",
+                  i >= 0 ? "" : "WARN ", static_cast<unsigned long long>(now), prop_name(p + kObjectName, 8).text,
+                  object_name(actor).text, inside, inside == 1 ? "" : "s", p[kPresenceOnceExit], p[kPresenceEnabled]);
+    }
+    return true;
+}
+
 // A gated presence that has not fired gives no exit edge (its exit reactions would act on an event that has not
-// started); after it fires, every exit passes through.
+// started); after it fires, every exit passes through. An ungated presence's exit waits for the last player out
+// (card 596).
 void detour_c227_exited(void* presence, void* self, void* actor) {
     if (!c220_pass("exited", presence, actor)) {
         return; // card 220
@@ -4327,10 +4431,51 @@ void detour_c227_exited(void* presence, void* self, void* actor) {
     if (held) {
         return;
     }
+    if (g < 0 && c596_hold_exit(presence, actor)) {
+        return; // card 596: another living player is still inside
+    }
     c227_run_edge(g_orig_c227_exited, g, presence, self, actor, kPresenceLtExit);
     if (g_c65_log) {
         c227_log_edge("exited", "end", presence, actor);
     }
+}
+
+// Card 600: placed spawners and encounter prefabs bind a PlayerDetection OnComponentEndOverlap custom event that
+// tests only IsPlayer(OtherActor), then pauses the encounter (BP_DestructibleSpawner_Base PlayerExit @2929 ->
+// PauseReinforcementsInAllWaves when ActiveOnlyWhenPlayerNear; BP_TentSpawner_HumanGameplay PlayerExit @1210 ->
+// PauseReinforcementsInAllWaves; BP_EM_PrefabBase Exit @1250 -> isPlayerOverlapping = false). The first player out
+// pauses it for a player still inside. Host, the card 596 rule: the event runs only when no other living, not downed
+// player body still overlaps the component. Both events take (OverlappedComponent, OtherActor, OtherComp,
+// OtherBodyIndex). BP_MortarZone_C is an ASTPlayerPresence, so detour_c227_exited already holds its exit (card 596).
+constexpr const char* kC600Classes[] = {"BP_EM_PrefabBase_C", "BP_DestructibleSpawner_Base_C",
+                                        "BP_TentSpawner_HumanGameplay_C"};
+constexpr uint32_t kC600Lines = 64;      // card 600 rows per session
+constexpr size_t kC600ParmComp = 0x00;   // OverlappedComponent
+constexpr size_t kC600ParmActor = 0x08;  // OtherActor
+uint32_t g_c600_lines = 0;
+
+bool c600_exit_pe(const void* object, const void* function, const void* parms, uint64_t name) {
+    if (!pe_name_is(name, g_pe.names.exit) && !pe_name_is(name, g_pe.names.player_exit)) {
+        return false; // card 573 b463: `name` is the detour's one read of function's FName
+    }
+    const void* const cls = read_ptr(object, kObjectClass);
+    bool listed = false;
+    for (const char* name : kC600Classes) {
+        listed = listed || c73_class_is(cls, name);
+    }
+    const void* const comp = listed && parms != nullptr ? read_ptr(parms, kC600ParmComp) : nullptr;
+    const void* const actor = comp != nullptr ? read_ptr(parms, kC600ParmActor) : nullptr;
+    if (actor == nullptr || g_c321_prim_overlapping == nullptr || !c321_player_body(actor)) {
+        return false;
+    }
+    const int32_t inside = c596_others_inside(const_cast<void*>(object), comp, actor);
+    if (note_event_cap(g_c600_lines, kC600Lines, "card600")) {
+        log::line("card600: host t=%llu %s on %s (%s) by %s %s: %d other player%s inside the %s",
+                  static_cast<unsigned long long>(GetTickCount64()), object_name(function).text, object_name(object).text,
+                  class_name(object).text, object_name(actor).text, inside > 0 ? "held" : "runs (last living player out)",
+                  inside, inside == 1 ? "" : "s", object_name(comp).text);
+    }
+    return inside > 0;
 }
 
 void detour_c65_trigger(void* component) {
@@ -4712,6 +4857,20 @@ C97ObjectiveFn g_orig_c97_increment = nullptr;
 C97SubsystemCompleteFn g_orig_c97_subsystem_complete = nullptr;
 uint32_t g_c491_window = 0; // card 491 b227: subsystem ObjectiveComplete calls in progress (nesting depth)
 
+// Card 579 (c397b398a): a checkpoint snapshot or join replay frame restates completions the host already paid for
+// and restored from its save, so the client's replayed ObjectiveComplete must not pay again (9 x 10000 and a stack of
+// "+10,000 Objective Complete" toasts after the reload). Live completions still pay on both sides.
+uint32_t g_c579_dropped = 0; // game thread
+bool c579_drop_award(uint64_t tag, int32_t amount) {
+    if (!g_client_session || g_c491_window == 0 || g_c435.join == 0) {
+        return false;
+    }
+    ++g_c579_dropped;
+    log::line("card579: client t=%llu dropped replayed award %s %d inside a snapshot or join frame (%u dropped)",
+              static_cast<unsigned long long>(GetTickCount64()), fname_text(&tag).text, amount, g_c579_dropped);
+    return true;
+}
+
 namespace {
 
 constexpr int32_t kC97Queue = 32;      // completions and counts per outermost call
@@ -4974,10 +5133,14 @@ constexpr size_t kPrimResponseToChannel = 0x5D0; // UPrimitiveComponent vtable: 
 constexpr int32_t kResponseBlock = 2;            // ECR_Block
 constexpr int32_t kC46MaxOverlaps = 32;
 
-// While `on`, detour_c46_overlap_multi logs the overlaps it returns (the PlayerStart probe below only).
+// While `on`, detour_c46_overlap_multi logs the overlaps it returns (the PlayerStart probe below, and card 590's
+// stuck spot probe): `tag` starts each row, `where` names the spot, at most `cap` overlap rows.
 struct C46Probe {
     bool on = false;
     Vec3 start{};
+    char tag[48] = "card046: host  ";
+    const char* where = "the PlayerStart";
+    int32_t cap = kC46MaxOverlaps;
 };
 C46Probe g_c46_probe;
 
@@ -4997,6 +5160,9 @@ void c46_probe_start(void* world, const void* cdo, const void* start_actor) {
     Vec3 adjustment{};
     g_c46_probe.on = true;
     g_c46_probe.start = start;
+    snprintf(g_c46_probe.tag, sizeof(g_c46_probe.tag), "card046: host  ");
+    g_c46_probe.where = "the PlayerStart";
+    g_c46_probe.cap = kC46MaxOverlaps;
     const bool encroached = g_c46_encroaching(world, cdo, &at, &rotation, &adjustment);
     g_c46_probe.on = false;
     Vec3 spot = start;
@@ -5179,9 +5345,9 @@ bool detour_c46_overlap_multi(const void* world, void* out, const Vec3* location
     }
     const auto* const data = static_cast<const uint8_t*>(read_ptr(out, 0));
     const int32_t num = data != nullptr ? read_i32(out, kArrayNum) : 0;
-    log::line("card046: host   overlaps at the PlayerStart, channel %d: %d (blocking hit %d)", channel, num,
-              hit ? 1 : 0);
-    for (int32_t i = 0; i < num && i < kC46MaxOverlaps; ++i) {
+    log::line("%s overlaps at %s, channel %d: %d (blocking hit %d)", g_c46_probe.tag, g_c46_probe.where, channel,
+              num, hit ? 1 : 0);
+    for (int32_t i = 0; i < num && i < g_c46_probe.cap; ++i) {
         const uint8_t* const r = data + static_cast<size_t>(i) * kOverlapStride;
         // The owner is the component's outer: +0 of FOverlapResult is an FActorInstanceHandle, not a plain weak
         // actor pointer (hb33: reading it as one crashed the host).
@@ -5191,12 +5357,40 @@ bool detour_c46_overlap_multi(const void* world, void* out, const Vec3* location
         char text[256];
         c39_comp_text(comp, text, sizeof(text));
         const double d = comp != nullptr ? vec_dist(read_vec3(comp, kComponentTranslation), g_c46_probe.start) : -1.0;
-        log::line("card046: host   overlap %d: owner %s %s, %.0f uu; response %d (block %d); %s", i,
+        log::line("%s overlap %d: owner %s %s, %.0f uu; response %d (block %d); %s", g_c46_probe.tag, i,
                   actor != nullptr ? class_name(actor).text : "none", actor != nullptr ? object_name(actor).text : "-",
                   d, comp != nullptr ? c46_response(comp, channel) : -1,
                   comp != nullptr && c46_response(comp, channel) == kResponseBlock ? 1 : 0, text);
     }
     return hit;
+}
+
+// Card 590: the engine's encroachment test for the live pawn at its stuck spot (the pawn's own capsule and collision
+// profile, the pawn itself ignored); the detour logs each overlap, owner class and name, and whether it blocks the
+// test channel. kC590MaxRows per call, kC590MaxCalls per run, then silent.
+namespace {
+constexpr int32_t kC590MaxRows = 8;
+constexpr int32_t kC590MaxCalls = 12;
+int32_t g_c590_calls = 0;
+} // namespace
+void c590_stuck_overlaps(void* world, const void* pawn, const Vec3& at, uint32_t seq) {
+    if (world == nullptr || pawn == nullptr || g_c46_encroaching == nullptr || g_c590_calls >= kC590MaxCalls) {
+        return;
+    }
+    ++g_c590_calls;
+    const Vec3 rotation{};
+    Vec3 spot = at;
+    Vec3 adjustment{};
+    g_c46_probe.on = true;
+    g_c46_probe.start = at;
+    snprintf(g_c46_probe.tag, sizeof(g_c46_probe.tag), "card590: %s cmd %u", side(), seq);
+    g_c46_probe.where = "the stuck spot";
+    g_c46_probe.cap = kC590MaxRows;
+    const bool encroached = g_c46_encroaching(world, pawn, &spot, &rotation, &adjustment);
+    g_c46_probe.on = false;
+    log::line("card590: %s cmd %u stuck spot (%.0f, %.0f, %.0f): EncroachingBlockingGeometry %d, adjustment (%.1f, "
+              "%.1f, %.1f), probe %d of %d", side(), seq, at.x, at.y, at.z, encroached ? 1 : 0, adjustment.x,
+              adjustment.y, adjustment.z, g_c590_calls, kC590MaxCalls);
 }
 
 // Card 146 test (UBWCOOP_C146_NO_START=1): a player spawn while 2+ players are present and nobody is Up is taken as

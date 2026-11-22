@@ -17,6 +17,13 @@ constexpr ULONGLONG kC28AttachRetryMs = 1000;
 constexpr ULONGLONG kC28FlinchMs = 300;
 constexpr double kC28RunSpeed = 750.0;  // walk 700; sprint 1050 forward, 770 sideways or back (card 019)
 constexpr double kC28WalkSpeed = 10.0;
+// Card 564: the key flapped Walk -> Run -> Walk every 100 ms step (host: a walk at 700 sampled 650 to 800 from the
+// location change; 575 Walk -> Run rows in one play log), and the client held keys under 150 ms, each change
+// restarting the sequence from frame 0. Speed is smoothed, Run has a band, and a started Idle, Walk, Run, Flinch or
+// Attack01 holds at least kC564HoldMs before another of those replaces it. Death, corpse and stand-up never wait.
+constexpr ULONGLONG kC564HoldMs = 300;
+constexpr double kC564SpeedBlend = 0.5;      // weight of the new 100 ms sample in the smoothed speed
+constexpr double kC564RunLeaveSpeed = 720.0; // Run stays until the smoothed speed drops below this
 constexpr int kC28MaxSupers = 4;        // renderer classes above UStaticMeshComponent
 constexpr uint32_t kC28KeyLines = 600;  // key change lines per map
 constexpr uint32_t kC28AttachLines = 16;
@@ -565,7 +572,7 @@ void c28_try_attach(uint8_t* pawn, const void* world, ULONGLONG now) {
 // The slot of `pawn`, added when new (card 275: a gone pawn's slot when the table is full); null when full.
 C28Slot* c28_slot(const void* pawn) {
     const C28Slot fresh{object_index(pawn), C28Key::None, -1.0f, 0, 0, 0, 0, Vec3{0, 0, 0}, false, false, Vec3{0, 0, 0}, 0,
-                        0.0, -1, C28Key::None, 0, 0, C28Key::None, 0.0f};
+                        0.0, 0.0, 0, -1, C28Key::None, 0, 0, C28Key::None, 0.0f};
     return c275_slot(C275Table::Body, g_c28.slot, g_c28.count, kC28MaxPawns, pawn, fresh);
 }
 
@@ -651,13 +658,27 @@ C28Key c28_pick(const uint8_t* pawn, C28Slot& s, ULONGLONG now) {
     }
     const double speed = c28_speed(pawn, s, now);
     s.speed = speed;
-    return speed > kC28RunSpeed ? C28Key::Run : speed > kC28WalkSpeed ? C28Key::Walk : C28Key::Idle;
+    s.speed_avg = s.key_ms == 0 ? speed : s.speed_avg + (speed - s.speed_avg) * kC564SpeedBlend;
+    const double run_at = s.key == C28Key::Run ? kC564RunLeaveSpeed : kC28RunSpeed;
+    if (s.speed_avg > run_at) {
+        return C28Key::Run;
+    }
+    return speed > kC28WalkSpeed ? C28Key::Walk : C28Key::Idle;
+}
+
+// Card 564: true for the keys that wait out kC564HoldMs (everything but death, corpse and stand-up).
+bool c564_held_key(C28Key key) {
+    return key == C28Key::Idle || key == C28Key::Walk || key == C28Key::Run || key == C28Key::Flinch ||
+           key == C28Key::Attack;
 }
 
 // Starts the key's sequence when it differs from the last one started, and logs the change.
 void c28_drive(const uint8_t* pawn, void* animator, C28Slot& s, ULONGLONG now) {
     const C28Key key = c28_pick(pawn, s, now);
     if (key == s.key) {
+        return;
+    }
+    if (c564_held_key(key) && c564_held_key(s.key) && s.key_ms != 0 && now - s.key_ms < kC564HoldMs) {
         return;
     }
     const auto k = static_cast<size_t>(key);
@@ -669,12 +690,13 @@ void c28_drive(const uint8_t* pawn, void* animator, C28Slot& s, ULONGLONG now) {
     s.starting = key; // card 034: names the key of a size change raised inside the call
     g_start_sequence(animator, name, 1.0f);
     if (note_event_cap(g_c28.key_lines, kC28KeyLines, "card028 key change")) {
-        log::line("card028: %s t=%llu %s key %ls -> %ls (health %.1f, speed %.0f, firing %d, yaw %.1f)", side(),
+        log::line("card028: %s t=%llu %s key %ls -> %ls (health %.1f, speed %.0f avg %.0f, firing %d, yaw %.1f)", side(),
                   static_cast<unsigned long long>(now), object_name(pawn).text,
                   kC28KeyNames[static_cast<size_t>(s.key)], kC28KeyNames[k], static_cast<double>(s.health),
-                  s.speed, c26_firing(pawn) ? 1 : 0, c28_vec(read_ptr(pawn, kActorRootComponent), "RelativeRotation").y);
+                  s.speed, s.speed_avg, c26_firing(pawn) ? 1 : 0, c28_vec(read_ptr(pawn, kActorRootComponent), "RelativeRotation").y);
     }
     s.key = key;
+    s.key_ms = now;
     const uint32_t bit = 1u << k;
     if (g_c28_shots && (s.shot_keys & bit) == 0 && s.shot_ms == 0) {
         s.shot_keys |= bit;
@@ -686,7 +708,13 @@ void c28_drive(const uint8_t* pawn, void* animator, C28Slot& s, ULONGLONG now) {
 // client's pawn on the host). Never the machine's own pawn, nor the machine's own character while it rides a pawn the
 // local player drives: a client's character on a turret is unpossessed there and replicates as a simulated proxy,
 // and it got a sprite body in front of the client's own turret view (card 125, c125w13).
+// Card 560: never the local player's own trooper while the player flies a guided missile or sits in a seat: it is
+// unpossessed then and replicates as a simulated proxy, so it read as remote and got a sprite body in front of the
+// player's own camera. Ownership is the local player's last on-foot pawn (c28_step), not the current controller.
 bool c28_remote(const uint8_t* pawn) {
+    if (g_c28.own_trooper != 0 && object_index(pawn) == g_c28.own_trooper) {
+        return false;
+    }
     const void* const controller = read_ptr(pawn, kPawnController);
     const bool remote_pc = controller != nullptr && is_a(controller, g_st_pc_class()) && !is_local_pc(controller);
     if (remote_pc || pawn[kActorLocalRole] != kRoleSimulatedProxy) {
@@ -897,6 +925,7 @@ bool c28_visit(uint8_t* pawn, const void* world, ULONGLONG now) {
     }
     if (is_a(pawn, g_mech_class())) {
         c75_show_body(pawn); // card 075: no sprite body or c33 hide on a mech, its own body stays shown
+        c558_remote_row(pawn); // card 558 candidate 2 diag
         return false;
     }
     if (c196_inventory_at(pawn) == kBugFormsInventory) {
@@ -1165,6 +1194,47 @@ void c92_frame(void* engine, ULONGLONG now) {
     g_c92.sizes = 0;
 }
 
+// Card 560: the local player is back on its own trooper, and that trooper carries a card 028 body from before (a build
+// without the own-trooper rule, or a body attached before the first own-pawn sample). The renderer goes and the
+// first-person arms and weapon card 033 hid are shown again. Logged per removal, capped.
+constexpr uint32_t kC560DropLines = 16;
+// Card 591: only the renderer card 028 attached (its slot's index) goes. A mech's own body is a native sprite renderer
+// at +0xC20 (card 075: c28_visit never gives a mech a card 028 body); destroying it left +0xC20 null after the next
+// GC, and the abandoned-mech self-destruct's DeathComplete then crashed the host on it.
+static void c560_drop_body(uint8_t* pawn) {
+    if (is_a(pawn, g_mech_class())) {
+        return;
+    }
+    void* const renderer = find_component(pawn, g_sprite_render_class);
+    if (renderer == nullptr || g_scene_destroy_component == nullptr || g_set_hidden_in_game == nullptr) {
+        return;
+    }
+    C28Slot* const s = c28_slot(pawn);
+    if (s == nullptr || s->renderer != object_index(renderer)) {
+        return; // not a card 028 body: the pawn's own sprite renderer stays
+    }
+    g_scene_destroy_component(renderer, false);
+    void* const arms = read_ptr(pawn, kPawnFirstPersonMesh);
+    const void* const inventory = c24_inventory(pawn);
+    const void* const weapon = inventory != nullptr ? g_get_equipped_weapon(inventory) : nullptr;
+    void* const root = weapon != nullptr ? read_ptr(weapon, kActorRootComponent) : nullptr;
+    for (void* const comp : {arms, root}) {
+        if (comp != nullptr) {
+            g_set_hidden_in_game(comp, false, kVisibilityPropagate);
+        }
+    }
+    s->renderer = -1;
+    C33Slot* const h = c33_slot(pawn);
+    if (h != nullptr) {
+        h->arms = -1;
+        h->weapon = -1;
+    }
+    if (note_event_cap(g_c28.drop_lines, kC560DropLines, "card560 drop body")) {
+        log::line("card560: %s own trooper %s: card 028 body %s removed, arms %s and weapon root %s shown", side(),
+                  object_name(pawn).text, object_name(renderer).text, object_name(arms).text, object_name(root).text);
+    }
+}
+
 void c28_step(void* engine) {
     const ULONGLONG now = GetTickCount64();
     c92_frame(engine, now);
@@ -1176,6 +1246,12 @@ void c28_step(void* engine) {
     static void* players[kC23Max]; // game thread only
     // Card 368: the shared player list, not a level walk of its own each kC28StepMs.
     const uint32_t count = c368_actors(g_c368_players, world, g_player_character_class(), players);
+    void* const pc = world != nullptr ? own_pc(world) : nullptr;
+    auto* const own = static_cast<uint8_t*>(const_cast<void*>(pc != nullptr ? c23_own_pawn(pc) : nullptr));
+    if (own != nullptr) { // card 560: on foot and controlled now; kept while the player drives something else
+        g_c28.own_trooper = object_index(own);
+        c560_drop_body(own);
+    }
     uint8_t* remote = nullptr; // the last remote pawn with a body
     for (uint32_t i = 0; i < count; ++i) {
         if (c28_visit(static_cast<uint8_t*>(players[i]), world, now)) {

@@ -1,6 +1,6 @@
 # Card 062: Why the host's own weapon switch is refused, and the fix
 
-Status: sent 2026-11-04 (senior). The playtest is postponed, so the code freeze is lifted. The play build `a4d3f58896432b28` stays saved, read-only, at `build/dwmapi-play-a4d3f58896432b28.dll`.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-04 (senior). The playtest is postponed, so the code freeze is lifted. The play build `a4d3f58896432b28` stays saved, read-only, at `build/dwmapi-play-a4d3f58896432b28.dll`.
 
 Read the card 060 Report and Senior review (including its correction), and the card 057 Report. Repo root: `/path/to/ultimate-bug-war-coop`.
 

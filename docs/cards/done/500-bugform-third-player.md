@@ -1,6 +1,6 @@
 # 500: BugForm row names the right pawn with a third player
 
-Status: open (written 2026-11-19, senior). Split from card 209 (Down and Warp proven in c209b257a).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-19, senior). Split from card 209 (Down and Warp proven in c209b257a).
 
 ## Why
 

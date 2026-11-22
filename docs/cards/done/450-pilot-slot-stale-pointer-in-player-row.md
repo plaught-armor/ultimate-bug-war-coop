@@ -1,6 +1,6 @@
 # Card 450: card 327 player row can read a freed soldier through a stale mech pilot slot
 
-Status: in b151 `7d8087dbc3cee8ab`. Regression check owed on a FED_C4M1 run (card327 seat rows).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: in b151 `7d8087dbc3cee8ab`. Regression check owed on a FED_C4M1 run (card327 seat rows).
 Found by static trace after run c447b147b (the stale "1 mech pilot row" at the rejoin).
 
 ## Fault

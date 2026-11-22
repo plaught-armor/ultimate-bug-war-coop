@@ -1,4 +1,5 @@
 # Card 217: The client's Glide re-activates every 50 ms with no key held
+Status 2026-11-22: parked, out of scope (bug mode, user rule 2026-11-19). The status below is as first written.
 
 Status: queued 2026-11-12, from run c212-r1 (DLL `6d7f5193580ad2cd`). Static first; one run only if a fix follows.
 

@@ -406,7 +406,10 @@ bool detour_c416_edge(const void* object) {
 
 bool detour_c416_show(const void* object) {
     const int32_t s = c416_slot_of(object);
-    return s < 0 ? g_orig_c416_show(object) : g_c416.show[s];
+    if (s >= 0) {
+        return g_c416.show[s];
+    }
+    return !c555_hidden(object) && g_orig_c416_show(object); // card 555: no blip for a bug still in its spawn hole
 }
 
 namespace {

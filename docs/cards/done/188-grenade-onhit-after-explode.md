@@ -1,6 +1,6 @@
 # Card 188: OnHit of a projectile whose GrenadeExplode already went
 
-Status: queued 2026-11-11, from c152-r3 (new host WARN class, x2; not caused by card 152's change).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from c152-r3 (new host WARN class, x2; not caused by card 152's change).
 
 ## Why
 Host log: "WARN card132 OnHit of ADProjectile, whose GrenadeExplode already went" twice in c152-r3. No new WARN

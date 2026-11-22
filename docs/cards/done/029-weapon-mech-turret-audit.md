@@ -1,6 +1,6 @@
 # Card 029: Audit weapons, mechs and turrets for the remote sprite body
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 027 and 028. Then read `docs/design/coop-channel-lobby-downed.md` section 4, and card 027's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`. This card only logs; it changes no behaviour.
 

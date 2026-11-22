@@ -440,11 +440,16 @@ void note_client_adjust(const void* cmc, float timestamp, const double* new_loc,
 void detour_client_adjust_position(void* cmc, float timestamp, const double* new_loc, const double* new_vel,
                                    void* new_base, uint64_t base_bone, bool has_base, bool base_relative,
                                    uint8_t movement_mode, const void* new_rotation) {
+    double led[3] = {};
+    const double* applied = new_loc;
     if (g_client_session) {
         note_client_adjust(cmc, timestamp, new_loc, base_relative, movement_mode);
         c295_note_adjust(cmc, new_loc); // card 295
+        c588_note_adjust(cmc, new_loc); // card 588
+        // card 588: own gunship seat, led by the one-way lag (a base-relative location is not a world sample)
+        applied = base_relative ? new_loc : c588_lead_adjust(cmc, new_loc, led);
     }
-    g_orig_client_adjust_position(cmc, timestamp, new_loc, new_vel, new_base, base_bone, has_base, base_relative,
+    g_orig_client_adjust_position(cmc, timestamp, applied, new_vel, new_base, base_bone, has_base, base_relative,
                                   movement_mode, new_rotation);
 }
 

@@ -1,6 +1,6 @@
 # Card 090: `UBWCOOP_SKIP_FLIGHT`: skip the FED_C1M1 transport dropship flight in test runs
 
-Status: sent 2026-11-05 18:00 (senior). This is a test switch only.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 18:00 (senior). This is a test switch only.
 
 Read:
 

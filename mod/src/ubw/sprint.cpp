@@ -176,7 +176,7 @@ void client_diag_load_map_enter(const void* pending) {
     if (g_client_session && pending == nullptr) {
         c137_change_dump("session end"); // card 149: the last map's play window, before the flag hides it
     }
-    g_client_session = pending != nullptr; // a pending net game = joining a server
+    set_client_session(pending != nullptr); // a pending net game = joining a server
     if (!g_client_session) {
         c350_client_session_end(); // card 350: no stale frontend options into a later join
         c132_ledger_session_end(); // card 385
@@ -214,14 +214,14 @@ void client_diag_load_map_enter(const void* pending) {
 // compared with the client's.
 void client_diag_load_map_return(bool ok, const void* pending) {
     if (!ok) {
-        g_client_session = false;
+        set_client_session(false);
         c350_client_session_end();
         c132_ledger_session_end();
         sync_map_failed(); // card 332: no arm follows a failed load
         return;
     }
     if (pending == nullptr) {
-        g_client_session = false;
+        set_client_session(false);
         c350_client_session_end();
         c132_ledger_session_end();
     }
@@ -1137,14 +1137,14 @@ void c32_arm_map() {
                     g_static_load_object != nullptr && g_uclass_class != nullptr && g_spawn_params_ctor != nullptr &&
                     g_world_spawn_actor != nullptr && g_find_function != nullptr && g_orig_try_throw_flare != nullptr;
     g_c32.armed = on && ok;
-    g_c32_pe = g_c32.armed;
+    pe_gate_set(kPeGate_c32_pe, g_c32.armed);
     if (on && !ok) {
         log::line("WARN card032: a mech, spawn or tactical support symbol is unresolved -- mech audit off");
     }
 }
 
 void c30_arm_map() {
-    g_c30_window = false;
+    pe_gate_set(kPeGate_c30_window, false);
     g_c30 = C30State{};
     g_c30.thread = GetCurrentThreadId();
     g_c30.armed = g_c30_mode != config::KillPlayer::Off;
@@ -1251,7 +1251,7 @@ void c67_reset_map() {
         g_c67.nseen[k] = 0;
         g_c67.cls[k] = nullptr;
     }
-    g_c67_pe = false;
+    pe_gate_set(kPeGate_c67_pe, false);
     g_c67.nlisted = 0;
     g_c67.ncalls = 0;
     g_c67.dumps = 0;
@@ -1375,18 +1375,27 @@ void c490_step(void* engine) {
 // value (ChanOp::Stamina, 0 or 1) at each join replay and to every client when it changes.
 constexpr double kC490DefaultMax = 100.0; // the b218 rows' full bar when the class has no MaxStamina variable
 
-struct C490Hold {
-    bool host_on;          // host: the option
-    bool from_host;        // client: the last value the host sent
-    const void* cls;       // the pawn class the offsets below belong to
-    int32_t at;            // Stamina's offset, -1 when the class has none
+// Card 562: the Stamina offsets of one pawn class. The pawns filled each tick alternate between classes (the trooper
+// and the mech, turret or missile its player drives), so a one-class cache rebound and logged every frame (11629 WARN
+// rows in the 2026-11-20 playtest host log). Each class is bound and logged once per map.
+struct C490Class {
+    const void* cls;
+    int32_t at;            // Stamina's offset, -1 when the class has none (a valid state: no stamina bar)
     bool dbl;              // Stamina is a DoubleProperty
     int32_t max_at;        // MaxStamina's offset, -1 when absent (kC490DefaultMax)
     bool max_dbl;
+};
+constexpr int32_t kC490Classes = 16;
+
+struct C490Hold {
+    bool host_on;          // host: the option
+    bool from_host;        // client: the last value the host sent
+    C490Class cls[kC490Classes];
+    int32_t classes;       // bound entries in cls
     uint32_t writes;       // this map's refills, logged at the map end
 };
 
-C490Hold g_c490_hold{false, false, nullptr, -1, false, -1, false, 0};
+C490Hold g_c490_hold{false, false, {}, 0, 0};
 
 double c490_read(const uint8_t* at, bool dbl) {
     if (dbl) {
@@ -1408,30 +1417,47 @@ void c490_write(uint8_t* at, bool dbl, double v) {
     memcpy(at, &f, sizeof(f));
 }
 
-// The Stamina and MaxStamina offsets of `cls`, looked up once per class and logged.
-void c490_bind(const void* cls) {
+// The Stamina and MaxStamina offsets of `cls`, looked up once per class and logged; nullptr when the table is full
+// (logged once, that class is not filled).
+const C490Class* c490_bind(const void* cls) {
     C490Hold& h = g_c490_hold;
-    h.cls = cls;
+    for (int32_t i = 0; i < h.classes; ++i) {
+        if (h.cls[i].cls == cls) {
+            return &h.cls[i];
+        }
+    }
+    if (h.classes >= kC490Classes) {
+        static bool full_logged = false;
+        if (!full_logged) {
+            full_logged = true;
+            log::line("WARN card490: %s pawn class table full (%d): %s and later classes are not filled", side(),
+                      kC490Classes, object_name(cls).text);
+        }
+        return nullptr;
+    }
+    C490Class& c = h.cls[h.classes++];
     const uint8_t* const p = prop_find_prop(cls, "Stamina");
     const uint8_t* const m = prop_find_prop(cls, "MaxStamina");
-    h.at = p != nullptr ? read_i32(p, kPropertyOffset) : -1;
-    h.dbl = p != nullptr && prop_kind_is(p, "DoubleProperty");
-    h.max_at = m != nullptr ? read_i32(m, kPropertyOffset) : -1;
-    h.max_dbl = m != nullptr && prop_kind_is(m, "DoubleProperty");
-    log::line("%scard490: %s pawn class %s: Stamina at %d (%s), MaxStamina at %d%s", h.at < 0 ? "WARN " : "", side(),
-              object_name(cls).text, h.at, h.dbl ? "double" : "float", h.max_at,
-              h.max_at < 0 ? " (absent: full bar is 100)" : "");
+    c.cls = cls;
+    c.at = p != nullptr ? read_i32(p, kPropertyOffset) : -1;
+    c.dbl = p != nullptr && prop_kind_is(p, "DoubleProperty");
+    c.max_at = m != nullptr ? read_i32(m, kPropertyOffset) : -1;
+    c.max_dbl = m != nullptr && prop_kind_is(m, "DoubleProperty");
+    if (c.at < 0) {
+        log::line("card490: %s pawn class %s has no Stamina: not filled", side(), object_name(cls).text);
+    } else {
+        log::line("card490: %s pawn class %s: Stamina at %d (%s), MaxStamina at %d%s", side(), object_name(cls).text,
+                  c.at, c.dbl ? "double" : "float", c.max_at, c.max_at < 0 ? " (absent: full bar is 100)" : "");
+    }
+    return &c;
 }
 
 void c490_fill(uint8_t* pawn) {
-    const void* const cls = read_ptr(pawn, kObjectClass);
-    if (cls != g_c490_hold.cls) {
-        c490_bind(cls);
-    }
-    const C490Hold& h = g_c490_hold;
-    if (h.at < 0) {
+    const C490Class* const hp = c490_bind(read_ptr(pawn, kObjectClass));
+    if (hp == nullptr || hp->at < 0) {
         return;
     }
+    const C490Class& h = *hp;
     const double max = h.max_at >= 0 ? c490_read(pawn + h.max_at, h.max_dbl) : kC490DefaultMax;
     if (max > 0.0 && c490_read(pawn + h.at, h.dbl) < max) {
         c490_write(pawn + h.at, h.dbl, max);
@@ -1489,6 +1515,7 @@ void c490_hold_map_end() {
         log::line("card490: %s stamina refilled %u times on this map", side(), g_c490_hold.writes);
     }
     g_c490_hold.writes = 0;
+    g_c490_hold.classes = 0; // card 562: a Blueprint class can unload with its map and its address be reused
 }
 
 } // namespace ubw::hooks

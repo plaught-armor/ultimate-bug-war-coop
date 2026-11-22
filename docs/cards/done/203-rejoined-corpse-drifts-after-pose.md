@@ -1,6 +1,6 @@
 # Card 203: A corpse re-created on the client drifts after it was posed to the host's snap
 
-Status: queued 2026-11-12, split from card 164 (its trace, item d). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 164 (its trace, item d). Budget: three runs. Static first.
 
 Read: `docs/cards/done/164-gate-server-only-actors.md` ("Trace", item d), card 191 (frozen finals on a re-created
 copy; same copy, may share the cause), `mod/src/ubw/pose_c132.cpp`.

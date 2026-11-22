@@ -1,6 +1,6 @@
 # Card 189: A corpse that falls more than 1000 uu is still handled as a corpse
 
-Status: queued 2026-11-11, from c186-r1 (junior findings 1 and 2). Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from c186-r1 (junior findings 1 and 2). Static first.
 
 ## Why
 - `kPoseFellUu` 1000 (`mod/src/ubw/pose_c132.cpp:99`, check at line 653): a corpse whose body 0 is 1000 uu below its

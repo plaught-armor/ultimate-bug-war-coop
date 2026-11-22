@@ -1,6 +1,6 @@
 # Card 175: Client miss claims find no round on the host after a flare throw
 
-Status: queued 2026-11-11, from run c172-r1 (new WARN class). Budget: static first, then one run.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from run c172-r1 (new WARN class). Budget: static first, then one run.
 
 Read: mod/src/ubw/claim_c157.cpp around line 455; logs/c172-r1-host.log from t=83165935 to t=83168100;
 docs/cards/done/165-*.md "Report".

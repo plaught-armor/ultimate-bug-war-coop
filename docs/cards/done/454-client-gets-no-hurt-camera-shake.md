@@ -1,6 +1,6 @@
 # 454: the client gets no hurt camera shake
 
-Status: open, patch written (scratchpad `patch_c454.py`), not built.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, patch written (scratchpad `patch_c454.py`), not built.
 
 ## Fault
 

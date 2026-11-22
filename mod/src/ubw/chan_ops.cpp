@@ -315,6 +315,11 @@ consteval ChanTable chan_client_table() {
     t[static_cast<size_t>(ChanOp::CombatLevel)] = chan_pc_arg0<c321_level_receive>; // card 321
     t[static_cast<size_t>(ChanOp::Bark)] = chan_pc_s<c451_receive>; // card 451 part 2
     t[static_cast<size_t>(ChanOp::NpcTarget)] = chan_pc_s<c532_receive>; // card 532
+    t[static_cast<size_t>(ChanOp::CamFade)] = chan_pc_s<c561_receive>; // card 561 b408
+    t[static_cast<size_t>(ChanOp::DropshipBoard)] = chan_pc_s<c601_board_receive>; // card 601
+    t[static_cast<size_t>(ChanOp::SwitchPress)] = chan_pc_s<c602_press_receive>; // card 602
+    t[static_cast<size_t>(ChanOp::LevelAudio)] = chan_pc_s<c604_receive>;        // card 604
+    t[static_cast<size_t>(ChanOp::HordeZone)] = chan_pc_s<c606_receive>;         // card 606
     t[static_cast<size_t>(ChanOp::GrenadeSpawn)] = chan_pc_s<c74_receive>; // card 074
     t[static_cast<size_t>(ChanOp::GrenadeExplode)] = chan_pc_s<c74_receive_explode>; // card 074, card 132 rounds
     t[static_cast<size_t>(ChanOp::HoldDone)] = chan_pc_s<c133_client_arm>; // card 418: the host's satchel fuse start

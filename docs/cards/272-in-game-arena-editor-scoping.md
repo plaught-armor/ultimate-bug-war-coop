@@ -1,4 +1,5 @@
 # 272 In-game arena editor for CTF versus: static scoping
+Status 2026-11-22: scoping, parked until after the co-op playtest.
 
 User, 2026-11-13: "We also should figure out a way to be able to map build." Answers: an **in-game editor**,
 first for **CTF versus arenas**. Not a play blocker; after the co-op playtest and after versus cards A to E

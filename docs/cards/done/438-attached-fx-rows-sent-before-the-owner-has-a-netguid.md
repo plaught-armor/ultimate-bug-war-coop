@@ -1,6 +1,6 @@
 # Card 438: attached FX rows sent before the owner has a NetGUID
 
-Status: open. Design below; one static question first. Sibling of card 436 (Anim rows, fixed in b134).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open. Design below; one static question first. Sibling of card 436 (Anim rows, fixed in b134).
 
 ## Finding (run c399b134a, b134, card 434 FX diagnostic rows)
 

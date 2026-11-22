@@ -72,6 +72,7 @@ struct C303Map {
     ULONGLONG press_longest; // longest frame since the press
 };
 C303Map g_c303{};
+ULONGLONG g_c303_last_frame = 0; // card 583 part 2: the last full frame (post tick to post tick, ms)
 
 // Watchdog thread, on the stack copy. One unwind step. Every register that points into the copied part of the game
 // thread's stack [lo, lo + n) is moved to the same offset in the copy first, so the unwinder reads the copy only
@@ -362,6 +363,7 @@ void c303_tick() {
     const LONG64 tick = InterlockedCompareExchange64(&g_c303w.tick, 0, 0);
     const LONG64 last = InterlockedCompareExchange64(&g_c303w.stamp_ms, 0, 0);
     const ULONGLONG frame = last != 0 ? now - static_cast<ULONGLONG>(last) : 0;
+    g_c303_last_frame = frame;
     g_c303.longest = frame > g_c303.longest ? frame : g_c303.longest;
     g_c303.press_longest = g_c303.what != nullptr && frame > g_c303.press_longest ? frame : g_c303.press_longest;
     if (frame > kC303LongMs) {
@@ -375,6 +377,11 @@ void c303_tick() {
     // Stamp before tick: the watchdog reads tick, then stamp (c303_watch).
     InterlockedExchange64(&g_c303w.stamp_ms, static_cast<LONG64>(GetTickCount64()));
     InterlockedExchange64(&g_c303w.tick, tick + 1);
+}
+
+// Card 583 part 2: the last full frame (ms), 0 before the second tick. A Pong read in this frame waited up to that long.
+ULONGLONG c303_last_frame_ms() {
+    return g_c303_last_frame;
 }
 
 long long c303_tick_number() {

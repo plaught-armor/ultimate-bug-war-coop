@@ -1,6 +1,6 @@
 # 522: Tracking fire command for fire tests
 
-Opened 2026-11-19 by senior from the junior's c263h report. The user: "i don't understand how we cant auto target onto
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by senior from the junior's c263h report. The user: "i don't understand how we cant auto target onto
 arachnids at this point instead of whatever we're doing". Today a fire round is one snap `look actor ... live`, then
 2.5 s of LeftMouseButton held at that fixed aim, so a moving bug walks out of it and the players fire at nothing.
 

@@ -91,6 +91,7 @@ struct C310Journal {
     int32_t tags;
     int32_t chargeable;  // -1 unset, else 0 or 1
     void* default_class; // null unset
+    uint64_t default_name; // card 608: its FName, copied at each write; the map arm prints only this
 };
 
 // Host, per player slot: the pawn last seen and its DefaultTacticalSupportClass then.
@@ -528,6 +529,7 @@ void c310_mirror_tags(const void* world, bool add) {
 // The source's new default class onto every other player pawn and every client.
 void c310_sync_default_class(const void* world, const void* source, void* cls) {
     g_c310.journal.default_class = cls;
+    g_c310.journal.default_name = object_fname(cls);
     void* others[kC17Slots] = {};
     const int32_t n = c267_other_players(source, others, kC17Slots);
     for (int32_t i = 0; i < n; ++i) {
@@ -770,6 +772,7 @@ void c310_client_keep(char kind, const char* value) {
         j.chargeable = value[0] == '1' ? 1 : 0;
     } else if (kind == 'D') {
         j.default_class = strcmp(value, "None") == 0 ? nullptr : c50_resolve(value);
+        j.default_name = object_fname(j.default_class);
     }
 }
 
@@ -846,7 +849,8 @@ void c310_arm_map() {
     const C310Journal& j = g_c310.journal;
     log::line("card310: %s t=%llu map arm: journal from the load: %d tag(s), chargeable %d, default class %s; "
               "writes %u, dropped from the world being left %u",
-              side(), static_cast<unsigned long long>(now_ms()), j.tags, j.chargeable, object_name(j.default_class).text,
+              side(), static_cast<unsigned long long>(now_ms()), j.tags, j.chargeable,
+              j.default_class != nullptr ? fname_text(&j.default_name).text : "null",
               g_c310.writes, g_c310.teardown);
     g_c310.teardown = 0; // counted only between map end and the arm
 }

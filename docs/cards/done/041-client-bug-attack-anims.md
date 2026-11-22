@@ -1,6 +1,6 @@
 # Card 041: Bug attack animations on the client
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first ("Mod code rules", "Runtime facts"), then card 038 (client death animation, `TryPlayDeathAnimation`) and card 039 (the `ChanOp::Gib` signal and the client's NPC match). Repo root: `/path/to/ultimate-bug-war-coop`.
 

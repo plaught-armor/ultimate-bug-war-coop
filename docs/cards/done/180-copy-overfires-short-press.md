@@ -1,6 +1,6 @@
 # Card 180: The host copy fires more rounds than the client on a short press
 
-Status: queued 2026-11-11, from run c176-r3 (card 175 class). Budget: three runs. One goal (re-scoped by the senior,
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from run c176-r3 (card 175 class). Budget: three runs. One goal (re-scoped by the senior,
 decision (b)): the deferred release leaves in the frame it was decided in, so the release transit equals the press
 transit again. The exact count fix is a separate card.
 

@@ -1,6 +1,6 @@
 # Card 200: The seven first-tick resets not yet traced against rows written inside LoadMap
 
-Status: queued 2026-11-12, split from card 184 (same class as cards 199 and 184). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 184 (same class as cards 199 and 184). Budget: three runs. Static first.
 
 Read: `docs/cards/done/184-c104-tables-reset-after-loadmap.md` ("Static part" table and "Problems"), card 199.
 

@@ -1,0 +1,84 @@
+# Card 556 (resupply rack pickups, Level 1, self end, take set) on b441 dwmapi e69c630445b89052 + ubwperf
+# 998535a7066b87ba, FED_C2M1, FAST, lane 2, one run c556b441a.
+# Steps: the c504 start block; bugs cleared by code; host warped to the playtest rack spot (173992 23778 7757), client
+# 250 uu south of the b440c rack destroy point (175269 23786 7727), so its takes fit before an early end (b440c: the
+# client walked 984 uu in 3.6 s and the rack was gone 3.2 s after its spawn, no take landed); `resupplylevel 1` on both
+# sides; the host calls Resupply (slot 0 charge, key Four); on the BP_ResupplyRack_Level1_C spawn row the client takes
+# the Frag, the medkit and one MoritaSmall by Use (the playtest take set: Weapon1, Weapon2 and Ammo2 left). No kill
+# command: the rack ends by itself. On the host destroy row, bugs cleared, host warped 450 uu west and client 450 uu east
+# of the rack, both look at the destroy point 100 uu down; shots right after the destroy, after the "2 s after" rows,
+# and 3 s later.
+# Prediction (card 556 b441 diag):
+# 1. End path: `card556: host ... rack ... end: TraceBelow miss (CheckBelow)`, first trace about 3 s ago, Duration
+#    about 15 s, last trace miss; the trace rows show the miss's start/end with hit none. Same path on the client
+#    row if the client runs TraceBelow on its copy; a host hit with a client miss (or the reverse) names a side-only
+#    collider or our spawn height.
+# 2. Leftovers (2 MoritaMk1 weapons, 1 MoritaSmall): one `override ... state 1` row each from the Destroy loop. Falls:
+#    stored before 2, sim before 0, after 1, awake after 1. Float (the playtest): stored before 1 (the +0x460 early
+#    return) or sim before 1 with awake after 0 (the sim setter early return: a sleeping body is never woken).
+# 3. Spawn rows `override ... state 2` show the state each pickup starts in (stored before, sim before/after).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c2m1-b441.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b441a 900
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll e69c630445b89052
+void unless client dll e69c630445b89052
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+failsoft
+host warp actor point 173992 23778 7757
+host warp client point 175269 23536 7787
+client wait near 175269 23536 7787 300 timeout=10
+host clear 3000 kill
+host resupplylevel 1
+client resupplylevel 1
+host look point 174392 23778 7700
+host shot c556-b441-host-before
+# --- the host calls Resupply (charge, then key Four: the flare throw runs from the key alone, c559b371b)
+host mark
+client mark
+host charge 0 20000 1
+host key Four
+host wait log "card104: host t=\d+ host own DoAction, key Flare_Throw" since-mark timeout=5
+host wait log "card098: host spawn BP_ResupplyRack_Level1_C " since-mark timeout=40
+# --- the client takes the Frag, the medkit and one MoritaSmall by Use (the playtest take set)
+client pickup BP_GrenadeAmmoPickup_Frag_C 600
+client key E
+client pickup BP_HealthPickup_Medium_C 600
+client key E
+client pickup BP_AmmoPickup_MoritaSmall_C 600
+client key E
+# --- self end: no kill command
+client wait log "card556: client t=\d+ resupply rack \S+ destroyed at" since-mark timeout=30
+host wait log "card556: host t=\d+ resupply rack \S+ destroyed at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=10
+host wait log "card556: host t=\d+ rack \S+ end: " since-mark timeout=2
+host clear 3000 kill
+host warp actor point {g1-450} {g2} {g3+60}
+host warp client point {g1+450} {g2} {g3+60}
+client wait near {g1+450} {g2} {g3+60} 300 timeout=5
+host look point {g1} {g2} {g3-100}
+client look point {g1} {g2} {g3-100}
+host shot c556-b441-host-dest
+client shot c556-b441-client-dest
+host wait log "card556: host t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+client wait log "card556: client t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+host shot c556-b441-host-2s
+client shot c556-b441-client-2s
+sleep 3
+host shot c556-b441-host-5s
+client shot c556-b441-client-5s
+host quit
+client quit

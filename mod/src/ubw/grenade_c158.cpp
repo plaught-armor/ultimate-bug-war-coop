@@ -14,21 +14,20 @@
 
 namespace ubw::hooks {
 
-bool g_c158_pe = false; // client: a grenade ability is bound; detour_process_event calls c158_after_pe
 
 namespace {
 
 constexpr int32_t kC158Classes = 4;  // ability Blueprints with their own OnAnimationStarted (frag/incendiary share one)
 constexpr uint32_t kC158Lines = 40;  // card158 lines per session, each side
 
-struct C158Fns {
-    const void* started;   // OnAnimationStarted
-    const void* do_action; // OnDoAction (the Blueprint destroys GrenadeVisuals there)
-};
+// Card 573 b463: one flat array, so the ProcessEvent check is one scan. Per ability class i: fn[2 i] is its
+// OnAnimationStarted, fn[2 i + 1] its OnDoAction (the Blueprint destroys GrenadeVisuals there).
+constexpr int32_t kC158Started = 0;
+constexpr int32_t kC158DoAction = 1;
 
 struct C158State {
-    C158Fns fns[kC158Classes];
-    int32_t n;
+    const void* fn[2 * kC158Classes];
+    int32_t n; // ability classes noted
     uint64_t fname[2];
     const void* held;     // the actor the client spawned for its current throw, until OnDoAction
     ULONGLONG held_ms;
@@ -47,8 +46,9 @@ bool c158_line() {
 }
 
 int32_t c158_find(const void* function, bool do_action) {
+    const int32_t kind = do_action ? kC158DoAction : kC158Started;
     for (int32_t i = 0; i < g_c158.n; ++i) {
-        if ((do_action ? g_c158.fns[i].do_action : g_c158.fns[i].started) == function) {
+        if (g_c158.fn[2 * i + kind] == function) {
             return i;
         }
     }
@@ -126,23 +126,30 @@ void c158_note_ability(const void* ability) {
     if (started == nullptr || c158_find(started, false) >= 0) {
         return;
     }
-    C158Fns& f = g_c158.fns[g_c158.n++];
-    f.started = started;
-    f.do_action = g_find_function(ability, g_c158.fname[1]);
-    g_c158_pe = true;
-    log::line("%scard158: client %s: OnAnimationStarted %s, OnDoAction %s", f.do_action != nullptr ? "" : "WARN ",
-              class_name(ability).text, object_name(started).text, object_name(f.do_action).text);
+    const void* const do_action = g_find_function(ability, g_c158.fname[1]);
+    g_c158.fn[2 * g_c158.n + kC158Started] = started;
+    g_c158.fn[2 * g_c158.n + kC158DoAction] = do_action;
+    ++g_c158.n;
+    pe_gate_set(kPeGate_c158_pe, true);
+    log::line("%scard158: client %s: OnAnimationStarted %s, OnDoAction %s", do_action != nullptr ? "" : "WARN ",
+              class_name(ability).text, object_name(started).text, object_name(do_action).text);
 }
 
-// Hot path (g_c158_pe), after each ProcessEvent: pointer compares against the recorded functions.
+// Hot path (kPeGate_c158_pe), after each ProcessEvent: pointer compares against the recorded functions.
 void c158_after_pe(void* object, const void* function) {
-    const int32_t s = c158_find(function, false);
-    if (s >= 0) {
-        c158_started(object);
+    const int32_t count = 2 * g_c158.n;
+    for (int32_t i = 0; i < count; ++i) {
+        if (g_c158.fn[i] != function) {
+            continue;
+        }
+        // An OnAnimationStarted is never null (c158_note_ability) and no function is both kinds, so the first match
+        // is the one the two separate scans found.
+        if ((i & 1) == kC158Started) {
+            c158_started(object);
+        } else {
+            c158_did_action(object);
+        }
         return;
-    }
-    if (c158_find(function, true) >= 0) {
-        c158_did_action(object);
     }
 }
 
@@ -184,8 +191,89 @@ void c347_client_step(void* pc) {
     log::line("card347: client camera manager %s resend limit %.3f s -> %.3f s", class_name(camera).text, was, now);
 }
 
+// Card 599, host, each frame: each server copy PC's camera manager actor is moved to that copy's view.
+//
+// GA_HumanMelee (DealDamage, TraceForTarget), GA_WeaponMeleeAbility, GA_TauntAbility and BP_GuidedMissile aim with
+// GetPlayerCameraManager(0)'s K2_GetActorLocation and GetActorForwardVector, and BP_SatchelBuilding_Flakbug takes its
+// GetDistanceTo. The engine moves a camera manager actor only in its own UpdateCamera, which runs for a local
+// controller; ServerUpdateCamera fills only the camera cache. So a copy's camera manager stayed at (0,0,0) with zero
+// rotation (run c582b451a), and a client's knife traced from the world origin along +X. The view is the cache POV
+// the client's ServerUpdateCamera filled (card 347 keeps it fresh); with no cache yet (Timestamp 0), the copy pawn's
+// camera component and the PC's ControlRotation.
+namespace {
+constexpr size_t kC599CacheTimestamp = 0x0; // FCameraCacheEntry: float Timestamp
+constexpr size_t kC599PovLocation = 0x10;   // POV.Location (FMinimalViewInfo, after the Timestamp and pad)
+constexpr size_t kC599PovRotation = 0x28;   // POV.Rotation, after the three-double Location
+struct C599Slot {
+    const void* pcm; // the camera manager last set in this slot; compared, never read
+    Vec3 at;
+    Vec3 rot;
+};
+struct C599State {
+    C599Slot slot[kC17Slots];
+    int32_t cache_at; // reflected CameraCachePrivate offset, -1 unresolved, -2 absent
+    uint32_t sets;
+    uint32_t from_cache;
+    uint32_t fallback;
+};
+C599State g_c599{{}, -1, 0, 0, 0};
+
+int32_t c599_cache_at(const void* pcm) {
+    if (g_c599.cache_at == -1) {
+        const uint8_t* const prop = prop_find_prop(read_ptr(pcm, kObjectClass), "CameraCachePrivate");
+        g_c599.cache_at = prop != nullptr ? read_i32(prop, kPropertyOffset) : -2;
+        log::line("%scard599: host reflected CameraCachePrivate on %s: %s +0x%X", g_c599.cache_at < 0 ? "WARN " : "",
+                  class_name(pcm).text, g_c599.cache_at < 0 ? "absent" : "at",
+                  g_c599.cache_at < 0 ? 0 : g_c599.cache_at);
+    }
+    return g_c599.cache_at;
+}
+
+void c599_set(C599Slot& s, void* pc, void* pcm) {
+    const int32_t cache = c599_cache_at(pcm);
+    const bool cached = cache >= 0 && read_f32(pcm, static_cast<size_t>(cache) + kC599CacheTimestamp) > 0.0F;
+    const void* const pawn = read_ptr(pc, kControllerPawn);
+    if (!cached && pawn == nullptr) {
+        return;
+    }
+    const Vec3 at = cached ? read_vec3(pcm, static_cast<size_t>(cache) + kC599PovLocation) : camera_location(pawn);
+    const Vec3 rot = cached ? read_vec3(pcm, static_cast<size_t>(cache) + kC599PovRotation)
+                            : read_vec3(pc, kControllerControlRotation);
+    if (s.pcm == pcm && memcmp(&s.at, &at, sizeof(at)) == 0 && memcmp(&s.rot, &rot, sizeof(rot)) == 0) {
+        return;
+    }
+    if (s.pcm != pcm) {
+        log::line("card599: host t=%llu copy %s camera manager %s set to its view from %s: (%.0f, %.0f, %.0f) P %.1f "
+                  "Y %.1f",
+                  static_cast<unsigned long long>(GetTickCount64()), object_name(pc).text, object_name(pcm).text,
+                  cached ? "the camera cache" : "the camera component and control rotation", at.x, at.y, at.z, rot.x,
+                  rot.y);
+    }
+    g_set_actor_location_rotation(pcm, &at, &rot, false, nullptr, kTeleportPhysics);
+    s = C599Slot{pcm, at, rot};
+    ++g_c599.sets;
+    ++(cached ? g_c599.from_cache : g_c599.fallback);
+}
+} // namespace
+
+void c599_host_step(void* world) {
+    for (int s = 0; s < kC17Slots; ++s) {
+        void* const pc = g_get_player_controller(world, s);
+        void* const pcm = pc != nullptr && sprint_side(pc) == kSideServerCopy ? read_ptr(pc, kPcCameraManager)
+                                                                              : nullptr;
+        if (pcm != nullptr) {
+            c599_set(g_c599.slot[s], pc, pcm);
+        }
+    }
+}
+
 // Map change: the held actor pointer is stale.
 void c158_reset_map() {
+    if (g_c599.sets != 0) {
+        log::line("card599: host map totals: %u copy camera manager moves (%u from the camera cache, %u fallback)",
+                  g_c599.sets, g_c599.from_cache, g_c599.fallback);
+    }
+    g_c599 = C599State{{}, g_c599.cache_at, 0, 0, 0}; // a new map's camera managers may reuse the addresses
     if (g_c158.spawned != 0 || g_c158.failed != 0) {
         log::line("card158: %s map totals: %u held grenades set, %u not", side(), g_c158.spawned, g_c158.failed);
     }

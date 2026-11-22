@@ -1,6 +1,6 @@
 # 504: Test tools check themselves; a tool fault never costs a run
 
-Opened 2026-11-19 by the senior, on the user's call: "The fact we're still running into run issues is bad design."
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, on the user's call: "The fact we're still running into run issues is bad design."
 User choice: do it now, in the same build as the next real-bug batch (cards 263/252 and 502), not as a build of its
 own.
 

@@ -1,6 +1,6 @@
 # Card 222: The test driver's Escape key does not close the host's pause or options menu
 
-Status: queued 2026-11-12, from c171-r1. Tool card, no mod code. Budget: one run.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c171-r1. Tool card, no mod code. Budget: one run.
 
 ## Seen
 

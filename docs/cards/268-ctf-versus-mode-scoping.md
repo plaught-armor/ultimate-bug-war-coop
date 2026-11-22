@@ -1,4 +1,5 @@
 # 268 CTF versus mode, one player per side: static scoping
+Status 2026-11-22: scoping, parked until after the co-op playtest.
 
 User, 2026-11-13: wants to consider Capture the Flag as a competitive mode between players, one player per
 side (1v1, each side has a flag). The base game has no versus mode: CTF exists only as the scripted

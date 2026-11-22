@@ -1,6 +1,6 @@
 # 523: Client bug deaths stop, then drop (stream start freeze)
 
-Opened 2026-11-19 by senior from a user report (client window): "arachnids aren't finishing their death animations
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by senior from a user report (client window): "arachnids aren't finishing their death animations
 before stopping and falling dead in some cases". Real bug, play visible.
 
 ## Trace (static, `pose_c132.cpp`, plus the c263i b300 logs)

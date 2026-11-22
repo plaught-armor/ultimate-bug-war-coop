@@ -1,6 +1,6 @@
 # Card 172: The client's support flare press reaches the host
 
-Status: REPORTED 2026-11-11. The cause was a scenario fault (no charge was earned). Run c172-r1 proved the client's press and the strike on both sides. The client sees no flare in its own hand: card 169's open item, proven by log and screenshot.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: REPORTED 2026-11-11. The cause was a scenario fault (no charge was earned). Run c172-r1 proved the client's press and the strike on both sides. The client sees no flare in its own hand: card 169's open item, proven by log and screenshot.
 
 Read: logs/c162-r1.drive (line 55 FAIL), logs/c162-r1-{host,client}.log after the marks, tools/scenarios/c162-run1.txt
 lines 44-55, docs/cards/done/169-ability-spawn-visuals.md "Card 162 run items", cards 100 and 104 in docs/cards/done/.

@@ -1,6 +1,6 @@
 # Card 098: One mechanism for host world changes
 
-Status: report in 2026-11-05 (junior). DLL `7f93daf100d2ee0c`.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: report in 2026-11-05 (junior). DLL `7f93daf100d2ee0c`.
 
 Read:
 

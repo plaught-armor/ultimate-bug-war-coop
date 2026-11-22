@@ -1,0 +1,95 @@
+# b455 combined run (cards 601 and 573): FED_C3M1, FAST, lane 2. dwmapi 0c2e33933afbf1a3, ubwperf 4d83a73bd120a06f.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-83).
+# Order: 573 first (16 code-spawned warrior bugs around the host, god, a 20 s GameThread capture with branch stacks,
+# tools/c573_capture.sh BRSTACK=1), then 601 (the C3M1 evac from c595-c3m1-b447.txt: the client presses Use first,
+# then the host). 601 goes last because its release ends the level.
+# Predictions: docs/cards/601-client-misses-transport-outro-chain.md and docs/cards/573-*.md "b455 capture".
+# Run: rm -f logs/c601b455a.release; (BRSTACK=1 tools/c573_capture.sh logs/c601b455a-gt logs/c601b455a.release > logs/c601b455a.capture 2>&1 &);
+#      systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c601-c3m1-b455.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c601b455a 900
+# Expected wall: about 5 min.
+voidsoft
+void unless host dll 0c2e33933afbf1a3
+void unless client dll 0c2e33933afbf1a3
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+# Capture trigger row 1 (tools/c573_capture.sh waits for the second host row).
+host mark
+host console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+host clear 4000 kill
+# --- card 573: 16 warrior bugs around the host (god), the capture window while they attack.
+both god all
+host mark
+host look point 0 0 0
+host wait log "cmd: \d+ look: point at -?\d+ -?\d+ -?\d+ from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host spawn bug {g1+1000} {g2} {g3+50} 180
+host spawn bug {g1+1000} {g2+300} {g3+50} 180
+host spawn bug {g1+1000} {g2-300} {g3+50} 180
+host spawn bug {g1+1400} {g2} {g3+50} 180
+host spawn bug {g1-1000} {g2} {g3+50} 0
+host spawn bug {g1-1000} {g2+300} {g3+50} 0
+host spawn bug {g1-1000} {g2-300} {g3+50} 0
+host spawn bug {g1-1400} {g2} {g3+50} 0
+host spawn bug {g1} {g2+1000} {g3+50} 270
+host spawn bug {g1+300} {g2+1000} {g3+50} 270
+host spawn bug {g1-300} {g2+1000} {g3+50} 270
+host spawn bug {g1} {g2+1400} {g3+50} 270
+host spawn bug {g1} {g2-1000} {g3+50} 90
+host spawn bug {g1+300} {g2-1000} {g3+50} 90
+host spawn bug {g1-300} {g2-1000} {g3+50} 90
+host spawn bug {g1} {g2-1400} {g3+50} 90
+sleep 3
+host shot c601-wave-host
+# Capture trigger row 2: tools/c573_capture.sh profiles 20 s of both games, then writes the release file.
+host mark
+host console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+host wait file logs/c601b455a.release timeout=120
+host shot c601-wave-end-host
+host clear 4000 kill
+# --- card 601: the C3M1 evac (c595-c3m1-b447.txt). The client presses first (held 1 of 2), then the host
+# (released). Host card601 row within 5 ms of the release row, client card601 row within 200 ms of it.
+host mark
+client mark
+host levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1
+host wait log "cmd: \d+ levelcall InpActEvt_O_K2Node_InputDebugKeyEvent_1 on \S+: run" since-mark timeout=5
+host wait log "collision: host/standalone DescendToLandCompleted\(\S+ BP_PlayerTransportDropship_C, LocalRole 3\) player-inside flag 0 -> 0" since-mark timeout=120
+host clear 4000 kill
+host warp actor BP_PlayerTransportDropship_C_1 400
+host warp client BP_PlayerTransportDropship_C_1 380
+client look actor BP_PlayerTransportDropship_C_1
+client key E
+client wait log "card595: client t=\d+ Use on \S+ relayed, own original skipped" since-mark timeout=5
+host wait log "card595: host t=\d+ evac \S+ held: 1 of 2 aboard" since-mark timeout=5
+sleep 3
+client shot c601-held-client
+host shot c601-held-host
+host mark
+host look actor BP_PlayerTransportDropship_C_1
+host key E
+host wait log "card595: host t=\d+ evac \S+ released: 2 of 2 living players asked" since-mark timeout=5
+host wait log "card601: host t=\d+ boarding of BP_PlayerTransportDropship_C\S* sent to 1 of 1 PCs" since-mark timeout=5
+client wait log "card601: client t=\d+ boarding of \S+ from the host: own original ran \(outro chain\)" since-mark timeout=5
+try host wait log "(?:card049: host sent Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: host t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" since-mark timeout=15
+try client wait log "(?:card049: client t=\d+ replayed Complete\w*Objective\((?:\w+, )?Satcom_SO3\)|card097: client t=\d+ subsystem ObjectiveComplete\(Satcom_SO3\))" timeout=30
+host shot c601-released-host
+client shot c601-released-client
+host wait log "card260: host EndLevel, sent to" since-mark timeout=40
+client wait log "card260: client EndLevel \(relay\)" timeout=30
+sleep 3
+client shot c601-endlevel-client
+host shot c601-endlevel-host
+host quit
+client quit

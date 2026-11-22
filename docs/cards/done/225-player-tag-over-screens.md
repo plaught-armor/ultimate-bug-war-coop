@@ -1,6 +1,6 @@
 # Card 225: The other player's name tag draws over full-screen widgets and cutscenes
 
-Status: queued 2026-11-12, from card 135 (c135-r2 client screen shot, c135-r3 client brief video shot).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from card 135 (c135-r2 client screen shot, c135-r3 client brief video shot).
 
 The card 110 player marker (`mod/src/ubw/player_marker.cpp`, `kC110ZOrder` 90, lines 29 and 168) hides only when
 the pawn is gone, dead or behind the camera. It shows over the press-to-start screen, the brief video and,

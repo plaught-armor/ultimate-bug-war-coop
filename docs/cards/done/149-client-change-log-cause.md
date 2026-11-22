@@ -1,6 +1,6 @@
 # Card 149: The client change log names the right cause
 
-Status: queued 2026-11-08, from card 137 (hb72 close-out). Budget: one run, batched. A diagnostic tool, not gameplay.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from card 137 (hb72 close-out). Budget: one run, batched. A diagnostic tool, not gameplay.
 
 Read: card 137 step 2a and its hb72 result.
 

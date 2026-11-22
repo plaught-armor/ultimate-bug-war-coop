@@ -1,6 +1,6 @@
 # Card 479: Client crash in the card 269 swap back at a corpse arrival
 
-Opened 2026-11-17 13:16 from run `c245a` (b186 `6bdc1fb92f415071`, C4M2). Crash, so it is fixed in the next build (b187).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-17 13:16 from run `c245a` (b186 `6bdc1fb92f415071`, C4M2). Crash, so it is fixed in the next build (b187).
 
 ## Seen
 - Client row at 581553252: `CRASH 1/4: EXCEPTION_ACCESS_VIOLATION (0xC0000005) at exe+0x3AF2CB8`, reading

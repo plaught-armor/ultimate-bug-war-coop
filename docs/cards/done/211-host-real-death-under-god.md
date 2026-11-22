@@ -1,6 +1,6 @@
 # Card 211: The host's real death completes under test god mode
 
-Status: queued, static first. Carried from card 196 through card 208.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, static first. Carried from card 196 through card 208.
 
 - c196-r2 and c208-r3: `WARN card043: host real death: 5 hits, Health 1.0` (c208-r3 host log line 7579; hits
   7282 to 7429, causer BP_AI_WarriorBug_C, `Health 1.0 -> 1.0`).

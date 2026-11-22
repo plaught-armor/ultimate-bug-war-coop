@@ -7,8 +7,8 @@
 #      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C5M1?listen UBWCOOP_GOD=1"
 #      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh soak-c5m1<build> 3600
 voidsoft
-void unless host dll e62e76f63a05d88f
-void unless client dll e62e76f63a05d88f
+void unless host dll 06856d890383676d
+void unless client dll 06856d890383676d
 host wait state map=FED_C5M1 timeout=240 void
 client wait state map=FED_C5M1 pawn=client-own timeout=180
 try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60

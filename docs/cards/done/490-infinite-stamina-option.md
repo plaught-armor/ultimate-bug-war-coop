@@ -1,6 +1,6 @@
 # 490: Infinite stamina setting
 
-Opened 2026-11-18 08:44. User request: if stamina does nothing but sprint, add a setting that disables stamina or makes it infinite.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-18 08:44. User request: if stamina does nothing but sprint, add a setting that disables stamina or makes it infinite.
 
 ## What stamina does (static, from the cooked packages, 2026-11-18)
 - Stamina is a Blueprint float on BP_PlayerCharacterMI (Stamina, Edit Stamina, Regen Stamina, StaminaRegenTimer, StaminaCostCurve). It is not a native GAS attribute: no native attribute set has a stamina field.

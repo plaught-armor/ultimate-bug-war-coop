@@ -102,12 +102,9 @@ uint32_t g_c65_activate_logs = 0; // card 065 Activate log lines this map (own c
 uint32_t g_c65_shunt_logs = 0;    // card 065: client shunt refusal lines this map
 bool g_c60_host_own = false; // UBWCOOP_C60_HOST_OWN
 bool g_c63_on = false; // UBWCOOP_CMD: card 063 command and state files
-bool g_c67_pe = false; // card 067 ProcessEvent gate (UBWCOOP_CMD=1): a mission-brief class is known
-bool g_c74_pe = false; // card 074 ProcessEvent gate (UBWCOOP_C74_LOG=1): inside a PlayAnimation task DoAction
 bool g_c60_mk1_only = false; // card 060: the host-own stages take a placed MoritaMk1 only (not the case laser)
 // Card 062 audit (log only, with UBWCOOP_C50_TEST): the host's own weapon switch around InternalTryActivateAbility.
 uint64_t g_c62_instance_weak = 0; // the last switch ability instance activated on the host's own pawn; per map
-bool g_c44_pe = false;            // ProcessEvent gate: a death screen may construct
 uint32_t g_c44_fires[4] = {};     // FireProjectile calls by sprint side (kSprintSides)
 bool g_c39_overkill = false; // UBWCOOP_C39_OVERKILL: card 023's test kill is an overkill
 config::SpawnMech g_c32_mode = config::SpawnMech::Off; // card 032, written in ubw::init before any hook
@@ -218,6 +215,8 @@ void ubw_post_tick(void* engine) {
         C330_STEP(c293_step(engine)); // card 293: minimap NPC markers no player can see
     }
     C330_STEP(c319_step(engine)); // card 319: client minimap scan gates, every 5 s
+    C330_STEP(c555_step(engine)); // card 555: radar blips of bugs still in their spawn hole, both sides
+    C330_STEP(c588_step(engine)); // card 588: client own gunship seat motion rows
     C330_STEP(c321_step(engine)); // card 321: host begin-play count row, once per map
     C330_STEP(c338_step()); // card 338: the 5 s row after a fall zone reposition
     C330_STEP(c336_step(engine)); // card 336: one row per fall zone, once per map, both sides
@@ -234,6 +233,7 @@ void ubw_post_tick(void* engine) {
     C330_STEP(c132_hit_step(engine)); // card 132: the tick's hits to the clients
     C330_STEP(c157_step(engine)); // card 157: client hit claims meet their rounds (host)
     C330_STEP(c161_step(engine)); // card 161: BP door state (host sends changes; both log them)
+    C330_STEP(c606_step(engine)); // card 606: horde zone class and events, until resolved (both)
     C330_STEP(c315_host_step(engine)); // card 315: looping timeline phase rows every 3 s (host)
     C330_STEP(c487_host_step(engine)); // card 487: hide checks for deaths with no Health change (host)
     C330_STEP(c408_step(engine)); // card 408: flak and plasma bug building scan (arms the timer event filter)
@@ -245,6 +245,7 @@ void ubw_post_tick(void* engine) {
     C330_STEP(c132_decal_step(engine)); // card 132: gore decal rows (host) and copy checks (client)
     C330_STEP(c104_settle_step()); // card 132 note 2: relayed pickups' rest rows (host)
     C330_STEP(c287_client_step()); // card 287: relayed bodies blended between host rows (client)
+    C330_STEP(c556_rack_step()); // card 556 b439 diag: the rack pickups' rows 2 s after a rack destroy
     C330_STEP(c132_ext_step(engine)); // card 132 step 2d: persistent actor state (host polls and sends, client applies)
     C330_STEP(c42_step(engine));
     C330_STEP(c43_step(engine));
@@ -290,6 +291,9 @@ void ubw_load_map_enter(void* engine, void* pending) {
     c306_map_end(); // card 306: per-map inert spawn tally
     c293_map_end(); // card 293: per-map minimap marker totals
     c319_map_end(); // card 319: per-map minimap scan tally
+    c555_map_end(); // card 555: per-map radar hide tally
+    c581_map_end(); // card 581: per-map attached-character skip tally
+    c588_map_end(); // card 588: per-map client seat motion tally
     c322_map_end(); // card 322: per-map radio, music and dilation tally, both sides
     c361_map_end(); // card 361: per-map caps and crushed pairs, both sides
     c321_map_end(); // card 321: the next map logs its own count row
@@ -671,7 +675,11 @@ uint32_t sprint_side(const void* actor) {
     }
     const auto* const a = static_cast<const uint8_t*>(actor);
     if (a[kActorLocalRole] == kRoleAuthority) {
-        return a[kActorRemoteRole] == kRoleAutonomousProxy ? kSideServerCopy : kSideHostOwn;
+        if (a[kActorRemoteRole] == kRoleAutonomousProxy) {
+            return kSideServerCopy;
+        }
+        // Card 586: a connected client's trooper while its player sits in a seat or flies a missile (unpossessed)
+        return g_c586.count != 0 && c586_holder_pc(actor) != nullptr ? kSideServerCopy : kSideHostOwn;
     }
     return a[kActorLocalRole] == kRoleAutonomousProxy ? kSideClientOwn : kSideOther;
 }
@@ -787,6 +795,16 @@ const void* iface_object(const void* iface) {
 }
 const void* interact_target(const void* interactor) {
     return iface_object(interactor != nullptr ? read_ptr(interactor, kInteractorTarget) : nullptr);
+}
+
+// The pawn's InteractorComponent, or null when the pawn is not a player trooper. Only ASTPlayerCharacter has the
+// field at kCharacterInteractor: a dropship, guided missile, mech or turret seat pawn holds other data there (run
+// c560b371a read a double 1.0 off the host's BP_PlayerTransportDropship_C and crashed in interact_target).
+void* pawn_interactor(const void* pawn) {
+    // Gate on the class that owns the field (ASTPlayerCharacter), not a subclass; the getter can be unbound.
+    return g_player_character_class != nullptr && is_a(pawn, g_player_character_class())
+               ? read_ptr(pawn, kCharacterInteractor)
+               : nullptr;
 }
 
 // The weapon DataTable, or null. The engine is the game instance's outer (UGameInstance::GetEngine).
@@ -1775,7 +1793,7 @@ C30Pawns c30_find(const void* world) {
 }
 // Called from detour_asc_tag_pressed and detour_interact: inside the window, every input tag and interact.
 void c30_note_input(const char* what, const void* owner, const void* tag) {
-    if (!g_c30_window || !c30_line()) {
+    if (!pe_gate(kPeGate_c30_window) || !c30_line()) {
         return;
     }
     log::line("card030: %s %s %s on %s (%s), %llu ms after Health 0", side(), what,
@@ -1904,10 +1922,33 @@ void c43_transition(const C43Roster& r, C43Entry& e, const void* pawn, const cha
 }
 // Host: the pawn goes down (state Downed, or Out when nobody else is Up): abilities cancelled on the pawn's and its
 // weapon's ASC, a held fire relay released, Health 1, MaxWalkSpeed 0.
-void c43_enter_down(void* pawn, const C43Roster& r, uint32_t slot, C43Life state, ULONGLONG now) {
+bool c43_is_trooper(const void* pawn, const char* where) {
+    if (pawn == nullptr || is_a(pawn, g_player_character_class())) {
+        return true;
+    }
+    char chain[96];
+    caller_chain(chain, sizeof(chain), 6);
+    log::line("WARN card043: %s %s on %s (class %s), not a trooper: refused; callers %s", side(), where,
+              object_name(pawn).text, class_name(pawn).text, chain);
+    return false;
+}
+void c43_enter_down(void* roster_pawn, const C43Roster& r, uint32_t slot, C43Life state, ULONGLONG now) {
+    // Card 586: a roster pawn that is a seat or a missile hands its player back first; the trooper goes down. The
+    // slot's PC in `r` is unchanged; only its pawn moved. `held` is `r` with the trooper in that slot, so the first
+    // Down frame finds the trooper's GUID (c586b418a: with `r` the frame was dropped, WARN card209, and the client
+    // went down 1 s late on the bleedout resend).
+    void* const pawn = c586_end_hold(roster_pawn, "enter down");
+    C43Roster held = r;
+    if (pawn != roster_pawn && slot < static_cast<uint32_t>(kC43Max)) {
+        held.p[slot].pawn = pawn;
+        held.p[slot].id = object_index(pawn);
+    }
     if (is_a(pawn, g_mech_class())) {
         log::line("WARN card079: host %s (slot %u) is a mech: not a card 043 player, not downed",
                   object_name(pawn).text, slot);
+        return;
+    }
+    if (!c43_is_trooper(pawn, "enter down")) { // card 586: a seated host's roster pawn is the turret (c582b412a crash)
         return;
     }
     pl_count(PlCount::Down); // card 155 (Downed and Out)
@@ -1931,7 +1972,7 @@ void c43_enter_down(void* pawn, const C43Roster& r, uint32_t slot, C43Life state
                  now, 0, 0};
     c43_set_health(pawn, 1.0f);
     c43_set_walk(pawn, 0.0f);
-    c43_transition(r, e, pawn, "HandleDeathEvent skipped");
+    c43_transition(held, e, pawn, "HandleDeathEvent skipped");
     log::line("card043: host CancelAllAbilities on pawn ASC %p and weapon ASC %p (%s); saved MaxWalkSpeed %.0f", asc,
               weapon_asc, object_name(weapon).text, static_cast<double>(e.saved_walk));
 }
@@ -1994,7 +2035,20 @@ C43Life c43_life(const void* pawn) {
     const int32_t i = pawn != nullptr ? c43_find(object_index(pawn)) : -1;
     return i >= 0 ? g_c43.e[i].state : C43Life::Up;
 }
+// Card 557: APawn::PlayerState, reflected once from the player character class; -1 when absent (logged once).
+static int32_t c557_ps_offset(const void* cls) {
+    static int32_t offset = -2; // -2: not looked up yet
+    if (offset == -2 && cls != nullptr) {
+        const uint8_t* const prop = prop_find_prop(cls, "PlayerState");
+        offset = prop != nullptr ? read_i32(prop, kPropertyOffset) : -1;
+        log::line("%scard557: APawn::PlayerState offset %d", offset >= 0 ? "" : "WARN ", offset);
+    }
+    return offset;
+}
 // Client (card 209): every player pawn of sprint side "other" (the host's and other clients' copies), one level scan.
+// Card 557: only a pawn a player possesses (PlayerState set). An empty mech (a player character subclass) kept its
+// "Player" tag, ring and blip after the host left it, and this client's own trooper, simulated while the client flies
+// a missile or sits in a seat, counted as another player (cards 560, 561). Unpossess clears the pawn's PlayerState.
 int32_t c43_client_other_pawns(const void* world, void* out[kC43Max]) {
     for (int32_t i = 0; i < kC43Max; ++i) {
         out[i] = nullptr;
@@ -2002,9 +2056,11 @@ int32_t c43_client_other_pawns(const void* world, void* out[kC43Max]) {
     static void* players[kC23Max]; // game thread only
     const void* const cls = world != nullptr ? g_player_character_class() : nullptr;
     const uint32_t count = c368_actors(g_c368_players, world, cls, players); // card 368: no level walk of its own
+    const int32_t ps_at = c557_ps_offset(cls);
     int32_t n = 0;
     for (uint32_t i = 0; i < count && n < kC43Max; ++i) {
-        if (sprint_side(players[i]) == kSideOther) {
+        const bool possessed = ps_at < 0 || read_ptr(players[i], static_cast<size_t>(ps_at)) != nullptr;
+        if (sprint_side(players[i]) == kSideOther && possessed) {
             out[n++] = players[i];
         }
     }
@@ -2025,6 +2081,7 @@ void c43_map_end() {
     g_c43 = C43State{};
     g_c43.fire_tag = fire; // FName values outlive the map
     g_c43.walk_tag = walk;
+    g_c586 = C586Holds{}; // card 586: the map's troopers go; no stale address reads as held before the next rebuild
 }
 int32_t c43_live() {
     return g_c43.count + g_c43.holds;
@@ -2057,7 +2114,7 @@ void c45_arm_map() {
     g_c44.window_ms = 0;
     g_c44.screen_weak = 0;
     g_c44.fallback_done = false;
-    g_c44_pe = false;
+    pe_gate_set(kPeGate_c44_pe, false);
     g_c45.pawn = nullptr;
     g_c45.screen_count = 0;
 }
@@ -2694,6 +2751,9 @@ const HookSpec kHooksUbw[] = {
     // Card 461 (diagnostic): the mover of a released rider's capsule; one compare of g_c461_armed outside its window.
     {&offsets::UPrimitiveComponent_MoveComponentImpl, reinterpret_cast<void*>(&detour_c461_move),
      reinterpret_cast<void**>(&g_orig_c461_move), &g_gate_c461_c539}, // card 539 counts ride on it
+    // Card 575 (diagnostic): crowd agent registrations per side.
+    {&offsets::UCrowdManager_RegisterAgent, reinterpret_cast<void*>(&detour_c575_register),
+     reinterpret_cast<void**>(&g_orig_c575_register), &g_c575_log},
     // Card 416: the minimap marker interface wrappers; a teammate pawn is answered by the mod, all else unchanged.
     {&offsets::ISTMinimapMarkerInterface_Execute_GetIconTexture, reinterpret_cast<void*>(&detour_c416_icon),
      reinterpret_cast<void**>(&g_orig_c416_icon)},
@@ -2774,21 +2834,8 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_orig_c532_tick)}, // card 532: client target tick off
     {&offsets::UADTargetComponent_GetPrimaryTarget, reinterpret_cast<void*>(&detour_c532_get_primary),
      reinterpret_cast<void**>(&g_orig_c532_get_primary)}, // card 532: client shows the host's target
-    {&offsets::USTSaveComponent_GetSaveId, reinterpret_cast<void*>(&detour_c531_save_id),
-     reinterpret_cast<void**>(&g_orig_c531_save_id), &g_c531_on}, // card 531: save component cache (perf)
     {&offsets::UCharacterMovementComponent_FindFloor, reinterpret_cast<void*>(&detour_c535_find_floor),
      reinterpret_cast<void**>(&g_orig_c535_find_floor), &g_c535_on}, // card 535: client NPC floor skip (perf)
-    // card 537: owned-component set changes bump a generation; these rows come before the cache row
-    {&offsets::AActor_AddOwnedComponent, reinterpret_cast<void*>(&detour_c537_add),
-     reinterpret_cast<void**>(&g_orig_c537_add), &g_c536_on},
-    {&offsets::AActor_RemoveOwnedComponent, reinterpret_cast<void*>(&detour_c537_remove),
-     reinterpret_cast<void**>(&g_orig_c537_remove), &g_c536_on},
-    {&offsets::AActor_ResetOwnedComponents, reinterpret_cast<void*>(&detour_c537_reset),
-     reinterpret_cast<void**>(&g_orig_c537_reset), &g_c536_on},
-    {&offsets::AActor_FindComponentByClass, reinterpret_cast<void*>(&detour_c536_find),
-     reinterpret_cast<void**>(&g_orig_c536_find), &g_c536_on}, // card 536: component lookup cache (perf)
-    {&offsets::USTAttackComponent_DoesTargetMeetConditions, reinterpret_cast<void*>(&detour_c538_conditions),
-     reinterpret_cast<void**>(&g_orig_c538_conditions), &g_c538_on}, // card 538: targeting repeat counts (perf diag)
     {&offsets::UWorld_SweepSingleByChannel, reinterpret_cast<void*>(&detour_c534<0>), reinterpret_cast<void**>(&g_orig_c534[0]),
      &g_c132_fx_log}, // card 534 diag
     {&offsets::UWorld_SweepMultiByChannel, reinterpret_cast<void*>(&detour_c534<1>), reinterpret_cast<void**>(&g_orig_c534[1]),
@@ -2819,12 +2866,6 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_orig_c545_capsule), &g_c132_fx_log}, // card 545 diag
     {&offsets::UKismetSystemLibrary_SphereOverlapComponents, reinterpret_cast<void*>(&detour_c545_sphere),
      reinterpret_cast<void**>(&g_orig_c545_sphere), &g_c132_fx_log}, // card 545 diag
-    {&offsets::UPrimitiveComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_prim),
-     reinterpret_cast<void**>(&g_orig_c548_impl[0]), &g_c132_fx_log}, // card 548 diag
-    {&offsets::USkinnedMeshComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_skinned),
-     reinterpret_cast<void**>(&g_orig_c548_impl[1]), &g_c132_fx_log}, // card 548 diag
-    {&offsets::USkeletalMeshComponent_UpdateOverlapsImpl, reinterpret_cast<void*>(&detour_c548_skeletal),
-     reinterpret_cast<void**>(&g_orig_c548_impl[2]), &g_c132_fx_log}, // card 548 diag
     {&offsets::USkeletalMeshComponent_TickComponent, reinterpret_cast<void*>(&detour_c527_mesh_tick),
      reinterpret_cast<void**>(&g_orig_c527_mesh_tick), &g_c132_fx_log}, // card 527 item 2
     {&offsets::UADSpriteAnimatorComponent_TickComponent, reinterpret_cast<void*>(&detour_c527_sprite_tick),
@@ -2860,8 +2901,10 @@ const HookSpec kHooksUbw[] = {
     {&offsets::UPrimitiveComponent_SetCollisionProfileName, reinterpret_cast<void*>(&detour_set_collision_profile), reinterpret_cast<void**>(&g_orig_set_collision_profile)}, // card 237
     // Card 132
     {&offsets::UCharacterMovementComponent_SetMovementMode, reinterpret_cast<void*>(&detour_set_movement_mode), reinterpret_cast<void**>(&g_orig_set_movement_mode)},
+    {&offsets::AActor_OnRep_ReplicatedMovement, reinterpret_cast<void*>(&detour_c588_onrep_movement), reinterpret_cast<void**>(&g_orig_c588_onrep_movement)},
     {&offsets::UCharacterMovementComponent_SimulateMovement, reinterpret_cast<void*>(&detour_simulate_movement), reinterpret_cast<void**>(&g_orig_simulate_movement)},
     {&offsets::ASTPlayerTransportDropship_EnterDropship, reinterpret_cast<void*>(&detour_enter_dropship), reinterpret_cast<void**>(&g_orig_enter_dropship)},
+    {&offsets::ASTPlayerTransportDropship_OnInteraction, reinterpret_cast<void*>(&detour_c595_interaction), reinterpret_cast<void**>(&g_orig_c595_interaction)}, // card 595
     {&offsets::ASTPlayerTransportDropship_DescendToLandCompleted, reinterpret_cast<void*>(&detour_descend_completed), reinterpret_cast<void**>(&g_orig_descend_completed)},
     {&offsets::ASTProceduralDropship_StartAction, reinterpret_cast<void*>(&detour_start_action), reinterpret_cast<void**>(&g_orig_start_action), nullptr}, // card 449: ungated, the client calls the original
     {&offsets::ASTProceduralDropship_SetState, reinterpret_cast<void*>(&detour_set_state), reinterpret_cast<void**>(&g_orig_set_state)}, // card 132: the dropship relay, always
@@ -2883,6 +2926,9 @@ const HookSpec kHooksUbw[] = {
     // Card 014
     {&offsets::ASTPlayerCharacter_PostInitializeComponents, reinterpret_cast<void*>(&detour_post_init), reinterpret_cast<void**>(&g_orig_post_init)},
     {&offsets::ASTPlayerCharacter_PossessedBy, reinterpret_cast<void*>(&detour_possessed_by), reinterpret_cast<void**>(&g_orig_possessed_by)},
+    // Card 572 step 8: a player pawn role, owner or controller change starts a new memo frame
+    {&offsets::APawn_PossessedBy, reinterpret_cast<void*>(&detour_c572_pawn_possessed), reinterpret_cast<void**>(&g_orig_c572_pawn_possessed)},
+    {&offsets::APawn_UnPossessed, reinterpret_cast<void*>(&detour_c572_pawn_unpossessed), reinterpret_cast<void**>(&g_orig_c572_pawn_unpossessed)},
     {&offsets::EIBinding_ExecuteValue, reinterpret_cast<void*>(&detour_execute_value), reinterpret_cast<void**>(&g_orig_execute_value)}, // card 155: ungated (pl_execute)
     {&offsets::EIBinding_ExecuteVoid, reinterpret_cast<void*>(&detour_execute_void), reinterpret_cast<void**>(&g_orig_execute_void)}, // card 155: ungated (pl_execute)
     {&offsets::EIBinding_ExecuteDynamic, reinterpret_cast<void*>(&detour_execute_dynamic), reinterpret_cast<void**>(&g_orig_execute_dynamic)}, // card 155: ungated (pl_execute)
@@ -2941,12 +2987,22 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_insta_kill), nullptr}, // card 361: always on; the mod's own calls use the trampoline
     {&offsets::ASTHazardousZoneBase_TickMoveToNewPostion, reinterpret_cast<void*>(&detour_c361_hazard_tick),
      reinterpret_cast<void**>(&g_orig_c361_hazard_tick), nullptr}, // card 361: card 321 hazard half (host)
+    {&offsets::ASTCustomPickupBase_SetPhysicsStateOverride, reinterpret_cast<void*>(&detour_c556_override),
+     reinterpret_cast<void**>(&g_orig_c556_override), nullptr}, // card 556 b441 diag: override before/after rows
+    {&offsets::UKismetSystemLibrary_BoxTraceSingleByProfile, reinterpret_cast<void*>(&detour_c556_box_trace),
+     reinterpret_cast<void**>(&g_orig_c556_box_trace), nullptr}, // card 556 b441 diag: a rack's TraceBelow rows
+    {&offsets::AADPickupBase_execOnHit, reinterpret_cast<void*>(&detour_c556_on_hit),
+     reinterpret_cast<void**>(&g_orig_c556_on_hit), nullptr}, // card 556 fix: host, no freeze and attach on a holder
     {&offsets::ASTProceduralDropshipTroops_CanTakeoff, reinterpret_cast<void*>(&detour_c449_can_takeoff),
      reinterpret_cast<void**>(&g_orig_c449_can_takeoff), nullptr}, // card 449
     {&offsets::APlayerController_PawnLeavingGame, reinterpret_cast<void*>(&detour_c447_pawn_leaving),
      reinterpret_cast<void**>(&g_orig_c447_pawn_leaving), nullptr}, // card 447: seat leave before the pawn goes
     {&offsets::UADBarkSubsystem_RequestBark, reinterpret_cast<void*>(&detour_c451_request_bark),
      reinterpret_cast<void**>(&g_orig_c451_request_bark), nullptr}, // card 451: bark range from any player
+    {&offsets::UADTargetComponent_ModifyTargetThreat, reinterpret_cast<void*>(&detour_c582_threat),
+     reinterpret_cast<void**>(&g_orig_c582_threat), nullptr}, // card 582 G2: EM marker threat for every player
+    {&offsets::UADTargetComponent_execModifyTargetThreat, reinterpret_cast<void*>(&detour_c582_exec_threat),
+     reinterpret_cast<void**>(&g_orig_c582_exec_threat), nullptr}, // card 582 G2: the calling Blueprint object
     {&offsets::FBarkDelegate_Broadcast, reinterpret_cast<void*>(&detour_c451_broadcast),
      reinterpret_cast<void**>(&g_orig_c451_broadcast), nullptr}, // card 451 part 2: bark subtitles to clients
     {&offsets::ASTSaveableLevelScriptActor_CallFunctionWithDelay, reinterpret_cast<void*>(&detour_c493_delay),
@@ -3006,6 +3062,20 @@ const HookSpec kHooksUbw[] = {
      reinterpret_cast<void**>(&g_orig_pl_remove_from_parent)}, // card 155
     {&offsets::UAudioComponent_PlayInternal, reinterpret_cast<void*>(&detour_pl_play_internal),
      reinterpret_cast<void**>(&g_orig_pl_play_internal)}, // card 155: remote-player sounds
+    {&offsets::UAudioComponent_Stop, reinterpret_cast<void*>(&detour_c604_stop),
+     reinterpret_cast<void**>(&g_orig_c604_stop)}, // card 604: placed component stops
+    {&offsets::USTCommonUtilityLibrary_TriggerSpecificMusic, reinterpret_cast<void*>(&detour_c604_trigger),
+     reinterpret_cast<void**>(&g_orig_c604_trigger)}, // card 604
+    {&offsets::USTCommonUtilityLibrary_EndMusic, reinterpret_cast<void*>(&detour_c604_end),
+     reinterpret_cast<void**>(&g_orig_c604_end)}, // card 604
+    {&offsets::USTCommonUtilityLibrary_ClearMusicTriggers, reinterpret_cast<void*>(&detour_c604_clear),
+     reinterpret_cast<void**>(&g_orig_c604_clear)}, // card 604
+    {&offsets::USTCommonUtilityLibrary_PlaySound2DFName, reinterpret_cast<void*>(&detour_c604_sound_name),
+     reinterpret_cast<void**>(&g_orig_c604_sound_name)}, // card 604
+    {&offsets::UAudioMixerBlueprintLibrary_SetSubmixEffectChainOverride, reinterpret_cast<void*>(&detour_c604_submix_set),
+     reinterpret_cast<void**>(&g_orig_c604_submix_set)}, // card 604 check, log only
+    {&offsets::UAudioMixerBlueprintLibrary_ClearSubmixEffectChainOverride,
+     reinterpret_cast<void*>(&detour_c604_submix_clear), reinterpret_cast<void**>(&g_orig_c604_submix_clear)}, // card 604
     {&offsets::UCharacterMovementComponent_HandleImpact, reinterpret_cast<void*>(&detour_pl_impact),
      reinterpret_cast<void**>(&g_orig_pl_impact)}, // card 155: door blocks
     {&offsets::UGameplayStatics_SpawnSoundAtLocation, reinterpret_cast<void*>(&detour_c74_spawn_sound),
@@ -3148,6 +3218,17 @@ const HookSpec kHooksUbw[] = {
     {&offsets::USTWeaponUtilityLibrary_AddWeapon, reinterpret_cast<void*>(&detour_add_weapon), reinterpret_cast<void**>(&g_orig_add_weapon), nullptr}, // card 267: ungated
     {&offsets::USTWeaponInventory_LoadInventory, reinterpret_cast<void*>(&detour_load_inventory), reinterpret_cast<void**>(&g_orig_load_inventory), &g_gate_diag},
     {&offsets::USTWeaponUtilityLibrary_execAddWeapon, reinterpret_cast<void*>(&detour_exec_add_weapon), reinterpret_cast<void**>(&g_orig_exec_add_weapon), nullptr}, // card 267: ungated
+    {&offsets::APlayerCameraManager_execStartCameraFade, reinterpret_cast<void*>(&detour_c561_exec_start_fade), reinterpret_cast<void**>(&g_orig_c561_exec_start_fade), nullptr}, // card 561: ungated
+    {&offsets::APlayerCameraManager_execSetManualCameraFade, reinterpret_cast<void*>(&detour_c561_exec_manual_fade), reinterpret_cast<void**>(&g_orig_c561_exec_manual_fade), nullptr}, // card 561: ungated
+    {&offsets::APlayerCameraManager_StartCameraFade, reinterpret_cast<void*>(&detour_c561_start_fade), reinterpret_cast<void**>(&g_orig_c561_start_fade), nullptr}, // card 561: ungated
+    {&offsets::APlayerCameraManager_SetManualCameraFade, reinterpret_cast<void*>(&detour_c561_manual_fade), reinterpret_cast<void**>(&g_orig_c561_manual_fade), nullptr}, // card 561: ungated
+    {&offsets::USTAnimNotify_ScreenShake_Notify_Implementation, reinterpret_cast<void*>(&detour_c551_shake_notify), reinterpret_cast<void**>(&g_orig_c551_shake_notify), nullptr}, // card 551: ungated
+    {&offsets::ASTPlayerCharacter_Landed, reinterpret_cast<void*>(&detour_c584_landed), reinterpret_cast<void**>(&g_orig_c584_landed), nullptr}, // card 584 diagnostic: ungated
+    {&offsets::USTImpactGameplayCueNotify_ExecuteImpact, reinterpret_cast<void*>(&detour_c551_execute_impact), reinterpret_cast<void**>(&g_orig_c551_execute_impact), nullptr}, // card 551 b373: ungated
+    {&offsets::USTImpactGameplayCueNotify_PlayScreenShake, reinterpret_cast<void*>(&detour_c551_cue_shake), reinterpret_cast<void**>(&g_orig_c551_cue_shake), nullptr}, // card 551 b373
+    {&offsets::USTImpactGameplayCueNotify_PlayForceFeedback, reinterpret_cast<void*>(&detour_c551_cue_feedback), reinterpret_cast<void**>(&g_orig_c551_cue_feedback), nullptr}, // card 551 b373
+    {&offsets::USTImpactGameplayCueNotify_ApplyScreenEffect, reinterpret_cast<void*>(&detour_c551_cue_screen), reinterpret_cast<void**>(&g_orig_c551_cue_screen), nullptr}, // card 551 b373
+    {&offsets::USTCommonUtilityLibrary_StartCameraShake, reinterpret_cast<void*>(&detour_c551_start_shake), reinterpret_cast<void**>(&g_orig_c551_start_shake), nullptr}, // card 551 b378
     {&offsets::USTWeaponUtilityLibrary_execAddWeaponByTag, reinterpret_cast<void*>(&detour_exec_add_weapon_by_tag), reinterpret_cast<void**>(&g_orig_exec_add_weapon_by_tag), nullptr}, // card 267: ungated
     {&offsets::UADWeaponInventory_execGiveWeaponByClass, reinterpret_cast<void*>(&detour_exec_give_by_class), reinterpret_cast<void**>(&g_orig_exec_give_by_class), nullptr}, // card 267: ungated
     {&offsets::UADWeaponInventory_execGiveWeaponByInstance, reinterpret_cast<void*>(&detour_exec_give_by_instance), reinterpret_cast<void**>(&g_orig_exec_give_by_instance), &g_gate_diag},
@@ -3204,7 +3285,9 @@ const HookSpec kHooksUbw[] = {
     {&offsets::ASTFallZonesBase_RepositionPlayer, reinterpret_cast<void*>(&detour_c338_reposition), reinterpret_cast<void**>(&g_orig_c338_reposition)}, // card 338
     {&offsets::ASTFallZonesBase_EndReposition, reinterpret_cast<void*>(&detour_c338_end), reinterpret_cast<void**>(&g_orig_c338_end)}, // card 338
     {&offsets::AActor_DispatchBeginPlay, reinterpret_cast<void*>(&detour_c99_begin_play), reinterpret_cast<void**>(&g_orig_c99_begin_play)}, // card 130 item 13
+    {&offsets::UKismetSystemLibrary_SphereTraceSingleForObjects, reinterpret_cast<void*>(&detour_c582_trace), reinterpret_cast<void**>(&g_orig_c582_trace)}, // card 582 G3 b451 diag
     {&offsets::USTCombatUtilityLibrary_ApplyDamageFromImpactHitResult, reinterpret_cast<void*>(&detour_c74_damage), reinterpret_cast<void**>(&g_orig_c74_damage)},
+    {&offsets::USTCombatUtilityLibrary_ApplyDamageAtLocation, reinterpret_cast<void*>(&detour_c582_damage_at), reinterpret_cast<void**>(&g_orig_c582_damage_at)}, // card 582 G3
     {&offsets::UADTargetComponent_SelectPrimaryTarget, reinterpret_cast<void*>(&detour_c103_select), reinterpret_cast<void**>(&g_orig_c103_select)}, // card 103 log, card 122 scale
     {&offsets::UADTargetComponent_SetPrimaryTarget, reinterpret_cast<void*>(&detour_c103_set), reinterpret_cast<void**>(&g_orig_c103_set)},
     {&offsets::USTEncounterWaveBase_FactorDifficultyIntoWaveBudget, reinterpret_cast<void*>(&detour_c111_factor), reinterpret_cast<void**>(&g_orig_c111_factor)},
@@ -3244,6 +3327,7 @@ const HookSpec kHooksUbw[] = {
     {&offsets::UADSkeletalAnimatorComponent_StartAnimationSequenceFixedTime, reinterpret_cast<void*>(&detour_c104_start_fixed), reinterpret_cast<void**>(&g_orig_c104_start_fixed)},
     {&offsets::USTAbilityTask_PlayAnimation_DoAction, reinterpret_cast<void*>(&detour_c104_do_action), reinterpret_cast<void**>(&g_orig_c74_anim[1])},
     {&offsets::USTAbilityTask_PlayAnimation_AnimationEnded, reinterpret_cast<void*>(&detour_c104_anim_ended), reinterpret_cast<void**>(&g_orig_c74_anim[2])},
+    {&offsets::UADAnimNotifyWrapper_Notify, reinterpret_cast<void*>(&detour_c569_wrapper_notify), reinterpret_cast<void**>(&g_orig_c569_wrapper_notify)}, // card 569 log
     {&offsets::ASTSupportFlare_RunLZQuery, reinterpret_cast<void*>(&detour_c104_flare_run), reinterpret_cast<void**>(&g_orig_c104_flare[0])},
     {&offsets::ASTSupportFlare_ActivateFlare, reinterpret_cast<void*>(&detour_c104_flare_activate), reinterpret_cast<void**>(&g_orig_c104_flare[1])},
     {&offsets::ASTSupportFlare_BeginPlay, reinterpret_cast<void*>(&detour_c104_flare_begin), reinterpret_cast<void**>(&g_orig_c104_flare_begin)}, // card 249
@@ -3326,7 +3410,7 @@ const HookSpec kHooksUbw[] = {
     {&offsets::ASTNonPlayableCharacterBase_TryPlayAnimationSequence, reinterpret_cast<void*>(&detour_c41_try_play), reinterpret_cast<void**>(&g_orig_c41_try_play)},
     {&offsets::ASTNonPlayableCharacterBase_TryPlayAnimationAgumentedByTime, reinterpret_cast<void*>(&detour_c41_try_timed), reinterpret_cast<void**>(&g_orig_c41_try_timed), &g_gate_c41},
     {&offsets::ASTNonPlayableCharacterBase_ProcessFrameAction, reinterpret_cast<void*>(&detour_c41_frame), reinterpret_cast<void**>(&g_orig_c41_frame), &g_gate_c41},
-    {&offsets::ASTNonPlayableCharacterBase_AnimationEnded, reinterpret_cast<void*>(&detour_c41_ended), reinterpret_cast<void**>(&g_orig_c41_ended), &g_gate_c41},
+    {&offsets::ASTNonPlayableCharacterBase_AnimationEnded, reinterpret_cast<void*>(&detour_c41_ended), reinterpret_cast<void**>(&g_orig_c41_ended)}, // card 565: always (client resume)
     {&offsets::USTAttackComponent_OnAnimationEnd, reinterpret_cast<void*>(&detour_c41_attack_end), reinterpret_cast<void**>(&g_orig_c41_attack_end), &g_gate_c41},
     {&offsets::USTAttackActionPlayAnimation_OnAnimationEnd, reinterpret_cast<void*>(&detour_c41_action_end), reinterpret_cast<void**>(&g_orig_c41_action_end), &g_gate_c41},
     {&offsets::UADDamageHandler_Process, reinterpret_cast<void*>(&detour_c40_process), reinterpret_cast<void**>(&g_orig_c40_process)}, // card 155: ungated (player hits); the enemy trace keeps g_c40_trace
@@ -3359,6 +3443,12 @@ const HookSpec kHooksUbw[] = {
     {&offsets::AADPickupBase_Pickup, reinterpret_cast<void*>(&detour_c50_pickup), reinterpret_cast<void**>(&g_orig_c50_pickup), &g_gate_diag},
     {&offsets::AADPickupBase_DisablePickup, reinterpret_cast<void*>(&detour_c50_disable_pickup), reinterpret_cast<void**>(&g_orig_c50_disable_pickup)},
     {&offsets::AADPickupBase_Pickup_Implementation, reinterpret_cast<void*>(&detour_c254_pickup_implementation), reinterpret_cast<void**>(&g_orig_c254_pickup_implementation)}, // card 254
+    {&offsets::ASTAmmoPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c570_ammo_pickup), reinterpret_cast<void**>(&g_orig_c570_ammo_pickup)}, // card 570
+    {&offsets::ASTItemPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c570_item_pickup), reinterpret_cast<void**>(&g_orig_c570_item_pickup)}, // card 570
+    {&offsets::ASTArmourPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c570_armour_pickup), reinterpret_cast<void**>(&g_orig_c570_armour_pickup)}, // card 570
+    {&offsets::ASTHealthPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c570_health_pickup), reinterpret_cast<void**>(&g_orig_c570_health_pickup)}, // card 570
+    {&offsets::ASTTacticalSupportPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c570_tactical_pickup), reinterpret_cast<void**>(&g_orig_c570_tactical_pickup)}, // card 570
+    {&offsets::AADPickupBase_GetOverlappingCharacter, reinterpret_cast<void*>(&detour_c570_overlapping), reinterpret_cast<void**>(&g_orig_c570_overlapping)}, // card 570
     {&offsets::ASTSecretPickup_Pickup_Implementation, reinterpret_cast<void*>(&detour_c289_secret_pickup), reinterpret_cast<void**>(&g_orig_c289_secret_pickup)}, // card 289
     {&offsets::AADPickupBase_OnUpdatePickupStatus, reinterpret_cast<void*>(&detour_c145_update_status), reinterpret_cast<void**>(&g_orig_c145_update_status)}, // card 145
     {&offsets::UEngine_HandleNetworkFailure, reinterpret_cast<void*>(&detour_handle_network_failure),
@@ -3486,6 +3576,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::UMovementComponent_StopMovementImmediately, reinterpret_cast<void**>(&g_c317_stop_movement)}, // card 317
     {&offsets::UMovementComponent_Deactivate, reinterpret_cast<void**>(&g_c317_deactivate)},                   // card 317
     {&offsets::UPrimitiveComponent_PutRigidBodyToSleep, reinterpret_cast<void**>(&g_prim_sleep)},
+    {&offsets::UPrimitiveComponent_WakeRigidBody, reinterpret_cast<void**>(&g_prim_wake)}, // card 556
     {&offsets::USkeletalMeshComponent_SetAllPhysicsLinearVelocity, reinterpret_cast<void**>(&g_pose_mesh_linear)},
     {&offsets::USkeletalMeshComponent_SetAllPhysicsAngularVelocityInRadians, reinterpret_cast<void**>(&g_pose_mesh_angular)},
     {&offsets::USkeletalMeshComponent_SetEnableGravity, reinterpret_cast<void**>(&g_pose_mesh_gravity)}, // card 152 r2
@@ -3520,6 +3611,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::UAnimInstance_Montage_GetPosition, reinterpret_cast<void**>(&g_c169_montage_position)},
     {&offsets::UADInputDetectionSubsystem_CurrentInputGamepad, reinterpret_cast<void**>(&g_c160_gamepad)},
     {&offsets::ASTPlayerCharacterMI_StaticClass, reinterpret_cast<void**>(&g_player_mi_class)},
+    {&offsets::UMaterialInterface_StaticClass, reinterpret_cast<void**>(&g_c566_material_class)}, // card 566 b378
     {&offsets::ASTPlayerCharacterBug_StartDeath, reinterpret_cast<void**>(&g_bug_start_death)}, // card 196
     {&offsets::USTAttributeSet_PlayerCamera_StaticClass, reinterpret_cast<void**>(&g_camera_set_class)},
     {&offsets::USTAttributeSet_Movement_StaticClass, reinterpret_cast<void**>(&g_movement_set_class)},
@@ -3554,6 +3646,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::UADWeaponInventory_GetWeaponInstanceFromClass, reinterpret_cast<void**>(&g_weapon_from_class)},
     {&offsets::USTWeaponUtilityLibrary_DoesWeaponAmmunitionTypeUseMagazine, reinterpret_cast<void**>(&g_ammo_uses_magazine)},
     {&offsets::USTWeaponUtilityLibrary_SetEquippedAmmunition, reinterpret_cast<void**>(&g_set_equipped_ammo)},
+    {&offsets::USTWeaponInventory_BroadcastStatusUpdate, reinterpret_cast<void**>(&g_broadcast_weapon_status)}, // card 574
     {&offsets::USTWeaponUtilityLibrary_AddAmmunition, reinterpret_cast<void**>(&g_add_ammunition)},
     {&offsets::UAbilitySystemComponent_GetGameplayTagCount, reinterpret_cast<void**>(&g_c310_tag_count)}, // card 310
     {&offsets::UADWeaponInventory_GetWeaponIndexFromTag, reinterpret_cast<void**>(&g_weapon_index_from_tag)},
@@ -3574,6 +3667,7 @@ const CallSpec kCallsUbw[] = {
     {&offsets::USTItemInventory_AddItemByDefinition, reinterpret_cast<void**>(&g_c73_add_item)},   // card 073
     {&offsets::USTItemInventory_FindItemByDefinition, reinterpret_cast<void**>(&g_c73_find_item)}, // card 073
     {&offsets::UADProjectilePooler_SpawnProjectile, reinterpret_cast<void**>(&g_c74_spawn_fn)},       // card 074
+    {&offsets::FGameplayCueParameters_GetEffectCauser, reinterpret_cast<void**>(&g_c551_cue_causer)},     // card 551 b380
     {&offsets::UADAbilitySystemComponent_RemoveInputTagBindingForAbility, reinterpret_cast<void**>(&g_c73_unbind)}, // card 073
     {&offsets::FGameplayEffectSpec_GetStackCount, reinterpret_cast<void**>(&g_get_stack_count)},
     // card 029: weapon, mech and turret audit
@@ -3672,7 +3766,6 @@ const CallSpec kCallsUbw[] = {
     {&offsets::USTGameInstance_GetCurrentChapterKillZ, reinterpret_cast<void**>(&g_get_chapter_kill_z)}, // card 046
     {&offsets::UADHealthUtilityLibrary_DealDamageTags, reinterpret_cast<void**>(&g_health_deal_damage)}, // card 048
     {&offsets::USTSaveComponent_GetSaveId, reinterpret_cast<void**>(&g_get_save_id)}, // card 048
-    {&offsets::USTSaveComponent_StaticClass, reinterpret_cast<void**>(&g_c531_static_class)}, // card 531
     {&offsets::IEnhancedInputSubsystemInterface_RemoveMappingContext, reinterpret_cast<void**>(&g_remove_mapping_context)}, // card 048
     {&offsets::UWorld_GetSubsystem_LevelObjective, reinterpret_cast<void**>(&g_c49_get_subsystem)}, // card 049
     {&offsets::USTLevelObjectiveSubsystem_DoesObjectiveExistForID, reinterpret_cast<void**>(&g_c49_exists)}, // card 049
@@ -3705,6 +3798,8 @@ const CallSpec kCallsUbw[] = {
     {&offsets::AADWeapon_StaticClass, reinterpret_cast<void**>(&g_c50_weapon_class)}, // card 050
     {&offsets::UADInteractableInterface_StaticClass, reinterpret_cast<void**>(&g_c50_interactable_class)}, // card 050
     {&offsets::ASTSwitch_StaticClass, reinterpret_cast<void**>(&g_c54_switch_class)}, // card 054
+    {&offsets::ASTSwitch_OnInteraction, reinterpret_cast<void**>(&g_c602_on_interaction)}, // card 602
+    {&offsets::UAudioComponent_Play, reinterpret_cast<void**>(&g_c604_play)},             // card 604
     {&offsets::UADLevelTriggerComponent_StaticClass, reinterpret_cast<void**>(&g_c65_trigger_class)}, // card 065
     {&offsets::ASTZiplinePoint_StaticClass, reinterpret_cast<void**>(&g_c54_zipline_class)}, // card 054
     {&offsets::ASTSatchelPlacementSite_StaticClass, reinterpret_cast<void**>(&g_c54_satchel_site_class)}, // card 054
@@ -3776,6 +3871,7 @@ config::AutoInput g_init_autoinput{};
 bool init_after_resolve(uint8_t* base, const IMAGE_NT_HEADERS64* nt) {
     (void)nt;
     install_crash_trace(); // card 118: first, so a fault in the rest of start-up is traced too
+    perf_link_init();      // card 578: ubwperf.dll reads its own switches; read_card_flags sets the card 461 gate from it
     read_card_flags();
     c52_init(g_travel.enabled);
     autoinput::init({base, offsets::APlayerController_InputKey.rva, g_get_game_world, own_pc,
@@ -3809,8 +3905,12 @@ bool init(const ue::config::Travel& travel, bool client_game_only, const config:
     set_engine_steps(kEngineSteps);
     set_ops(chan_ops());
     const ue::hooktable::InstallSet game{kHooksUbw, kCallsUbw};
-    return ue::install(game, offsets::kPdbGuid, offsets::kPdbAge,
-                       {.after_resolve = init_after_resolve, .before_hooks = install_card_logs});
+    const bool ok = ue::install(game, offsets::kPdbGuid, offsets::kPdbAge,
+                                {.after_resolve = init_after_resolve, .before_hooks = install_card_logs});
+    if (ok) {
+        perf_link_install(); // card 578: ubwperf.dll hooks its own rows after ours (distinct targets)
+    }
+    return ok;
 }
 
 } // namespace ubw

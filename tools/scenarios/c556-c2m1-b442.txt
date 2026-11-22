@@ -1,0 +1,78 @@
+# Card 556 fix proof (resupply rack pickups, Level 1, self end, take set) on b442 dwmapi 5b3e5baa529670bb + ubwperf
+# 2e9b24ea1183048c, FED_C2M1, FAST, lane 2, one run c556b442a. Same steps as c556-c2m1-b441.txt.
+# b442: host execOnHit skip (no freeze and attach on a rack, pod or killable crate, or on a pickup still simulating or
+# attached to one), host wake of each leftover root after the Destroy loop's override(1) (", woke N" on the row),
+# released-pickup hit rows, rack damage rows, and the end path row with damage, Duration and causer fields.
+# Prediction (card 556 b442, written before launch):
+# 1. Every leftover's state 1 override row reads woke 0 or 1 (never -1), and gets a card287 moving sample within
+#    100 ms of the destroy, then rests at ground z (about 7690 to 7720) on the host.
+# 2. The client copy of each leftover rests within 15 uu of the host's; digest mismatches 0.
+# 3. Any `skipped rack attach` row is followed by a fall (moving sample, ground rest) of that pickup. No shelf contact:
+#    the run is the no-regression proof (no skip rows, falls as in b441).
+# 4. `OnHit parms: OtherActor at N` reads without WARN; no released pickup row reads froze 1 with a holder parent.
+# 5. No new WARN class against c556b441a (host WARN 4, client WARN 9).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c556-c2m1-b442.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c556b442a 900
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 5b3e5baa529670bb
+void unless client dll 5b3e5baa529670bb
+host wait state map=FED_C2M1 timeout=300 void
+client wait state map=FED_C2M1 timeout=180
+host wait log "card423: host/standalone BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+client wait log "card423: client BP_DestroyableActor_Base_C found, IsDestroyed at \+0x[0-9A-F]+" timeout=60
+host wait log "card320: host t=\d+ hold waits for client slot \d+ \(.*\), clients 1" timeout=120
+try host ui continue
+host wait log "card320: host t=\d+ confirm from host" timeout=30
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client ui continue
+host wait log "card320: host t=\d+ confirm from client slot \d+" timeout=30
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+host wait log "playlog: host t=\d+ clock 1 " timeout=30
+failsoft
+host warp actor point 173992 23778 7757
+host warp client point 175269 23536 7787
+client wait near 175269 23536 7787 300 timeout=10
+host clear 3000 kill
+host resupplylevel 1
+client resupplylevel 1
+host look point 174392 23778 7700
+host shot c556-b442-host-before
+# --- the host calls Resupply (charge, then key Four: the flare throw runs from the key alone, c559b371b)
+host mark
+client mark
+host charge 0 20000 1
+host key Four
+host wait log "card104: host t=\d+ host own DoAction, key Flare_Throw" since-mark timeout=5
+host wait log "card098: host spawn BP_ResupplyRack_Level1_C " since-mark timeout=40
+# --- the client takes the Frag, the medkit and one MoritaSmall by Use (the playtest take set)
+client pickup BP_GrenadeAmmoPickup_Frag_C 600
+client key E
+client pickup BP_HealthPickup_Medium_C 600
+client key E
+client pickup BP_AmmoPickup_MoritaSmall_C 600
+client key E
+# --- self end: no kill command
+client wait log "card556: client t=\d+ resupply rack \S+ destroyed at" since-mark timeout=30
+host wait log "card556: host t=\d+ rack \S+ end: " since-mark timeout=10
+host wait log "card556: host t=\d+ resupply rack \S+ destroyed at \((-?\d+), (-?\d+), (-?\d+)\)" since-mark timeout=2
+host clear 3000 kill
+host warp actor point {g1-450} {g2} {g3+60}
+host warp client point {g1+450} {g2} {g3+60}
+client wait near {g1+450} {g2} {g3+60} 300 timeout=5
+host look point {g1} {g2} {g3-100}
+client look point {g1} {g2} {g3-100}
+host shot c556-b442-host-dest
+client shot c556-b442-client-dest
+host wait log "card556: host t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+client wait log "card556: client t=\d+ rack pickup .* 2 s after the rack destroy" since-mark timeout=10
+host shot c556-b442-host-2s
+client shot c556-b442-client-2s
+sleep 3
+host shot c556-b442-host-5s
+client shot c556-b442-client-5s
+host quit
+client quit

@@ -1,6 +1,6 @@
 # Card 202: The client does not show a Splats_MS splat twice
 
-Status: queued 2026-11-12, split from card 148 ("Out of scope"). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, split from card 148 ("Out of scope"). Budget: three runs. Static first.
 
 Read: `docs/cards/done/148-gib-sync-client-apply.md` (Trace, Splats_MS lines), `mod/src/ubw/fx_c136_net.cpp`
 (`c136_client_own`).

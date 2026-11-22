@@ -1,6 +1,6 @@
 # Card 402: every class lookup walks all 28000 level actors (0.7 ms a walk, 7 to 15 walks a second)
 
-Status: open, measured, design written, not coded. Class: card 330 (per-frame cost). Not a play blocker.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, measured, design written, not coded. Class: card 330 (per-frame cost). Not a play blocker.
 
 ## Cost (seen, run `c399b87f`, b87, `card330: <side> map FED_C5M1 collect by caller`)
 

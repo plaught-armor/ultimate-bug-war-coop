@@ -1,6 +1,6 @@
 # Card 153: The host panel shows the external address and opens the port by UPnP
 
-Status: queued 2026-11-08 (user request), after the playtest. Budget: three runs. Play feature, host only.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08 (user request), after the playtest. Budget: three runs. Play feature, host only.
 
 Read: card 052 (co-op panel, `ubw::lobby::local_ipv4`), card 045 (listen URL and port), docs/PLAYTEST.md "Play".
 

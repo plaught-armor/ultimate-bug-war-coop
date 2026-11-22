@@ -1,6 +1,6 @@
 # Card 284: objective-driven test steps
 
-Status: senior review items 1-7 and step 5e coded (not compiled: playtest running). No run before the playtest; the play DLL (`5e2ce00acad8efa3`) does not change.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: senior review items 1-7 and step 5e coded (not compiled: playtest running). No run before the playtest; the play DLL (`5e2ce00acad8efa3`) does not change.
 
 ## Why
 

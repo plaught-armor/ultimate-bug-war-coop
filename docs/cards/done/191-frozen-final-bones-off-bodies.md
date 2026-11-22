@@ -1,6 +1,6 @@
 # Card 191: A frozen final leaves the bones on the bodies when the game's ragdoll start was blocked
 
-Status: queued 2026-11-11, split from card 186 (one goal per card). Budget: three runs. Static first.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, split from card 186 (one goal per card). Budget: three runs. Static first.
 
 Read: `docs/cards/done/186-stream-final-rows-exact.md` (r2 outcome and senior review), card 146 (the block of the
 game's ragdoll start on a host-posed guid), `mod/src/ubw/pose_c132.cpp` (`pose_try_apply`, `pose_freeze_step`,

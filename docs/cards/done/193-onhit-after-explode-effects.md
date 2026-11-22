@@ -1,6 +1,6 @@
 # Card 193: An OnHit with effects after GrenadeExplode reaches the client
 
-Status: queued 2026-11-12, from c177-r1c (card 188 made this line a WARN only when the hit carries effects; it
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from c177-r1c (card 188 made this line a WARN only when the hit carries effects; it
 now fired with effects). Budget: three runs. Static first.
 
 ## Why

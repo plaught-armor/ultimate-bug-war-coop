@@ -1,6 +1,6 @@
 # Card 223: Hits applied to a late joiner land on copies up to 1804 uu from the host's bug
 
-Status: queued 2026-11-12, from card 135 run c135-r2 (client joined FED_C2M1 88 s into the LZ fight).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12, from card 135 run c135-r2 (client joined FED_C2M1 88 s into the LZ fight).
 
 ## Seen
 

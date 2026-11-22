@@ -1,7 +1,7 @@
 #pragma once
 
 // The hook-table machinery: PE checks, symbol resolution by RVA, and MinHook install over sets of table
-// rows. The engine set (kHooksUe, kCallsUe) lives in hooktable.cpp; the game set is passed to ue::install.
+// rows. The engine set (kHooksUe, kCallsUe) lives in install.cpp (co-op only; ubwperf.dll links this machinery, card 578); the game set is passed to ue::install.
 
 #include "offsets.generated.h"
 
@@ -38,6 +38,8 @@ const IMAGE_NT_HEADERS64* nt_headers(const uint8_t* base);
 bool image_matches_pdb(const uint8_t* base, const IMAGE_NT_HEADERS64* nt, const uint8_t (&guid)[16], uint32_t age);
 // Resolves an RVA to an address, requiring it to land inside an executable section.
 void* code_address(uint8_t* base, const IMAGE_NT_HEADERS64* nt, const ubw::offsets::Symbol& sym);
+// Base and PE64 headers of the host exe, or false (logged FATAL).
+bool exe_image(uint8_t*& base, const IMAGE_NT_HEADERS64*& nt);
 // MH_CreateHook then MH_EnableHook; logs each failure, and the hooked address on success.
 bool create_and_enable(void* target, void* detour, void** original, const char* name);
 // Exe-relative address of `p`, or 0 when it lies outside the exe image (e.g. in this mod).
@@ -61,14 +63,16 @@ struct InstallSteps {
 extern bool g_gate_diag;
 
 bool hook_gated_off(const HookSpec& h);
-// Resolves every hook target (into targets, one per hook row, sets in order) and every call slot before
-// anything is patched.
-bool resolve_all(uint8_t* base, const IMAGE_NT_HEADERS64* nt, std::span<const InstallSet> sets,
-                 std::span<void*> targets);
+// Checks every hook target resolves and fills every call slot before anything is patched. No row table is kept:
+// install_hooks resolves each target again (base + RVA), so the row count has no fixed cap.
+bool resolve_all(uint8_t* base, const IMAGE_NT_HEADERS64* nt, std::span<const InstallSet> sets);
 // One line with the count of gated-off hooks over all sets, then their names, wrapped to fit a log line.
 void log_skipped_hooks(std::span<const InstallSet> sets, uint32_t skipped);
 // Creates and enables every row whose gate is on, sets in order; the rest stay resolved but unhooked.
-bool install_hooks(std::span<const InstallSet> sets, std::span<void* const> targets);
+bool install_hooks(uint8_t* base, const IMAGE_NT_HEADERS64* nt, std::span<const InstallSet> sets);
+// Card 571 (UBWCOOP_C571=1): one row with the hook calls since the last row, total and per second, and the top 20
+// rows by count. No row when the counter is off.
+void log_hook_counts(const char* side, unsigned long long now, unsigned long long window_ms);
 
 } // namespace ue::hooktable
 

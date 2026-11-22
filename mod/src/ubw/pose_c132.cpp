@@ -4984,27 +4984,94 @@ bool c207_pose_game_unfreeze(void* mesh, uintptr_t caller_rva) {
     return true;
 }
 
+namespace {
+
+// Card 567 (diagnostic): the client pose step's cost by part, so the next cut targets the measured part. QPC per
+// part, one row every kC567SplitMs with the row counts the parts walked.
+enum C567Part : int32_t { kC567Freeze, kC567Arrival, kC567Sprite, kC567Rest, kC567Wait, kC567Stream, kC567Step, kC567Parts };
+constexpr ULONGLONG kC567SplitMs = 30000;
+struct C567Split {
+    int64_t qpc[kC567Parts];
+    uint64_t calls;
+    uint64_t pose_rows; // g_pose.n summed over calls
+    uint64_t arrivals;  // g_arrive.n summed over calls
+    ULONGLONG next_ms;
+};
+C567Split g_c567 = {};
+
+int64_t c567_now() {
+    LARGE_INTEGER t;
+    QueryPerformanceCounter(&t);
+    return t.QuadPart;
+}
+
+void c567_add(C567Part part, int64_t& t) {
+    const int64_t now = c567_now();
+    g_c567.qpc[part] += now - t;
+    t = now;
+}
+
+void c567_report(ULONGLONG now) {
+    if (g_c567.next_ms == 0) {
+        g_c567.next_ms = now + kC567SplitMs;
+        return;
+    }
+    if (now < g_c567.next_ms || g_c567.calls == 0) {
+        return;
+    }
+    LARGE_INTEGER f;
+    QueryPerformanceFrequency(&f);
+    const double ms = 1000.0 / static_cast<double>(f.QuadPart);
+    const auto* const q = g_c567.qpc;
+    const double n = static_cast<double>(g_c567.calls);
+    log::line("card567: client pose step split over %llu ticks (ms total): freeze %.1f, arrival %.1f, sprite wait "
+              "%.1f, rest check %.1f, ragdoll wait %.1f, stream %.1f, 250 ms step %.1f; mean pose rows %.1f, mean "
+              "arrivals %.1f",
+              static_cast<unsigned long long>(g_c567.calls), q[kC567Freeze] * ms, q[kC567Arrival] * ms,
+              q[kC567Sprite] * ms, q[kC567Rest] * ms, q[kC567Wait] * ms, q[kC567Stream] * ms, q[kC567Step] * ms,
+              static_cast<double>(g_c567.pose_rows) / n, static_cast<double>(g_c567.arrivals) / n);
+    g_c567 = C567Split{};
+    g_c567.next_ms = now + kC567SplitMs;
+}
+
+} // namespace
+
 void c132_pose_step(void* engine) {
     const C252Timer timer(C252Class::PoseStep); // card 252 step 1b: pose apply retries and the stream tick
     const ULONGLONG now = GetTickCount64();
     g_sprite.side = side(); // card 177: the map's side for its totals line
     ++g_pose_frame;
+    int64_t t = g_client_session ? c567_now() : 0;
+    if (g_client_session) {
+        ++g_c567.calls;
+        g_c567.pose_rows += static_cast<uint64_t>(g_pose.n);
+        g_c567.arrivals += static_cast<uint64_t>(g_arrive.n);
+    }
     if (g_client_session && g_pose.n != 0 && pose_fns()) {
         pose_freeze_tick(); // per tick, before this tick's applies: rows posed on an earlier tick
+        c567_add(kC567Freeze, t);
     }
     if (g_client_session && g_arrive.n != 0 && pose_fns()) {
         arrival_tick(now); // per tick: the hidden ticks are counted and a ready row is applied at once
+        c567_add(kC567Arrival, t);
     }
     if (g_client_session && g_sprite.waits_n != 0) {
         sprite_wait_tick(now); // card 177, per tick: a sprite arrival's row applies at once
+        c567_add(kC567Sprite, t);
     }
     if (g_client_session && g_rest.checks_due > 0) {
         rest_check_tick(now); // card 269: the read-back one second after a rest play
+        c567_add(kC567Rest, t);
     }
     if (g_client_session && pose_fns()) { // card 152, per tick: the local PC, held starts, streamed copies
         c31_weak_set(g_pose_pc, g_get_player_controller(g_get_game_world(engine), 0));
         pose_wait_tick(now);
+        c567_add(kC567Wait, t);
         pose_stream_tick(now);
+        c567_add(kC567Stream, t);
+    }
+    if (g_client_session) {
+        c567_report(now);
     }
     if (now < g_pose.next_step || !pose_fns()) {
         return;
@@ -5012,6 +5079,7 @@ void c132_pose_step(void* engine) {
     g_pose.next_step = now + kPoseStepMs;
     if (g_client_session) {
         pose_client_step(now);
+        c567_add(kC567Step, t);
         return;
     }
     const void* const world = g_get_game_world(engine);

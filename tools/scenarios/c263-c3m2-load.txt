@@ -7,13 +7,18 @@
 # Predictions (b309, written before the run): spawned rows 150 (`card125: host spawned BP_AI_WarriorBug_C`), client
 # `window peak` over 150 in the first lift window; client frame windows >= 500 frames (60 fps cap) if the load holds;
 # mod ms per window under 10 percent; digest mismatches 0. A frame window under 500 is a finding, not a void.
-# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2 DEPLOY=1
+# Card 517 run c263L441 (b441 dwmapi e69c630445b89052, c517_slot class cache in digest_c132.cpp), with UBWCOOP_C386=1
+# on both sides. Predictions (card 517 "C386 split read and fix"): card386 class share under 10 percent (c263L370: 36
+# to 43), host digest build 3 to 5 ms (5.3 to 8.1); entries about 4,713 to 4,760 and classes 145 to 148 per round;
+# card164 server-only counts unchanged (STNavModifierVolume:23076); client rounds mismatches 0.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
 #      SCENARIO=tools/scenarios/c263-c3m2-load.txt FAST=1
-#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1"
-#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1" tools/run_pair.sh c263L 1200
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C132_FX=1 UBWCOOP_C386=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C132_FX=1 UBWCOOP_C386=1" tools/run_pair.sh c263L441 1200
 # Expected wall: about 5 min.
-void unless host dll e62e76f63a05d88f
-void unless client dll e62e76f63a05d88f
+# fire test: the 6 load rounds fight the 150 spawned warriors by weapon fire; that fire is the 4-player load.
+void unless host dll e69c630445b89052
+void unless client dll e69c630445b89052
 failsoft
 host wait state map=FED_C3M2 timeout=240 void
 client wait state map=FED_C3M2 timeout=180 void

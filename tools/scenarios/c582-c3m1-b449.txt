@@ -1,0 +1,42 @@
+# b449 run (card 582 G3 melee, card 518 a/b sizing): FED_C3M1. Preamble from c595-c3m1-b447.txt.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-85).
+# Predictions: docs/cards/582-blueprint-player-zero-split-audit.md "G3 melee steps" (A, B) and "Prediction C".
+# Sizing: the host logs the card136/card518 totals rows every 60 s ("(60 s)"), with the card 518 a keyed sound row.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c582-c3m1-b449.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c582b449a 600
+voidsoft
+void unless host dll d7867a1f250714d9
+void unless client dll d7867a1f250714d9
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+# --- card 582 G3: melee on the Gigantic door. Host first (control), then the client.
+host clear 4000 kill
+host mark
+host warp actor BP_Door_Sliding_Gigantic_C 200
+host look actor BP_Door_Sliding_Gigantic_C 0 bounds
+host key V
+try host wait log "card455: host t=\d+ attached sound MS_EMIT_Human_Building_Generic_Damaged on BP_PlayerCharacterMI_C \(not a server copy" since-mark timeout=5
+host shot c582-g3-melee-host
+sleep 2
+host mark
+client mark
+host warp client BP_Door_Sliding_Gigantic_C 200
+client look actor BP_Door_Sliding_Gigantic_C 0 bounds
+client key V
+try host wait log "card455: host t=\d+ attached sound MS_EMIT_Human_Building_Generic_Damaged on BP_PlayerCharacterMI_C \(server copy" since-mark timeout=5
+try client wait log "card455: client t=\d+ played attached sound .*MS_EMIT_Human_Building_Generic_Damaged" since-mark timeout=6
+client shot c582-g3-melee-client
+host clear 4000 kill
+# --- card 518 b: at least one 60 s totals row with the card 518 a row before the pair ends.
+host wait log "card518: host fx keyed sound rows sent to a pc whose pawn is past the 15000 uu net cull from the event \(60 s\)" timeout=70

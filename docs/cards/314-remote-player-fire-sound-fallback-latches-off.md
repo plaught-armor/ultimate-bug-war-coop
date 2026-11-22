@@ -1,4 +1,5 @@
 # 314 The host hears the client's weapon fire "like my own gun": the fire fallback attenuation fails once and stays off
+Status 2026-11-22: fixed and proved in b223, open only for the hearing check in a playtest.
 
 Playtest 2026-11-13, user answer 2026-11-14: the other player's Laser Morita fire sounded "like my own gun", full
 level at any distance. User rule: a player hears another player's sounds from that player's position, fading with

@@ -1,6 +1,6 @@
 # Card 226: Host pace queue backs up for 30 s when the host runs at low frame rate
 
-Status: queued 2026-11-12 (after the playtest), found by card 127 run c127-c1m1. Static trace first. Budget: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-12 (after the playtest), found by card 127 run c127-c1m1. Static trace first. Budget: three runs.
 
 ## What was seen
 

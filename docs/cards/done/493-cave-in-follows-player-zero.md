@@ -1,6 +1,6 @@
 # 493: FED_C5M2 cave-in blast follows player 0 only (card 301 class G)
 
-Status: open (written 2026-11-18 14:50, senior). Traced static 2026-11-18; batch, no run of its own.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-18 14:50, senior). Traced static 2026-11-18; batch, no run of its own.
 
 ## Finding
 

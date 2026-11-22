@@ -1,6 +1,6 @@
 # 432 — Client objective replay costs about 1 ms per row; the host repeats unchanged visibility rows
 
-Opened 2026-11-16 by the senior from the efficiency audit (card 329 method: log numbers first).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 by the senior from the efficiency audit (card 329 method: log numbers first).
 
 ## Measured (c423b127b, FED_C2M1, client `card330 ... recv (outside mod total)` rows)
 

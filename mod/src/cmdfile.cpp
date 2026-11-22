@@ -23,6 +23,7 @@ constexpr uint32_t kMaxTokens = 7;
 constexpr double kMaxCoord = 1.0e7;   // goto: |x|, |y|, |z| ceiling (uu)
 constexpr double kMaxChargeSlot = 3.0; // charge: highest slot index (card 106)
 constexpr double kMaxCharge = 1.0e6;   // charge: value ceiling (card 106)
+constexpr double kMaxResupplyLevel = 3.0; // resupplylevel: the Blueprint steps ResupplyLevel while below 3 (card 491)
 constexpr float kMinRadius = 10.0f;   // goto radius floor and ceiling (uu)
 constexpr float kMaxRadius = 5000.0f;
 constexpr double kMaxYaw = 720.0;     // look: |yaw| ceiling (degrees)
@@ -492,6 +493,11 @@ bool parse_tokens(const Tokens& k, Cmd* c, const char** why) {
         return parse_double(k.t[1 + o], kMaxChargeSlot, &c->at[0]) && c->at[0] >= 0.0 &&
                parse_double(k.t[2 + o], kMaxCharge, &c->at[1]) && c->at[1] >= 0.0;
     }
+    if (strcmp(op, "resupplylevel") == 0) { // card 556: `resupplylevel <n>`, the own pawn's ResupplyLevel (test only)
+        c->op = Op::ResupplyLevel;
+        *why = "resupplylevel takes a level 0 to 3";
+        return k.n == 2 && parse_double(k.t[1], kMaxResupplyLevel, &c->at[0]) && c->at[0] >= 0.0;
+    }
     if (strcmp(op, "ui") == 0) {
         c->op = Op::Ui;
         *why = "ui takes continue or click <function name prefix>";
@@ -534,6 +540,30 @@ bool parse_tokens(const Tokens& k, Cmd* c, const char** why) {
         for (uint32_t i = 1; i < k.n; ++i) {
             const size_t len = strnlen(k.t[i], kActorChars);
             if (!valid_name(k.t[i], kActorChars, false) || at + len + (i > 1 ? 1 : 0) >= kActorChars) {
+                return false;
+            }
+            if (i > 1) {
+                c->actor[at++] = ' ';
+            }
+            memcpy(c->actor + at, k.t[i], len);
+            at += len;
+        }
+        c->actor[at] = '\0';
+        return at > 0;
+    }
+    if (strcmp(op, "console") == 0) { // card 573, test only: `console <word> [<word> ...]`, joined by single spaces
+        c->op = Op::Console;
+        *why = "console takes 1-6 words of [A-Za-z0-9_.=-], 63 chars at most";
+        size_t at = 0;
+        for (uint32_t i = 1; i < k.n; ++i) {
+            const size_t len = strnlen(k.t[i], kActorChars);
+            for (size_t j = 0; j < len; ++j) {
+                const char ch = k.t[i][j];
+                if (!name_char(ch, true) && ch != '.' && ch != '=') {
+                    return false;
+                }
+            }
+            if (len == 0 || at + len + (i > 1 ? 1 : 0) >= kActorChars) {
                 return false;
             }
             if (i > 1) {

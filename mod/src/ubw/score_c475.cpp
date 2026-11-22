@@ -41,6 +41,10 @@ constexpr size_t kC475ParmText = 0x8;
 constexpr size_t kC475TextBytes = 0x10;
 constexpr char kC475Untagged[] = "-";          // the wire name of the untagged rest
 constexpr char kC475PopupClass[] = "WB_Fed_Score_Log_C";
+// Card 581: USTTacticalSupportComponent's binding. The host's TacCharge frame (card 104) already carries the charge
+// that a host-only add gave, so calling it here added the same amount twice (c372b404a: the host sent TacCharge
+// 12000 with a +2500 FedScore, the settle then broadcast the 2500, and the client held 14500 against the host's 12000).
+constexpr char kC475ChargeFunction[] = "HandleFedScoreUpdate";
 
 struct C475Row {
     uint64_t tag;         // FName on this side; 0 for the untagged rest
@@ -65,6 +69,7 @@ struct C475Client {
     int32_t bad;          // rows that did not parse
     int32_t calls;        // OnFedScoreGained functions called
     int32_t skipped;      // popup bindings skipped
+    int32_t charge_skipped; // card 581: tactical charge bindings skipped (the host's TacCharge carries the charge)
 };
 C475Client g_c475c{};
 
@@ -191,6 +196,10 @@ void c475_broadcast(const void* sub, int32_t amount) {
             ++g_c475c.skipped;
             continue;
         }
+        if (strcmp(fname_text(bound[i] + kScriptDelegateName).text, kC475ChargeFunction) == 0) {
+            ++g_c475c.charge_skipped;
+            continue;
+        }
         void* const fn = g_find_function(target, read_u64(bound[i], kScriptDelegateName));
         const uint16_t parms = fn != nullptr ? *reinterpret_cast<const uint16_t*>(
                                                    static_cast<const uint8_t*>(fn) + kFunctionParmsSize)
@@ -262,12 +271,22 @@ void c475_close(const void* sub, const char* text) {
     const int32_t now = c475_total_of(sub);
     c475_build(sub, g_c475t);
     log::line("card475: client t=%llu score %d -> %d (%d rows applied, %d tags; %d at or below the own sum, %d bad, "
-              "%d of %d host rows; OnFedScoreGained calls %d, popup bindings skipped %d)",
+              "%d of %d host rows; OnFedScoreGained calls %d, popup bindings skipped %d, charge bindings skipped %d)",
               static_cast<unsigned long long>(GetTickCount64()), g_c475c.before, now, g_c475c.applied, g_c475t.n,
-              g_c475c.not_applied, g_c475c.bad, g_c475c.rows, host_rows, g_c475c.calls, g_c475c.skipped);
-    if (static_cast<long long>(now) != host_total) {
-        log::line("WARN card475: client t=%llu total %d differs from the host's %lld after the replay",
+              g_c475c.not_applied, g_c475c.bad, g_c475c.rows, host_rows, g_c475c.calls, g_c475c.skipped,
+              g_c475c.charge_skipped);
+    // Card 579 (c397b398a): after a checkpoint reload the objective journal replay pays each completed
+    // sub-objective again on the client (9 x 10000 over the host's saved 70000). The host's total is the truth:
+    // the client takes it here, set down or raised, without a broadcast.
+    const bool host_ok = host_total >= 0 && host_total <= INT32_MAX;
+    if (static_cast<long long>(now) != host_total && host_ok) {
+        const int32_t total = static_cast<int32_t>(host_total); // c323_write_total's write, defined below
+        memcpy(static_cast<uint8_t*>(const_cast<void*>(sub)) + kC475Total, &total, sizeof(total));
+        log::line("card579: client t=%llu total %d set to the host's %lld after the replay",
                   static_cast<unsigned long long>(GetTickCount64()), now, host_total);
+    } else if (!host_ok) {
+        log::line("WARN card475: client t=%llu host total %lld out of range, own %d kept",
+                  static_cast<unsigned long long>(GetTickCount64()), host_total, now);
     }
     g_c475c = C475Client{};
 }
@@ -393,10 +412,10 @@ void c323_client_step(ULONGLONG now) {
     }
     g_c323c.raise_left = 0;
     log::line("card323: client t=%llu settle: host FedScore %d, own %d: %s; OnFedScoreGained %d; %llu ms after the "
-              "first of %d frame(s)",
+              "first of %d frame(s); charge bindings skipped %d (card 581, since the last join)",
               static_cast<unsigned long long>(now), g_c323c.host, own,
               diff > 0 ? "raised" : diff < 0 ? "set down" : "equal", broadcast,
-              static_cast<unsigned long long>(now - g_c323c.first), g_c323c.frames);
+              static_cast<unsigned long long>(now - g_c323c.first), g_c323c.frames, g_c475c.charge_skipped);
 }
 
 } // namespace
@@ -847,6 +866,23 @@ void c491_level_apply(void* pawn, uint64_t guid, int32_t level) {
               object_name(pawn).text, was, level, off >= 0 ? "" : " not set (no ResupplyLevel offset)");
 }
 
+// Card 556 (b440), test only, both sides: `resupplylevel <n>` writes the own pawn's ResupplyLevel (the resupply
+// rack's level is cached from the local player pawn at the rack's BeginPlay). The client's watch entry follows the
+// write, so c491_level_watch does not report it. No U row is sent: the other machine's copy keeps its level.
+const char* c556_set_resupply_level(void* pawn, int32_t level) {
+    auto* const p = static_cast<uint8_t*>(pawn);
+    const int32_t off = c491_level_offset(p);
+    if (off < 0) {
+        return "no ResupplyLevel on the own pawn's class";
+    }
+    const int32_t was = read_i32(p, off);
+    memcpy(p + off, &level, sizeof(level));
+    c491_watch_set(p, level);
+    log::line("card556: %s t=%llu own pawn %s ResupplyLevel %d -> %d (test command)", side(),
+              static_cast<unsigned long long>(GetTickCount64()), object_name(pawn).text, was, level);
+    return nullptr;
+}
+
 // Both sides, both AddFedScore detours: ResupplyLevel's offset once per map, before the first award runs.
 void c491_resupply_arm(const void* sub) {
     if (g_c491r.cls != nullptr) {
@@ -880,12 +916,10 @@ bool c491_resupply_drop(const void* sub, uint64_t tag) {
 // prompts, the Supply_Upgrade sound). ReceiveBeginPlay binds it on every pawn, proxies included, so a client stepped
 // on its own score (c245b260a FAIL 2); the host's "U" row runs the step (c491_resupply_apply). A pawn's
 // ReceiveBeginPlay logs its level before the Blueprint runs. Two FName compares per call; the class only on a match.
-bool c491_pe(void* object, const void* function) {
-    static uint64_t gained_name = 0;
-    static uint64_t begin_name = 0;
-    const uint64_t name = read_u64(function, kObjectName);
-    const bool gained = name == fname_cached(gained_name, L"FedScoreGained") && gained_name != 0;
-    const bool begin = !gained && name == fname_cached(begin_name, L"ReceiveBeginPlay") && begin_name != 0;
+bool c491_pe(void* object, const void* function, uint64_t name) {
+    (void)function; // card 573 b463: `name` is the detour's one read of function's FName
+    const bool gained = pe_name_is(name, g_pe.names.fed_score_gained);
+    const bool begin = !gained && pe_name_is(name, g_pe.names.receive_begin_play);
     if ((!gained && !begin) || strcmp(class_name(object).text, kC491PawnClass) != 0) {
         return false;
     }

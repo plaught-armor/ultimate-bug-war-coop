@@ -268,11 +268,16 @@ bool detour_c98_destroy(void* world, void* actor, bool net_force, bool modify_le
     c346_camera_destroy_line(actor, caller); // card 346 b31: whose camera manager goes
     c98_note(C98Kind::Destroy, actor, nullptr, caller);
     c137_client_change(actor, "destroyed", 0, 1, caller); // card 137 2a
+    c556_rack_destroy(world, actor); // card 556 b439 diag: a rack's pickups, before the rack goes
     c104_relay_destroy(world, actor); // card 104: a relayed copy's end
+    c588_forget(actor); // card 588: the own seat's last row, then never read again
     if (!g_client_session) {
         c101_forget(actor); // card 105: a destroyed server copy's mantle window slot
         c311_host_forget(actor); // card 311: a range target's Activate row
         c125_host_forget(actor); // card 471: a destroyed turret's row slot and 'T' journal row
+        c572_memo_forget(actor); // card 572 step 7: a destroyed context, player controller or pawn drops its memo rows
+    } else {
+        c467_client_forget(actor); // card 467: a destroyed spawned turret copy's later rows drop at once
     }
     return g_orig_c98_destroy(world, actor, net_force, modify_level);
 }
@@ -1141,6 +1146,56 @@ bool c104_root_simulates(const void* root) {
     return g_prim_simulating != nullptr && c104_root_is_primitive(root) && g_prim_simulating(root, 0);
 }
 
+// Card 556: host or client, diagnostic, no behavior change. The user saw the host's resupply-rack pickups (medkit,
+// Morita rifles) on the ground while the client's copies floated, rifles upright. C2M1 rows ruled out the root: the
+// roots are StaticMeshComponent (card317), the host root rows and the client copies agree (card341 #250517 host and
+// client z 7700, destroy sweeps within 1 uu). So the drawn part may be another component. This logs every component
+// of a relayed pickup (the root, then AActor::BlueprintCreatedComponents): name, class, ComponentToWorld translation,
+// simulating, bVisible and bHiddenInGame, at `when` (host spawn, host simulating rest, host destroy; client rest
+// applied, client destroy). Bounded by kC556Components per actor and kC556Rows rows per side.
+constexpr int32_t kC556Components = 16;
+constexpr uint32_t kC556Rows = 240;
+constexpr size_t kC556Flag = 8;
+void c556_dump_one(const void* actor, const void* comp, const char* when, uint32_t id, int32_t k, int32_t n) {
+    char vis[kC556Flag] = "-";
+    char hidden[kC556Flag] = "-";
+    c22_prop_text(comp, "bVisible", vis, sizeof(vis));
+    c22_prop_text(comp, "bHiddenInGame", hidden, sizeof(hidden));
+    const bool primitive = c104_root_is_primitive(comp);
+    const Vec3 at = read_vec3(comp, kComponentTranslation);
+    log::line("card556: %s %s %s id %u comp %d/%d %s (%s) at (%.0f, %.0f, %.0f), simulating %d, visible %s, hidden %s",
+              g_client_session ? "client" : "host", when, class_name(actor).text, id, k, n, object_name(comp).text,
+              class_name(comp).text, at.x, at.y, at.z,
+              primitive && g_prim_simulating != nullptr ? (g_prim_simulating(comp, 0) ? 1 : 0) : -1, vis, hidden);
+}
+
+void c556_dump(const void* actor, const char* when, uint32_t id) {
+    static uint32_t rows = 0;
+    static int32_t offset = -1;
+    const void* const root = actor != nullptr ? read_ptr(actor, kActorRootComponent) : nullptr;
+    if (root == nullptr || rows >= kC556Rows || strstr(class_name(actor).text, "Pickup_") == nullptr) {
+        return;
+    }
+    if (offset < 0) {
+        const uint8_t* const f = prop_find_prop(read_ptr(actor, kObjectClass), "BlueprintCreatedComponents");
+        offset = f != nullptr ? read_i32(f, kPropertyOffset) : 0;
+        log::line("%scard556: %s BlueprintCreatedComponents offset 0x%X", offset > 0 ? "" : "WARN ",
+                  g_client_session ? "client" : "host", static_cast<unsigned>(offset));
+    }
+    const uint8_t* const arr = offset > 0 ? static_cast<const uint8_t*>(actor) + offset : nullptr;
+    void* const* const data = arr != nullptr ? static_cast<void* const*>(read_ptr(arr, kArrayData)) : nullptr;
+    const int32_t num = data != nullptr ? read_i32(arr, kArrayNum) : 0;
+    const int32_t n = num < kC556Components ? num : kC556Components;
+    c556_dump_one(actor, root, when, id, 0, num);
+    ++rows;
+    for (int32_t c = 0; c < n && rows < kC556Rows; ++c) {
+        if (data[c] != nullptr && data[c] != root) {
+            c556_dump_one(actor, data[c], when, id, c + 1, num);
+            ++rows;
+        }
+    }
+}
+
 // Card 287: host, per map. Moving samples sent, and the most sent in one 1 s window (windows start at a send).
 // Logged and cleared in c98_world_map_end.
 struct C287Sent {
@@ -1216,7 +1271,117 @@ bool c145_is_pickup(const void* actor) {
     return actor != nullptr && g_c56_pickup_class != nullptr && is_a(actor, g_c56_pickup_class());
 }
 
+// Card 556 b439: both sides, diagnostic, no behavior change. The playtest's resupply rack pickups: the user saw the
+// host's on the ground and the client's copies at rack height, and the host sent no row for them after the rack went
+// (host 341546869). At a BP_ResupplyRack_* destroy (host: the game's DestroyActor; client: the host's 'D' row for the
+// rack copy) and again kC556RackLaterMs later, one row per relayed pickup (host) or pickup copy (client) whose Owner
+// or attach parent is the rack, or that stands within kC556RackNearUu of it: id, match, actor location, root
+// ComponentToWorld translation, simulating, awake, attach parent, and on the host its last rest row (c104 settle).
+// Bounded by kC556RackPickups per rack; one rack pending at a time (a later rack destroy replaces it).
+constexpr int32_t kC556RackPickups = 16;
+constexpr ULONGLONG kC556RackLaterMs = 2000;
+constexpr double kC556RackNearUu = 400.0;
+struct C556Rack {
+    C31Weak weak[kC556RackPickups];
+    uint32_t id[kC556RackPickups];
+    const char* match[kC556RackPickups];
+    int32_t n;
+    ULONGLONG due; // 0: no rack pending
+};
+C556Rack g_c556_rack{}; // game thread
+
+bool c104_in_world(const void* world, const void* actor); // below
+
+void c556_rack_row(const void* actor, uint32_t id, const char* match, const char* when) {
+    const void* const root = read_ptr(actor, kActorRootComponent);
+    const Vec3 at = actor_location(actor);
+    const Vec3 rw = root != nullptr ? read_vec3(root, kComponentTranslation) : Vec3{};
+    const bool prim = c104_root_is_primitive(root);
+    const int simulating = prim && g_prim_simulating != nullptr ? (g_prim_simulating(root, 0) ? 1 : 0) : -1;
+    const int awake = prim && g_prim_awake != nullptr ? (g_prim_awake(root, 0) ? 1 : 0) : -1;
+    const void* const parent = g_get_attach_parent_actor != nullptr ? g_get_attach_parent_actor(actor) : nullptr;
+    int32_t r = -1;
+    for (int32_t i = 0; i < g_c104_relayed.n && r < 0 && !g_client_session; ++i) {
+        r = g_c104_relayed.actor[i] == actor ? i : -1;
+    }
+    char rest[96] = "";
+    if (r >= 0) {
+        const C104Rest& s = g_c104_relayed.rest[r];
+        snprintf(rest, sizeof(rest), ", last rest row at z %.0f, rested %d, rows %u", s.rest_at.z, s.rested ? 1 : 0,
+                 static_cast<unsigned>(s.rows));
+    }
+    log::line("card556: %s t=%llu rack pickup %s id %u (%s) %s: actor at (%.0f, %.0f, %.0f), root at (%.0f, %.0f, "
+              "%.0f), simulating %d, awake %d, attach parent %s%s",
+              side(), static_cast<unsigned long long>(GetTickCount64()), class_name(actor).text, id, match, when, at.x,
+              at.y, at.z, rw.x, rw.y, rw.z, simulating, awake, object_name(parent).text, rest);
+}
+
+void c556_rack_add(const void* rack, const Vec3& rack_at, void* actor, uint32_t id) {
+    if (!c145_is_pickup(actor) || g_c556_rack.n >= kC556RackPickups) {
+        return;
+    }
+    const void* const parent = g_get_attach_parent_actor != nullptr ? g_get_attach_parent_actor(actor) : nullptr;
+    const char* const match = read_ptr(actor, kActorOwner) == rack ? "owner"
+                              : parent == rack                      ? "attached"
+                              : vec_dist(actor_location(actor), rack_at) <= kC556RackNearUu ? "near"
+                                                                                           : nullptr;
+    if (match == nullptr) {
+        return;
+    }
+    const int32_t k = g_c556_rack.n++;
+    g_c556_rack.weak[k] = C31Weak{};
+    c31_weak_set(g_c556_rack.weak[k], actor);
+    g_c556_rack.id[k] = id;
+    g_c556_rack.match[k] = match;
+    c556_rack_row(actor, id, match, "at the rack destroy");
+}
+
 } // namespace
+
+// See hooks_internal.h (card 556 b439 diag).
+void c556_rack_destroy(const void* world, const void* rack) {
+    if (rack == nullptr || strstr(class_name(rack).text, "ResupplyRack") == nullptr) {
+        return;
+    }
+    const Vec3 at = actor_location(rack);
+    g_c556_rack.n = 0;
+    g_c556_rack.due = GetTickCount64() + kC556RackLaterMs;
+    log::line("card556: %s t=%llu resupply rack %s destroyed at (%.0f, %.0f, %.0f)", side(),
+              static_cast<unsigned long long>(GetTickCount64()), object_name(rack).text, at.x, at.y, at.z);
+    c556_rack_end_row(rack); // card 556 b441 diag: which end path fired
+    if (!g_client_session) {
+        for (int32_t i = 0; i < g_c104_relayed.n; ++i) {
+            void* const live = c31_weak_get(g_c104_relayed.weak[i]);
+            if (live != nullptr && live != rack) {
+                c556_rack_add(rack, at, live, static_cast<uint32_t>(object_index(live)));
+            }
+        }
+        return;
+    }
+    for (int32_t i = 0; i < g_c104_copies.n; ++i) {
+        void* const actor = g_c104_copies.row[i].actor;
+        if (actor != nullptr && actor != rack && c104_in_world(world, actor)) {
+            c556_rack_add(rack, at, actor, g_c104_copies.row[i].host_id);
+        }
+    }
+}
+
+void c556_rack_step() {
+    if (g_c556_rack.due == 0 || GetTickCount64() < g_c556_rack.due) {
+        return;
+    }
+    g_c556_rack.due = 0;
+    for (int32_t k = 0; k < g_c556_rack.n; ++k) {
+        void* const live = c31_weak_get(g_c556_rack.weak[k]);
+        if (live == nullptr) {
+            log::line("card556: %s t=%llu rack pickup id %u (%s) gone 2 s after the rack destroy", side(),
+                      static_cast<unsigned long long>(GetTickCount64()), g_c556_rack.id[k], g_c556_rack.match[k]);
+            continue;
+        }
+        c556_rack_row(live, g_c556_rack.id[k], g_c556_rack.match[k], "2 s after the rack destroy");
+        c556_dump(live, "2 s after the rack destroy", g_c556_rack.id[k]); // every component: a drawn mesh can move
+    }
+}
 
 // See hooks_internal.h (weapons.cpp's detour_c145_update_status reads it too).
 uint32_t c145_enabled(const void* pickup) {
@@ -1331,6 +1496,7 @@ void c104_send_spawn(int32_t i, const void* live) {
     g_c104_relayed.rest[i].spawn_ms = static_cast<uint32_t>(GetTickCount64()); // card 256
     c317_motion_row("host", live, "spawn", row.value);
     const void* const root = read_ptr(live, kActorRootComponent);
+    c556_dump(live, "spawn", row.value); // card 556 diag
     if (root != nullptr && !c104_root_simulates(root)) {
         g_c104_relayed.rest[i].rested = true;
         c104_send_rest(i, live, root, at, false);
@@ -1433,6 +1599,7 @@ void c104_relay_destroy(const void* world, const void* actor) {
     if (at < 0) {
         return;
     }
+    c556_dump(actor, "destroy", static_cast<uint32_t>(object_index(actor))); // card 556 diag
     --g_c104_relayed.n;
     g_c104_relayed.actor[at] = g_c104_relayed.actor[g_c104_relayed.n];
     g_c104_relayed.weak[at] = g_c104_relayed.weak[g_c104_relayed.n];
@@ -2110,6 +2277,10 @@ void c104_client_destroy(void* pc, uint32_t host_id, const Vec3& last) {
     }
     void* const world = g_actor_get_world(pc);
     void* const actor = at >= 0 ? g_c104_copies.row[at].actor : nullptr;
+    if (actor != nullptr && c104_in_world(world, actor)) {
+        c556_dump(actor, "destroy", host_id); // card 556 diag: before the sweep moves it
+        c556_rack_destroy(world, actor); // card 556 b439 diag
+    }
     const bool live = actor != nullptr && c104_in_world(world, actor) && !c104_sweep_to(world, actor, last);
     if (at >= 0) {
         g_c104_copies.row[at] = g_c104_copies.row[--g_c104_copies.n];
@@ -2177,6 +2348,7 @@ void c104_client_rest(void* pc, const C98World& r) {
     if (root != nullptr && parsed && !is_moving && !g_c104_copies.row[at].rest_logged &&
         note_event_cap(g_c98w.c256_client_lines, static_cast<uint32_t>(kC104Copies), "card256 client rest")) {
         g_c104_copies.row[at].rest_logged = true; // card 256: one line per copy, at its first applied rest row
+        c556_dump(actor, "rest applied", r.value); // card 556 diag
         const bool primitive = c104_root_is_primitive(root);
         log::line("card256: client copy %u rest applied, moved %.0f uu, root collision %d, simulating %d", r.value,
                   vec_dist(r.at, from), primitive ? static_cast<int>(static_cast<const uint8_t*>(root)[kBodyCollisionEnabled]) : -1,
@@ -2304,6 +2476,7 @@ void c104_settle_one(int32_t i) {
         log::line("card104: host settle class %s: first rest row (%s)", object_name(cls).text,
                   asleep ? "physics asleep" : "still for kC104StillTicks ticks");
     }
+    c556_dump(actor, "simulating rest", static_cast<uint32_t>(object_index(actor))); // card 556 diag
     c104_send_rest(i, actor, root, at, false);
     c256_host_rest(i, actor, true, asleep);
 }
@@ -3525,6 +3698,7 @@ void c98_arm_map() {
     }
     g_c98 = C98State{};
     c121_arm_map(); // card 121
+    c556_arm_map(); // card 556: OnHit skip and rack row caps
     net_budget_arm_map(); // card 132 diagnostic
     c132_arm_map(); // card 132
     c132_hit_arm_map(); // card 132 hit blood
@@ -3548,6 +3722,7 @@ void detour_c163_broadcast(const void* delegate, const void* event) {
     C98World row{};
     const bool relay = watch && c98_satchel_row(receiver, kC163DamageKill, row);
     const void* const world = relay ? g_actor_get_world(receiver) : nullptr;
+    c556_rack_damage(event); // card 556: a resupply rack's damage causer and instigator
     ++depth;
     g_orig_c163_broadcast(delegate, event);
     --depth;

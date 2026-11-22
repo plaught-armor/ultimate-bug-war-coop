@@ -57,22 +57,33 @@ check_update() {
     latest=$(grep -o '"tag_name": *"b[0-9]*"' <<<"$json" | grep -o 'b[0-9]*' | head -1)
     url=$(grep -o '"browser_download_url": *"[^"]*\.zip"' <<<"$json" | grep -o 'https://[^"]*' | head -1)
     [[ $mine =~ ^b[0-9]+$ && $latest =~ ^b[0-9]+$ && -n $url ]] || return 0
-    (( ${latest#b} > ${mine#b} )) || return 0
-    ask "A new UBW Co-op version is out: $latest (you have $mine). Both players need the same version. Update now?" \
-        || return 0
+    if (( ${latest#b} > ${mine#b} )); then
+        ask "A new UBW Co-op version is out: $latest (you have $mine). Both players need the same version. Update now?" \
+            || return 0
+    else
+        # Launchers up to b366 move a fixed file list without ubwperf.dll, then start this script.
+        # The player already agreed to that update, so fetch the rest without asking again.
+        [[ $latest == "$mine" && ! -f build/ubwperf.dll ]] || return 0
+    fi
     note "Downloading $latest."
     tmp=$(mktemp -d "$PWD/.update.XXXXXX") || return 0
     if curl -fsSL --max-time 120 -o "$tmp/u.zip" "$url" && unzip -q "$tmp/u.zip" -d "$tmp" \
-        && [[ -f $tmp/UBW-Coop/build/dwmapi.dll && -f $tmp/UBW-Coop/PLAY-COOP.sh ]]; then
+        && [[ -f $tmp/UBW-Coop/build/dwmapi.dll && -f $tmp/UBW-Coop/build/ubwperf.dll && -f $tmp/UBW-Coop/PLAY-COOP.sh ]]; then
         # mv, not cp: this running script keeps reading its old file, and the new one starts fresh below.
+        # Every file of the zip, so a file added by a later release arrives too. RELEASE.txt is written last:
+        # a failed move leaves the old tag and the next start tries again.
         local f
-        for f in PLAY-COOP.sh HOW-TO-PLAY.txt tools/playtest.sh build/dwmapi.dll build/VERSION.txt build/RELEASE.txt; do
-            [[ -f $tmp/UBW-Coop/$f ]] && mkdir -p "$(dirname "$f")" && mv -f "$tmp/UBW-Coop/$f" "$f"
-        done
+        while IFS= read -r -d '' f; do
+            [[ $f == build/RELEASE.txt ]] && continue
+            mkdir -p "$(dirname "$f")" && mv -f "$tmp/UBW-Coop/$f" "$f" && continue
+            rm -rf "$tmp"
+            say "The update to $latest could not replace $f. Unzip the new release by hand."
+            return 0
+        done < <(find "$tmp/UBW-Coop" -type f -printf '%P\0')
         echo "$latest" > build/RELEASE.txt   # also when the zip has none, so it does not ask again
         rm -rf "$tmp"
         note "Updated to $latest."
-        exec ./PLAY-COOP.sh "$@"
+        UBW_NO_UPDATE=1 exec ./PLAY-COOP.sh "$@"
     fi
     rm -rf "$tmp"
     say "The update download failed. Starting the installed version $mine."

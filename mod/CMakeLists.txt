@@ -34,18 +34,14 @@ add_library(ubwcoop SHARED
   src/ubw/radio_c322.cpp
   src/ubw/bark_c451.cpp
   src/ubw/target_c532.cpp
-  src/ubw/perf_save_c531.cpp
   src/ubw/floor_c535.cpp
-  src/ubw/perf_component_c536.cpp
-  src/ubw/perf_target_c538.cpp
-  src/ubw/perf_move_c539.cpp
-  src/ubw/perf_tree_c544.cpp
   src/ubw/query_bp_c545.cpp
-  src/ubw/perf_overlap_c548.cpp
+  src/ubw/diag_crowd_c575.cpp
   src/ubw/query_c534.cpp
   src/ubw/weapon_c494.cpp
   src/ubw/cave_c493.cpp
   src/ubw/insta_c361.cpp
+  src/ubw/rack_c556.cpp
   src/ubw/player0_c321.cpp
   src/ubw/fallzone_c338.cpp
   src/ubw/render_c337.cpp
@@ -87,6 +83,8 @@ add_library(ubwcoop SHARED
   src/ubw/jump_c94.cpp
   src/ubw/door_c95.cpp
   src/ubw/door_c161.cpp
+  src/ubw/horde_c606.cpp
+  src/ubw/audio_c604.cpp
   src/ubw/satchel_c408.cpp
   src/ubw/grenade_c158.cpp
   src/ubw/spawn_c169.cpp
@@ -112,6 +110,8 @@ add_library(ubwcoop SHARED
   src/ubw/begin_c138.cpp
   src/ubw/anim_c104.cpp
   src/ubw/player_marker.cpp
+  src/ubw/radar_c555.cpp
+  src/ubw/seat_c588.cpp
   src/ubw/bug_scale.cpp
   src/ubw/attack_pace.cpp
   src/ubw/difficulty.cpp
@@ -125,6 +125,8 @@ add_library(ubwcoop SHARED
   src/ue/input.cpp
   src/ue/widget.cpp
   src/ue/hooktable.cpp
+  src/ue/install.cpp
+  src/ubw/perf_link.cpp
   src/ue/net.cpp
   src/ue/chan.cpp
   src/ue/chan_pack.cpp
@@ -144,3 +146,32 @@ target_compile_definitions(ubwcoop PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE 
 target_compile_options(ubwcoop PRIVATE /W4 /WX /EHs-c- /GR-)
 target_link_options(ubwcoop PRIVATE /WX /MAP) # map file (dwmapi.map) names mod functions in perf profiles; the DLL bytes do not change
 target_link_libraries(ubwcoop PRIVATE minhook kernel32)
+
+# --- Card 578: performance mod, ubwperf.dll. Loaded by dwmapi.dll in co-op, or by the game as winhttp.dll alone. ---
+add_library(ubwperf SHARED
+  src/perf/perf_main.cpp
+  src/perf/perf_sig_c568.cpp
+  src/perf/perf_save_c531.cpp
+  src/perf/perf_component_c536.cpp
+  src/perf/perf_target_c538.cpp
+  src/perf/perf_move_c539.cpp
+  src/perf/perf_tree_c544.cpp
+  src/perf/perf_overlap_c548.cpp
+  src/perf/perf_kinematic_c573.cpp
+  src/perf/perf_niagara_c573.cpp
+  src/perf/perf_spin_c576.cpp
+  src/perf/perf_navgen_c577.cpp
+  src/perf/perf_navdata_c593.cpp
+  src/perf/perf_target_c594.cpp
+  src/perf/proxy_winhttp.cpp
+  src/ue/config.cpp
+  src/ue/log.cpp
+  src/ue/reflect.cpp
+  src/ue/hooktable.cpp
+  src/perf/winhttp.def)
+target_include_directories(ubwperf PRIVATE src)
+set_target_properties(ubwperf PROPERTIES OUTPUT_NAME ubwperf PREFIX "")
+target_compile_definitions(ubwperf PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+target_compile_options(ubwperf PRIVATE /W4 /WX /EHs-c- /GR-)
+target_link_options(ubwperf PRIVATE /WX /MAP)
+target_link_libraries(ubwperf PRIVATE minhook kernel32)

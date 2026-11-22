@@ -217,6 +217,8 @@ inline constexpr Symbol UPrimitiveComponent_SetCollisionProfileName = {"UPrimiti
 inline constexpr Symbol UPrimitiveComponent_SetCollisionResponseToChannel = {"UPrimitiveComponent_SetCollisionResponseToChannel", 0x040A73F0u};
 // ?EnterDropship@ASTPlayerTransportDropship@@AEAAXXZ
 inline constexpr Symbol ASTPlayerTransportDropship_EnterDropship = {"ASTPlayerTransportDropship_EnterDropship", 0x051C56C0u};
+// ?OnInteraction@ASTPlayerTransportDropship@@MEAAXPEAVUADInteractorComponent@@@Z
+inline constexpr Symbol ASTPlayerTransportDropship_OnInteraction = {"ASTPlayerTransportDropship_OnInteraction", 0x051D0470u};
 // ?DescendToLandCompleted@ASTPlayerTransportDropship@@MEAAXXZ
 inline constexpr Symbol ASTPlayerTransportDropship_DescendToLandCompleted = {"ASTPlayerTransportDropship_DescendToLandCompleted", 0x051C2D10u};
 // ?ProcessActionMappingEvent@UEnhancedPlayerInput@@AEAAXU?$TObjectPtr@$$CBVUInputAction@@@@M_NUFInputActionValue@@W4EKeyEvent@@AEBV?$TArray@PEAVUInputModifier@@V?$TSizedDefaultAllocator@$0CA@@@@@AEBV?$TArray@PEAVUInputTrigger@@V?$TSizedDefaultAllocator@$0CA@@@@@_N@Z
@@ -231,6 +233,10 @@ inline constexpr Symbol FTriggerStateTracker_EvaluateTriggers = {"FTriggerStateT
 inline constexpr Symbol ASTPlayerCharacter_PostInitializeComponents = {"ASTPlayerCharacter_PostInitializeComponents", 0x051D8B10u};
 // ?PossessedBy@ASTPlayerCharacter@@UEAAXPEAVAController@@@Z
 inline constexpr Symbol ASTPlayerCharacter_PossessedBy = {"ASTPlayerCharacter_PossessedBy", 0x051D7A10u};
+// ?PossessedBy@APawn@@UEAAXPEAVAController@@@Z
+inline constexpr Symbol APawn_PossessedBy = {"APawn_PossessedBy", 0x03F69410u};
+// ?UnPossessed@APawn@@UEAAXXZ
+inline constexpr Symbol APawn_UnPossessed = {"APawn_UnPossessed", 0x03F758A0u};
 // ?Execute@?$FEnhancedInputActionEventDelegateBinding@V?$TDelegate@$$A6AXAEBUFInputActionValue@@@ZUFDefaultDelegateUserPolicy@@@@@@UEBAXAEBUFInputActionInstance@@@Z
 inline constexpr Symbol EIBinding_ExecuteValue = {"EIBinding_ExecuteValue", 0x051C57B0u};
 // ?Execute@?$FEnhancedInputActionEventDelegateBinding@V?$TDelegate@$$A6AXXZUFDefaultDelegateUserPolicy@@@@@@UEBAXAEBUFInputActionInstance@@@Z
@@ -447,6 +453,8 @@ inline constexpr Symbol UObject_FindFunctionChecked = {"UObject_FindFunctionChec
 inline constexpr Symbol FName_CtorFindName = {"FName_CtorFindName", 0x0132DFB0u};
 // ?GetWeaponBySlot@USTWeaponInventory@@QEBAPEAVAADWeapon@@E@Z
 inline constexpr Symbol USTWeaponInventory_GetWeaponBySlot = {"USTWeaponInventory_GetWeaponBySlot", 0x0523F6C0u};
+// ?BroadcastStatusUpdate@USTWeaponInventory@@QEAAXXZ
+inline constexpr Symbol USTWeaponInventory_BroadcastStatusUpdate = {"USTWeaponInventory_BroadcastStatusUpdate", 0x05231780u};
 // ?GetTargetLocation_Implementation@ASTPlayerCharacterMI@@UEBA?AU?$TVector@N@Math@UE@@XZ
 inline constexpr Symbol ASTPlayerCharacterMI_GetTargetLocation_Implementation = {"ASTPlayerCharacterMI_GetTargetLocation_Implementation", 0x051C9D70u};
 // ?DeprojectScreenPositionToWorld@APlayerController@@QEBA_NMMAEAU?$TVector@N@Math@UE@@0@Z
@@ -477,6 +485,8 @@ inline constexpr Symbol ASTNonPlayableCharacterBase_StartDying = {"ASTNonPlayabl
 inline constexpr Symbol APlayerController_ConsoleCommand = {"APlayerController_ConsoleCommand", 0x0403E380u};
 // ?SetActorLocation@AActor@@QEAA_NAEBU?$TVector@N@Math@UE@@_NPEAUFHitResult@@W4ETeleportType@@@Z
 inline constexpr Symbol AActor_SetActorLocation = {"AActor_SetActorLocation", 0x037F2470u};
+// ?SetActorLocationAndRotation@AActor@@QEAA_NU?$TVector@N@Math@UE@@U?$TRotator@N@34@_NPEAUFHitResult@@W4ETeleportType@@@Z
+inline constexpr Symbol AActor_SetActorLocationAndRotation = {"AActor_SetActorLocationAndRotation", 0x037F25F0u};
 // ?SetNumericAttributeBase@UAbilitySystemComponent@@QEAAXAEBUFGameplayAttribute@@M@Z
 inline constexpr Symbol UAbilitySystemComponent_SetNumericAttributeBase = {"UAbilitySystemComponent_SetNumericAttributeBase", 0x04972E40u};
 // ??0FGameplayAttribute@@QEAA@PEAVFProperty@@@Z
@@ -573,6 +583,8 @@ inline constexpr Symbol ASTEnemyBase_StaticClass = {"ASTEnemyBase_StaticClass", 
 inline constexpr Symbol UClass_StaticClass = {"UClass_StaticClass", 0x013B5750u};
 // ?SpawnAIFromClass@UAIBlueprintHelperLibrary@@SAPEAVAPawn@@PEAVUObject@@V?$TSubclassOf@VAPawn@@@@PEAVUBehaviorTree@@U?$TVector@N@Math@UE@@U?$TRotator@N@78@_NPEAVAActor@@@Z
 inline constexpr Symbol UAIBlueprintHelperLibrary_SpawnAIFromClass = {"UAIBlueprintHelperLibrary_SpawnAIFromClass", 0x04B4D830u};
+// ?Landed@ASTPlayerCharacter@@UEAAXAEBUFHitResult@@@Z
+inline constexpr Symbol ASTPlayerCharacter_Landed = {"ASTPlayerCharacter_Landed", 0x051CD6F0u};
 // ?HandleDeathEvent@ASTPlayerCharacter@@MEAAXAEBUFADDamageEvent@@@Z
 inline constexpr Symbol ASTPlayerCharacter_HandleDeathEvent = {"ASTPlayerCharacter_HandleDeathEvent", 0x051CA3B0u};
 // ?StartDeath@ASTPlayerCharacter@@MEAAXAEBUFADDamageEvent@@@Z
@@ -1043,6 +1055,8 @@ inline constexpr Symbol ASTItemPickup_StaticClass = {"ASTItemPickup_StaticClass"
 inline constexpr Symbol ASTTacticalSupportPickup_StaticClass = {"ASTTacticalSupportPickup_StaticClass", 0x050A7F80u};
 // ?StaticClass@ASTSwitch@@SAPEAVUClass@@XZ
 inline constexpr Symbol ASTSwitch_StaticClass = {"ASTSwitch_StaticClass", 0x050A5570u};
+// ?OnInteraction@ASTSwitch@@MEAAXPEAVUADInteractorComponent@@@Z
+inline constexpr Symbol ASTSwitch_OnInteraction = {"ASTSwitch_OnInteraction", 0x050F78A0u};
 // ?StaticClass@ASTZiplinePoint@@SAPEAVUClass@@XZ
 inline constexpr Symbol ASTZiplinePoint_StaticClass = {"ASTZiplinePoint_StaticClass", 0x050BB630u};
 // ?StaticClass@ASTSatchelPlacementSite@@SAPEAVUClass@@XZ
@@ -1051,6 +1065,16 @@ inline constexpr Symbol ASTSatchelPlacementSite_StaticClass = {"ASTSatchelPlacem
 inline constexpr Symbol ASTSecretPickup_StaticClass = {"ASTSecretPickup_StaticClass", 0x05095DA0u};
 // ?Pickup_Implementation@ASTSecretPickup@@MEAAXXZ
 inline constexpr Symbol ASTSecretPickup_Pickup_Implementation = {"ASTSecretPickup_Pickup_Implementation", 0x051D41B0u};
+// ?Pickup_Implementation@ASTAmmoPickup@@UEAAXXZ
+inline constexpr Symbol ASTAmmoPickup_Pickup_Implementation = {"ASTAmmoPickup_Pickup_Implementation", 0x051D33F0u};
+// ?Pickup_Implementation@ASTItemPickup@@UEAAXXZ
+inline constexpr Symbol ASTItemPickup_Pickup_Implementation = {"ASTItemPickup_Pickup_Implementation", 0x051D3EF0u};
+// ?Pickup_Implementation@ASTArmourPickup@@UEAAXXZ
+inline constexpr Symbol ASTArmourPickup_Pickup_Implementation = {"ASTArmourPickup_Pickup_Implementation", 0x051D37B0u};
+// ?Pickup_Implementation@ASTHealthPickup@@UEAAXXZ
+inline constexpr Symbol ASTHealthPickup_Pickup_Implementation = {"ASTHealthPickup_Pickup_Implementation", 0x051D3B50u};
+// ?Pickup_Implementation@ASTTacticalSupportPickup@@UEAAXXZ
+inline constexpr Symbol ASTTacticalSupportPickup_Pickup_Implementation = {"ASTTacticalSupportPickup_Pickup_Implementation", 0x051D4220u};
 // ?SecretFound@USTMetaGame@@QEAAXXZ
 inline constexpr Symbol USTMetaGame_SecretFound = {"USTMetaGame_SecretFound", 0x0516CA50u};
 // ?StartTimer@ASTSatchelPlacementSite@@AEAAXXZ
@@ -1223,6 +1247,8 @@ inline constexpr Symbol ASTGrenadeProjectileBase_Explode = {"ASTGrenadeProjectil
 inline constexpr Symbol ASTGrenadeProjectileBase_InitGrenade = {"ASTGrenadeProjectileBase_InitGrenade", 0x05241030u};
 // ?ApplyDamageFromImpactHitResult@USTCombatUtilityLibrary@@SA?AUFSTAttackDamageResults@@PEAVAActor@@0AEBUFSTDamageTemplate@@AEBUFGameplayTagContainer@@AEBUFHitResult@@AEBUFGameplayTag@@@Z
 inline constexpr Symbol USTCombatUtilityLibrary_ApplyDamageFromImpactHitResult = {"USTCombatUtilityLibrary_ApplyDamageFromImpactHitResult", 0x0522D770u};
+// ?ApplyDamageAtLocation@USTCombatUtilityLibrary@@SA?AUFSTAttackDamageResults@@PEAVAActor@@0AEBUFSTDamageTemplate@@AEBU?$TVector@N@Math@UE@@@Z
+inline constexpr Symbol USTCombatUtilityLibrary_ApplyDamageAtLocation = {"USTCombatUtilityLibrary_ApplyDamageAtLocation", 0x0522D5C0u};
 // ?TrySpawnDamageZone@USTCombatUtilityLibrary@@SAPEAVASTHazardousZoneBase@@PEAVUObject@@AEBUFSTDamageZoneData@@AEBUFHitResult@@@Z
 inline constexpr Symbol USTCombatUtilityLibrary_TrySpawnDamageZone = {"USTCombatUtilityLibrary_TrySpawnDamageZone", 0x05254E80u};
 // ?Activate@USTAbilityTask_PlayAnimation@@MEAAXXZ
@@ -1231,6 +1257,8 @@ inline constexpr Symbol USTAbilityTask_PlayAnimation_Activate = {"USTAbilityTask
 inline constexpr Symbol USTAbilityTask_PlayAnimation_DoAction = {"USTAbilityTask_PlayAnimation_DoAction", 0x050E3BC0u};
 // ?AnimationEnded@USTAbilityTask_PlayAnimation@@QEAAXXZ
 inline constexpr Symbol USTAbilityTask_PlayAnimation_AnimationEnded = {"USTAbilityTask_PlayAnimation_AnimationEnded", 0x050DBCB0u};
+// ?Notify@UADAnimNotifyWrapper@@UEAAXPEAVUSkeletalMeshComponent@@PEAVUAnimSequenceBase@@@Z
+inline constexpr Symbol UADAnimNotifyWrapper_Notify = {"UADAnimNotifyWrapper_Notify", 0x04A241F0u};
 // ?SetLifeSpan@AActor@@UEAAXM@Z
 inline constexpr Symbol AActor_SetLifeSpan = {"AActor_SetLifeSpan", 0x037F3920u};
 // ?LifeSpanExpired@AADProjectile@@UEAAXXZ
@@ -1923,5 +1951,83 @@ inline constexpr Symbol UPrimitiveComponent_UpdateOverlapsImpl = {"UPrimitiveCom
 inline constexpr Symbol USkinnedMeshComponent_UpdateOverlapsImpl = {"USkinnedMeshComponent_UpdateOverlapsImpl", 0x03AFEF70u};
 // ?UpdateOverlapsImpl@USkeletalMeshComponent@@UEAA_NPEBV?$TArrayView@$$CBUFOverlapInfo@@H@@_N0@Z
 inline constexpr Symbol USkeletalMeshComponent_UpdateOverlapsImpl = {"USkeletalMeshComponent_UpdateOverlapsImpl", 0x0419AEF0u};
+// ?execStartCameraFade@APlayerCameraManager@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+inline constexpr Symbol APlayerCameraManager_execStartCameraFade = {"APlayerCameraManager_execStartCameraFade", 0x03795120u};
+// ?execSetManualCameraFade@APlayerCameraManager@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+inline constexpr Symbol APlayerCameraManager_execSetManualCameraFade = {"APlayerCameraManager_execSetManualCameraFade", 0x03794F80u};
+// ?StartCameraFade@APlayerCameraManager@@UEAAXMMMUFLinearColor@@_N1@Z
+inline constexpr Symbol APlayerCameraManager_StartCameraFade = {"APlayerCameraManager_StartCameraFade", 0x04062240u};
+// ?SetManualCameraFade@APlayerCameraManager@@UEAAXMUFLinearColor@@_N@Z
+inline constexpr Symbol APlayerCameraManager_SetManualCameraFade = {"APlayerCameraManager_SetManualCameraFade", 0x0405F340u};
+// ?Notify_Implementation@USTAnimNotify_ScreenShake@@UEAAXPEAVAActor@@@Z
+inline constexpr Symbol USTAnimNotify_ScreenShake_Notify_Implementation = {"USTAnimNotify_ScreenShake_Notify_Implementation", 0x050F6170u};
+// ?ExecuteImpact@USTImpactGameplayCueNotify@@UEBAXPEAVAActor@@AEBUFGameplayCueParameters@@@Z
+inline constexpr Symbol USTImpactGameplayCueNotify_ExecuteImpact = {"USTImpactGameplayCueNotify_ExecuteImpact", 0x0511E7A0u};
+// ?PlayScreenShake@USTImpactGameplayCueNotify@@UEBAXAEBUFGameplayCueParameters@@@Z
+inline constexpr Symbol USTImpactGameplayCueNotify_PlayScreenShake = {"USTImpactGameplayCueNotify_PlayScreenShake", 0x05133E50u};
+// ?PlayForceFeedback@USTImpactGameplayCueNotify@@UEBAXAEBUFGameplayCueParameters@@@Z
+inline constexpr Symbol USTImpactGameplayCueNotify_PlayForceFeedback = {"USTImpactGameplayCueNotify_PlayForceFeedback", 0x05133A20u};
+// ?ApplyScreenEffect@USTImpactGameplayCueNotify@@QEBAXPEAVAActor@@AEBUFGameplayCueParameters@@@Z
+inline constexpr Symbol USTImpactGameplayCueNotify_ApplyScreenEffect = {"USTImpactGameplayCueNotify_ApplyScreenEffect", 0x05117500u};
+// ?StartCameraShake@USTCommonUtilityLibrary@@SAPEAVUCameraShakeBase@@PEAVUObject@@V?$TSubclassOf@VUCameraShakeBase@@@@M@Z
+inline constexpr Symbol USTCommonUtilityLibrary_StartCameraShake = {"USTCommonUtilityLibrary_StartCameraShake", 0x05251D30u};
+// ?GetEffectCauser@FGameplayCueParameters@@QEBAPEAVAActor@@XZ
+inline constexpr Symbol FGameplayCueParameters_GetEffectCauser = {"FGameplayCueParameters_GetEffectCauser", 0x049FCB00u};
+// ?StaticClass@UMaterialInterface@@SAPEAVUClass@@XZ
+inline constexpr Symbol UMaterialInterface_StaticClass = {"UMaterialInterface_StaticClass", 0x03771800u};
+// ?RegisterCrowdAgent@UCrowdFollowingComponent@@IEAAXXZ
+inline constexpr Symbol UCrowdFollowingComponent_RegisterCrowdAgent = {"UCrowdFollowingComponent_RegisterCrowdAgent", 0x04B76F30u};
+// ?RegisterAgent@UCrowdManager@@QEAAXPEAVICrowdAgentInterface@@@Z
+inline constexpr Symbol UCrowdManager_RegisterAgent = {"UCrowdManager_RegisterAgent", 0x04BA4860u};
+// ?RebuildDirtyAreas@FRecastNavMeshGenerator@@UEAAXAEBV?$TArray@UFNavigationDirtyArea@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+inline constexpr Symbol FRecastNavMeshGenerator_RebuildDirtyAreas = {"FRecastNavMeshGenerator_RebuildDirtyAreas", 0x04AFF750u};
+// ?ModifyTargetThreat@UADTargetComponent@@QEAAXPEAVAActor@@M@Z
+inline constexpr Symbol UADTargetComponent_ModifyTargetThreat = {"UADTargetComponent_ModifyTargetThreat", 0x0519A190u};
+// ?execModifyTargetThreat@UADTargetComponent@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+inline constexpr Symbol UADTargetComponent_execModifyTargetThreat = {"UADTargetComponent_execModifyTargetThreat", 0x05020300u};
+// ?OnRep_ReplicatedMovement@AActor@@UEAAXXZ
+inline constexpr Symbol AActor_OnRep_ReplicatedMovement = {"AActor_OnRep_ReplicatedMovement", 0x0382B5D0u};
+// ?GatherTargetsInRange@UADTargetComponent@@IEAAXXZ
+inline constexpr Symbol UADTargetComponent_GatherTargetsInRange = {"UADTargetComponent_GatherTargetsInRange", 0x0518A240u};
+// ?UpdateTargetData@UADTargetComponent@@IEAAXAEAUFADTargetData@@M@Z
+inline constexpr Symbol UADTargetComponent_UpdateTargetData = {"UADTargetComponent_UpdateTargetData", 0x051B4950u};
+// ?FindOrAddActor@UADTargetComponent@@IEAAPEAUFADTargetData@@PEAVAActor@@@Z
+inline constexpr Symbol UADTargetComponent_FindOrAddActor = {"UADTargetComponent_FindOrAddActor", 0x05188FC0u};
+// ?GetAllAbilitySystemActors@UADGASSubsystem@@QEBAXAEAV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@@Z
+inline constexpr Symbol UADGASSubsystem_GetAllAbilitySystemActors = {"UADGASSubsystem_GetAllAbilitySystemActors", 0x04A0FEB0u};
+// ?GetNavDataForProps@UNavigationSystemV1@@UEBAPEBVANavigationData@@AEBUFNavAgentProperties@@@Z
+inline constexpr Symbol UNavigationSystemV1_GetNavDataForPropsConst = {"UNavigationSystemV1_GetNavDataForPropsConst", 0x04A9E110u};
+// ?PossessedBy@ASTNonPlayableCharacterBase@@MEAAXPEAVAController@@@Z
+inline constexpr Symbol ASTNonPlayableCharacterBase_PossessedBy = {"ASTNonPlayableCharacterBase_PossessedBy", 0x051A1000u};
+// ?GetNavData@ASTNonPlayableCharacterBase@@QEAAPEAVANavigationData@@XZ
+inline constexpr Symbol ASTNonPlayableCharacterBase_GetNavData = {"ASTNonPlayableCharacterBase_GetNavData", 0x0518E720u};
+// ?SetPhysicsStateOverride@ASTCustomPickupBase@@QEAAXW4ESTPhysicsOverrideState@@@Z
+inline constexpr Symbol ASTCustomPickupBase_SetPhysicsStateOverride = {"ASTCustomPickupBase_SetPhysicsStateOverride", 0x051DBB70u};
+// ?BoxTraceSingleByProfile@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@11U?$TRotator@N@45@VFName@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@4UFLinearColor@@8M@Z
+inline constexpr Symbol UKismetSystemLibrary_BoxTraceSingleByProfile = {"UKismetSystemLibrary_BoxTraceSingleByProfile", 0x03D1CE40u};
+// ?execOnHit@AADPickupBase@@SAXPEAVUObject@@AEAUFFrame@@QEAX@Z
+inline constexpr Symbol AADPickupBase_execOnHit = {"AADPickupBase_execOnHit", 0x04C63100u};
+// ?WakeRigidBody@UPrimitiveComponent@@UEAAXVFName@@@Z
+inline constexpr Symbol UPrimitiveComponent_WakeRigidBody = {"UPrimitiveComponent_WakeRigidBody", 0x040AD4D0u};
+// ?SphereTraceSingleForObjects@UKismetSystemLibrary@@SA_NPEBVUObject@@U?$TVector@N@Math@UE@@1MAEBV?$TArray@V?$TEnumAsByte@W4EObjectTypeQuery@@@@V?$TSizedDefaultAllocator@$0CA@@@@@_NAEBV?$TArray@PEAVAActor@@V?$TSizedDefaultAllocator@$0CA@@@@@W4Type@EDrawDebugTrace@@AEAUFHitResult@@3UFLinearColor@@7M@Z
+inline constexpr Symbol UKismetSystemLibrary_SphereTraceSingleForObjects = {"UKismetSystemLibrary_SphereTraceSingleForObjects", 0x03D41440u};
+// ?Play@UAudioComponent@@UEAAXM@Z
+inline constexpr Symbol UAudioComponent_Play = {"UAudioComponent_Play", 0x03A41F30u};
+// ?IsPlaying@UAudioComponent@@UEBA_NXZ
+inline constexpr Symbol UAudioComponent_IsPlaying = {"UAudioComponent_IsPlaying", 0x03A35C20u};
+// ?TriggerSpecificMusic@USTCommonUtilityLibrary@@SAXPEAVUObject@@VFName@@_N@Z
+inline constexpr Symbol USTCommonUtilityLibrary_TriggerSpecificMusic = {"USTCommonUtilityLibrary_TriggerSpecificMusic", 0x052545A0u};
+// ?EndMusic@USTCommonUtilityLibrary@@SAXPEAVUObject@@_NM@Z
+inline constexpr Symbol USTCommonUtilityLibrary_EndMusic = {"USTCommonUtilityLibrary_EndMusic", 0x05235420u};
+// ?ClearMusicTriggers@USTCommonUtilityLibrary@@SAXPEAVUObject@@_N@Z
+inline constexpr Symbol USTCommonUtilityLibrary_ClearMusicTriggers = {"USTCommonUtilityLibrary_ClearMusicTriggers", 0x052335F0u};
+// ?PlaySound2DFName@USTCommonUtilityLibrary@@SAXPEAVUObject@@VFName@@MMMPEAVUSoundConcurrency@@PEAVAActor@@@Z
+inline constexpr Symbol USTCommonUtilityLibrary_PlaySound2DFName = {"USTCommonUtilityLibrary_PlaySound2DFName", 0x05248710u};
+// ?SetSubmixEffectChainOverride@UAudioMixerBlueprintLibrary@@SAXPEBVUObject@@PEAVUSoundSubmix@@V?$TArray@PEAVUSoundEffectSubmixPreset@@V?$TSizedDefaultAllocator@$0CA@@@@@M@Z
+inline constexpr Symbol UAudioMixerBlueprintLibrary_SetSubmixEffectChainOverride = {"UAudioMixerBlueprintLibrary_SetSubmixEffectChainOverride", 0x033245E0u};
+// ?ClearSubmixEffectChainOverride@UAudioMixerBlueprintLibrary@@SAXPEBVUObject@@PEAVUSoundSubmix@@M@Z
+inline constexpr Symbol UAudioMixerBlueprintLibrary_ClearSubmixEffectChainOverride = {"UAudioMixerBlueprintLibrary_ClearSubmixEffectChainOverride", 0x0330C170u};
+// ?TickInstanceParameters_GameThread@FNiagaraSystemInstance@@QEAAXM@Z
+inline constexpr Symbol FNiagaraSystemInstance_TickInstanceParameters_GameThread = {"FNiagaraSystemInstance_TickInstanceParameters_GameThread", 0x048D0FB0u};
 
 } // namespace ubw::offsets

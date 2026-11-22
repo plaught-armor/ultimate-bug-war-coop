@@ -1,6 +1,6 @@
 # 524: Client draws live bugs far from the host's place (death start offset)
 
-Opened 2026-11-19 by senior from the c263l (b303) card523 row, per the latency rule (player-visible sync under
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by senior from the c263l (b303) card523 row, per the latency rule (player-visible sync under
 100 ms).
 
 ## Finding

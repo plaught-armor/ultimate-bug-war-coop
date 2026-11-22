@@ -1,6 +1,6 @@
 # Card 458: gib join replay sends a part with no data class
 
-Opened 2026-11-16 19:40 (senior, from run `c423b159b`, build `885a2976f01932ac`).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 19:40 (senior, from run `c423b159b`, build `885a2976f01932ac`).
 
 ## Facts
 

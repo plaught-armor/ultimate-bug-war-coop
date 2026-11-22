@@ -1,6 +1,6 @@
 # Card 446: a rejoining client's item counts go back to the starting loadout
 
-Status: open, patch written 2026-11-16 16:41 (`c446_patch.py` in the senior scratchpad, applies on the b145 tree), for
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, patch written 2026-11-16 16:41 (`c446_patch.py` in the senior scratchpad, applies on the b145 tree), for
 b146. Sibling of cards 440 (weapons, ammo) and 445 (tactical charge).
 
 ## Defect

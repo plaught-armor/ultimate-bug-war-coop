@@ -22,6 +22,9 @@ constexpr float kC43HeldHealth = 1.0f;        // card 043 holds a downed pawn he
 constexpr int32_t kC143Marks = kC17Slots;     // host: the newest server copies AssignStartingInventories ran on
 constexpr ULONGLONG kC143ReadBackMs = 1000;   // host: card 198, Health read back this long after an apply
 
+size_t c570_items_text(const void* pc, const void* pawn, char* out, size_t cap); // card 570, defined after g_c440
+void c570_apply_items(void* pawn, const char* items, ULONGLONG now);
+
 struct C143Hold {
     int32_t pc_id;
     ULONGLONG recv_ms;
@@ -62,8 +65,8 @@ bool c143_marked(const void* pawn) {
     return false;
 }
 
-// "<health> <armour>;<weapons>;<ammo>" from an MI server copy pawn; the ammo part is left empty (WARN) when it does
-// not fit. Card 198: any other player pawn (the bug pawn) gives "<health>;;": the weapon and ammo inventories are MI
+// "<health> <armour>;<weapons>;<ammo>;<items>" from an MI server copy pawn. When it does not fit, the items part
+// (card 570) is left out first, then the ammo part (WARN each). Card 198: any other player pawn (the bug pawn) gives "<health>;;": the weapon and ammo inventories are MI
 // fields, and the bug pawn's health set is not verified to hold the Armour attribute c48_armour reads.
 int32_t c143_snapshot(void* pawn, char* out, size_t cap) {
     void* component = nullptr;
@@ -82,8 +85,15 @@ int32_t c143_snapshot(void* pawn, char* out, size_t cap) {
     if (c72_map_text(read_ptr(pawn, kMiAmmoInventory), ammo, sizeof(ammo)) <= 0) {
         ammo[0] = '\0';
     }
-    int n = snprintf(out, cap, "%.1f %.1f;%s;%s", static_cast<double>(health), static_cast<double>(a.armour), weapons,
+    static char items[kChanTextMax + 1];
+    c570_items_text(read_ptr(pawn, kPawnController), pawn, items, sizeof(items));
+    int n = snprintf(out, cap, "%.1f %.1f;%s;%s;%s", static_cast<double>(health), static_cast<double>(a.armour),
+                     weapons, ammo, items);
+    if (n < 0 || static_cast<size_t>(n) >= cap) {
+        log::line("WARN card570: host snapshot of %s too long (%d chars): items left out", object_name(pawn).text, n);
+        n = snprintf(out, cap, "%.1f %.1f;%s;%s", static_cast<double>(health), static_cast<double>(a.armour), weapons,
                      ammo);
+    }
     if (n < 0 || static_cast<size_t>(n) >= cap) {
         log::line("WARN card143: host snapshot of %s too long (%d chars): ammo left out", object_name(pawn).text, n);
         n = snprintf(out, cap, "%.1f %.1f;%s;", static_cast<double>(health), static_cast<double>(a.armour), weapons);
@@ -153,7 +163,9 @@ bool c143_apply_inventory(void* pc, void* pawn, const char* weapons, const char*
     }
     C50Copy* const c = c50_copy(object_index(pc), false);
     if (c != nullptr) {
-        c->seed = true;     // card 072: the restored counts go to the client as AmmoSet on the next poll
+        // Card 580: the restored counts go to the client as AmmoSet now; waiting for the next poll left the client's
+        // reserve at 0 for 309 ms after a checkpoint reload (c397b400a). A failed send retries on the poll.
+        c->seed = !c72_seed(pc, pawn);
         c->ammo[0] = '\0';  // the client's mirror of its starting counts is not re-applied over them
     }
     return weapons_ok;
@@ -175,7 +187,14 @@ void c143_apply(void* pc, void* pawn, const C143Hold& h, bool marked, ULONGLONG 
     const size_t wlen = semi != nullptr ? static_cast<size_t>(semi - rest) : strlen(rest);
     memcpy(weapons, rest, wlen);
     weapons[wlen] = '\0';
-    const char* const ammo = semi != nullptr ? semi + 1 : "";
+    // Card 570: "<ammo>;<items>"; a kept inventory (card 440) and an older text have no items part.
+    static char ammo[kChanTextMax + 1];
+    const char* const ammo_start = semi != nullptr ? semi + 1 : "";
+    const char* const semi2 = strchr(ammo_start, ';');
+    const size_t alen = semi2 != nullptr ? static_cast<size_t>(semi2 - ammo_start) : strlen(ammo_start);
+    memcpy(ammo, ammo_start, alen);
+    ammo[alen] = '\0';
+    const char* const items = semi2 != nullptr ? semi2 + 1 : "";
     const bool mi = c192_mi_pawn(pawn, "c143 Restore inventory");
     void* component = nullptr;
     const float health_before = c21_health(static_cast<const uint8_t*>(pawn), &component);
@@ -188,6 +207,9 @@ void c143_apply(void* pc, void* pawn, const C143Hold& h, bool marked, ULONGLONG 
     }
     char ammo_log[256] = {};
     const bool weapons_ok = mi && c143_apply_inventory(pc, pawn, weapons, ammo, h.state_ms, ammo_log, sizeof(ammo_log));
+    if (mi) {
+        c570_apply_items(pawn, items, now);
+    }
     const float health_after = c21_health(static_cast<const uint8_t*>(pawn), &component);
     log::line("%scard143: host t=%llu Restore applied to %s (copy %s, %s, %llu ms after it came): Health %.1f -> %.1f "
               "(want %.1f), Armour %.1f -> %.1f (want %.1f%s), weapons %s: %s, ammo %s",
@@ -443,6 +465,72 @@ void c446_step(void* world, ULONGLONG now) {
     }
 }
 
+// Card 570, host: "<definition path> <count>" pairs, space separated, for each item definition card 446 noted for pc,
+// with the copy's live count (0 included: the new copy then holds none of it either). The Reload text carries it, so
+// the grenades survive a checkpoint rejoin (run c570b386a: the load's GrenadeItem frames came while the client had
+// no pawn and were dropped at the map change). A name that would be cut is left out.
+size_t c570_items_text(const void* pc, const void* pawn, char* out, size_t cap) {
+    void* const inventory = c73_item_inventory(pawn);
+    size_t used = 0;
+    out[0] = '\0';
+    const int32_t pc_id = pc != nullptr && inventory != nullptr ? object_index(pc) : -1;
+    for (int32_t i = 0; pc_id >= 0 && i < g_c440.items && i < kC446Items; ++i) {
+        const C446Item& e = g_c440.item[i];
+        if (e.pc_id != pc_id) {
+            continue;
+        }
+        const ObjectName package = object_name(read_ptr(e.definition, kObjectOuter));
+        const ObjectName cls = object_name(e.definition);
+        if (strlen(package.text) + 1 >= kNameChars || strlen(cls.text) + 1 >= kNameChars) {
+            log::line("WARN card570: host item %s of %s left out of the Reload text: name cut", cls.text,
+                      object_name(pc).text);
+            continue;
+        }
+        const int w = snprintf(out + used, cap - used, "%s%s.%s %d", used > 0 ? " " : "", package.text, cls.text,
+                               c73_count(inventory, e.definition));
+        if (w <= 0 || static_cast<size_t>(w) >= cap - used) {
+            out[used] = '\0';
+            break;
+        }
+        used += static_cast<size_t>(w);
+    }
+    return used;
+}
+
+// Card 570, host: the Restore's items part set on the new copy (c446_set_count relays each count to the client).
+void c570_apply_items(void* pawn, const char* items, ULONGLONG now) {
+    void* const inventory = items[0] != '\0' ? c73_item_inventory(pawn) : nullptr;
+    if (items[0] != '\0' && inventory == nullptr) {
+        log::line("WARN card570: host t=%llu Restore items of %s not set: no item inventory: %s",
+                  static_cast<unsigned long long>(now), object_name(pawn).text, items);
+        return;
+    }
+    const char* p = items;
+    for (int32_t n = 0; inventory != nullptr && n < kC446Items && *p != '\0'; ++n) {
+        char path[2 * kNameChars + 2];
+        int32_t want = -1;
+        int used = 0;
+        if (sscanf_s(p, " %129s %d%n", path, static_cast<unsigned>(sizeof(path)), &want, &used) != 2 || want < 0 ||
+            used <= 0) {
+            log::line("WARN card570: host t=%llu Restore items of %s: bad pair at \"%s\"",
+                      static_cast<unsigned long long>(now), object_name(pawn).text, p);
+            return;
+        }
+        p += used;
+        wchar_t wide[sizeof(path)];
+        for (size_t i = 0; i < sizeof(path); ++i) {
+            wide[i] = static_cast<wchar_t>(path[i]);
+        }
+        void* const definition = find_class(wide);
+        if (definition == nullptr) {
+            log::line("WARN card570: host t=%llu Restore item %s of %s: no such class",
+                      static_cast<unsigned long long>(now), path, object_name(pawn).text);
+            continue;
+        }
+        c446_set_count(inventory, definition, want);
+    }
+}
+
 // The newest kept entry whose controller is no longer in world, or -1.
 int32_t c440_orphan(void* world) {
     int32_t best = -1;
@@ -584,7 +672,6 @@ void c143_after_load(void* world) {
     g_c143.marks = 0; // only an Assign after this Reload marks a rejoined copy ready
     g_c440.keeps = 0; // card 440: the kept inventories are from before the load
     g_c440.oweds = 0;
-    g_c440.items = 0; // card 446
     g_c143.armed = true;
     g_c143.reload_ms = now; // card 463
     for (int s = 0; s < kC17Slots; ++s) {
@@ -600,6 +687,7 @@ void c143_after_load(void* world) {
                       static_cast<unsigned long long>(now), object_name(pc).text);
         }
     }
+    g_c440.items = 0; // card 446; card 570: after the Reload texts, which list the noted definitions
 }
 
 // Host, after LoadAbilitySystemComponent: a player row saved while card 043 held it downed comes back at the hold's
@@ -711,7 +799,6 @@ void c143_receive_restore(void* pc, const ue::chan::WireString* s) {
 
 // Client: the host loaded in place. Hold the copy's state and rejoin through the card 045 follow, at once.
 void c143_receive_reload(void* pc, const ue::chan::WireString* s) {
-    (void)pc;
     const ULONGLONG now = GetTickCount64();
     const int32_t len = chan_text(s, g_c143.text, sizeof(g_c143.text));
     if (len <= 0) {
@@ -729,6 +816,7 @@ void c143_receive_reload(void* pc, const ue::chan::WireString* s) {
         return;
     }
     g_c143.held = strcmp(g_c143.text, kC143NoRow) != 0; // card 371: no saved state, no Restore after the rejoin
+    c570_magazine_keep(read_ptr(pc, kControllerPawn), now); // card 570: the Reload text has no magazine
     g_c143.reconnects_at = g_c45.reconnects;
     g_c45.follow = C45Follow::Retrying;
     g_c45.tries = 0;

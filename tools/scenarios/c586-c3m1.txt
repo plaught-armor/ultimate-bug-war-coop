@@ -1,0 +1,120 @@
+# Card 586 proof (b419): FED_C3M1, built from c372-c3m1. The client is downed once while it flies a guided missile
+# and once while it sits in a Door Gunner seat; each time the host revives it, and the client must be back in its own
+# trooper with its own view and able to walk before the next ride. The host stays alive and unseated throughout.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-69).
+# Down kind: both downs are `host down client` (testrun c109_down -> c43_enter_down -> c586_end_hold). The mod has
+# no apply-real-damage command, so HandleDeathEvent -> c586_end_hold_of is not proved by this run, and the missile
+# row (Return to Character, or none) answers the PlayerDamaged question only for a testrun down, not a real hit.
+# b419 = b417 + c109_down finds a held client's slot by its PC (g_c586), since the PC's pawn is then the seat or
+# missile and the role lookup finds no trooper.
+# b419 adds (from c586b418a): the client clears its cached seat in the destroy hook (c588_forget; the seat was
+# destroyed before post-tick read it: crash), c43_enter_down sends the first Down frame with the trooper in the
+# slot (was WARN card209, client down 1 s late), and c109_down tries the hold first (no WARN card502).
+# Extra prediction: the client's "Up -> Downed" row under 100 ms after the host's "-> Downed" row, both downs.
+# Predictions: host "card586: host t=... held by missile|seat ..." before each down; one "card586: host t=...
+# enter down: ... down while in missile ...: Return to Character; PC ... pawn now BP_PlayerCharacterMI_C..." and one
+# "... down while in seat ...: LeaveTurret; ..." row, neither with WARN; card043 server-copy -> Downed, then -> Up
+# (revived ...); client own pawn Downed -> Up; client ClientRestart back to MI; client wait state pawn=client-own;
+# the client's goto to the host reaches it. Zero "all down: host death", zero WARN card586, no WARN class new against
+# c588b416a.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c586-c3m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c586b419a 1200
+voidsoft
+void unless host dll d708f6fa42b54a48
+void unless client dll d708f6fa42b54a48
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- ride 1, missile: the client takes the guided missile pickup by its own Use press, throws it, and flies it
+# (block 560 of c372-c3m1). The down is gated on the host's card586 missile hold row.
+host mark
+client mark
+host warp client BP_TacSuppPickup_GuidedMissile_C 80
+client look actor BP_TacSuppPickup_GuidedMissile_C 0 bounds focus=BP_TacSuppPickup_GuidedMissile_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*Config_TacSupp_GuidedMissile_C" since-mark timeout=5
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+client wait log "card303: client t=\d+ possession SetPawn pawn BP_GuidedMissile_C" since-mark timeout=40
+host wait log "card586: host t=\d+ \S+ held by missile BP_GuidedMissile_C\S* of " since-mark timeout=10
+client shot c586-missile-flying-client
+host mark
+client mark
+host down client
+host wait log "card586: host t=\d+ enter down: \S+ down while in missile BP_GuidedMissile_C\S*: " since-mark timeout=5
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Downed " since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=15
+client shot c586-missile-downed-client
+# Revive: the host stands within card 043's 200 uu of the downed trooper, faces it and holds Use past the 3 s hold.
+host warp actor BP_PlayerCharacterMI_C 120
+host look actor BP_PlayerCharacterMI_C 0
+host key E 4500
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Up \(revived" since-mark timeout=10
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) (Downed|Out) -> Up" since-mark timeout=10
+client wait state pawn=client-own timeout=10
+client shot c586-missile-revived-client
+# Can move: the host steps 500 uu off, the client walks to it (goto actor skips the own pawn, card 319).
+host warp actor BP_PlayerCharacterMI_C 500
+client goto actor BP_PlayerCharacterMI_C 150 timeout=40
+client shot c586-missile-walked-client
+host clear 4000 kill
+# --- ride 2, seat: the client calls a Door Gunner (block 561c of c372-c3m1). The down is gated on the client's
+# card588 seat row (the seat moving under the client).
+host mark
+client mark
+host warp client BP_TacSuppPickup_DoorGunner_C 80 live
+client look actor BP_TacSuppPickup_DoorGunner_C 0 bounds focus=BP_TacSuppPickup_DoorGunner_C
+client key E
+client wait log "card032: client EquipTacticalSupportAbility: .*Config_TacSupp_DoorGunner_C" since-mark timeout=5
+host warp actor BP_PlayerCharacterMI_C 300
+host charge client 1 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Five
+sleep 1.5
+client key LeftMouseButton
+host wait log "card100: host t=\d+ TacSupport slot 1 from" since-mark timeout=10
+host wait log "card021: host GiveWeaponByClass\(BP_WeaponDefinition_TurretMorita_C, .*\) = 1 on BP_MountableTurret_Gunner_C" since-mark timeout=40
+client wait log "card588: client seat \S+ role 2: \d+ frames" since-mark timeout=20
+try host wait log "card586: host t=\d+ \S+ held by seat BP_MountableTurret_Gunner_C\S* of " since-mark timeout=3
+client shot c586-seat-riding-client
+host mark
+client mark
+host down client
+host wait log "card586: host t=\d+ enter down: \S+ down while in seat BP_MountableTurret_Gunner_C\S*: LeaveTurret" since-mark timeout=5
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Downed " since-mark timeout=5
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) Up -> Downed" since-mark timeout=10
+client wait log "possess: ClientRestart\(pc=\S+, arg=\S+\) local player \S+, Pawn \S+ BP_PlayerCharacterMI_C" since-mark timeout=15
+client shot c586-seat-downed-client
+host shot c586-seat-downed-host
+host warp actor BP_PlayerCharacterMI_C 120
+host look actor BP_PlayerCharacterMI_C 0
+host key E 4500
+host wait log "card043: host t=\d+ BP_PlayerCharacterMI_C\S* \(server-copy, slot \d+\) -> Up \(revived" since-mark timeout=10
+client wait log "card043: client t=\d+ own pawn guid 0x[0-9a-f]+ \(host slot \d\) (Downed|Out) -> Up" since-mark timeout=10
+client wait state pawn=client-own timeout=10
+client shot c586-seat-revived-client
+host warp actor BP_PlayerCharacterMI_C 500
+client goto actor BP_PlayerCharacterMI_C 150 timeout=40
+client shot c586-seat-walked-client
+host wait state pawn=host-own timeout=5
+sleep 2
+host quit
+client quit

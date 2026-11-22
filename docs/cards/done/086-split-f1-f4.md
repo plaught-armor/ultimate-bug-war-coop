@@ -1,6 +1,6 @@
 # Card 086: Split F1-F4: open the anonymous namespace, add `ubw/hooks_internal.h`, move guards, input diag, pawn collision, dropship, sprint, attributes
 
-Status: sent 2026-11-05 16:42 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-05 16:42 (senior). Part of the 19:00 batch (see card 084): lighter proof, no baseline runs.
 
 Read:
 

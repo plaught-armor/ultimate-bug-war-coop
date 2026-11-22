@@ -1,6 +1,6 @@
 # Card 028: Remote players shown as a trooper sprite that mirrors what they do
 
-Status: ready (senior, 2026-11-03). The user chose this card next; send it only to a cleared junior.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: ready (senior, 2026-11-03). The user chose this card next; send it only to a cleared junior.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and rows 022, 025, 027 and 029. Then read card 027's report and senior review, card 022's report (part A audit), and card 029's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

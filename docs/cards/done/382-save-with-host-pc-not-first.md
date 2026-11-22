@@ -1,6 +1,6 @@
 # Card 382: a save taken before the client's PC swap pairs pawns with the wrong PC on load
 
-Status: fix is in the build (string present in b144 `b09caa0e7c1f80da`). Prediction 1 holds 2026-11-16 16:33: runs `c423b144a` and `c423b144b`, 10 saves each, 0 `card382` rows, digest 0 mismatches. Prediction 2 (forced save inside the window) not run. Found by static audit 2026-11-15 (card 375 sibling).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: fix is in the build (string present in b144 `b09caa0e7c1f80da`). Prediction 1 holds 2026-11-16 16:33: runs `c423b144a` and `c423b144b`, 10 saves each, 0 `card382` rows, digest 0 mismatches. Prediction 2 (forced save inside the window) not run. Found by static audit 2026-11-15 (card 375 sibling).
 
 ## Defect (predicted from the card 375 trace; not seen in a run)
 

@@ -1,0 +1,155 @@
+# Proof run 8 (FED_C4M1, FAST=1, lane 2): card 567 client GrenadeSpawn split rows on b379 2b94706ae9a7bb61 (= b378 + split row); mech steps kept from c558b377b (558, 557 passed).
+# FED_C4M1 has two pod mechs from the map start (c447-c4m1.txt header); the preamble is c447's.
+# Order: 1. the host enters mech A and walks it in view of the client (card 558 candidate 2: shots during the walk);
+# 2. the host leaves, the client looks at the empty mech (card 557: no "Player" tag, ring or blip); 3. the client
+# enters the same mech (card 558 fix row), walks, fires (LMB) and saws (RMB, IA_MechSecondaryAbility) with shots
+# during each; 4. the client leaves, the host looks at the empty mech (card 557, host side).
+# Predictions are in docs/cards/558 and 557 under "Run c558b377a predictions" (rerun as c558b377b).
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c375-c4m1-mech.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_AUTODROPSHIP=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C4M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C76_LOG=1" tools/run_pair.sh c558b379a 600
+# Expected wall: about 5 min.
+voidsoft
+failsoft
+void unless host dll 2b94706ae9a7bb61
+void unless client dll 2b94706ae9a7bb61
+host wait state map=FED_C4M1 pawn=host-own timeout=240 void
+client wait state map=FED_C4M1 pawn=client-own timeout=180
+client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host ui continue
+client ui continue
+host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=30
+host wait log "card098: host spawn BP_BaseMech_C BP_BaseMech_C at " timeout=60
+host mark
+host warp actor BP_BaseMech_C 300
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; own pawn from" since-mark timeout=5
+host clear 4000 kill
+# --- 1. The host enters mech A; the client stands 600 uu off and watches (card 558 candidate 2).
+host look actor BP_BaseMech_C 150
+sleep 1
+host mark
+host key E
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=8
+# Mech A stands on a raised pod (z about 1347); walk it off and wait for the landing so the client watches on the ground (c558b376a lesson).
+host mark
+& host key W 4000 timeout=10
+try host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 3" since-mark timeout=8
+host mark
+host wait log "card490: host t=\d+ pc 0 BP_BaseMech_C role 3: .*MovementMode 1" since-mark timeout=10
+join host
+host mark
+# 1500 uu so the whole mech is in frame (c558b377a: at 600 uu the shots held only its gun arm).
+host warp client BP_BaseMech_C 1500
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; server copy from" since-mark timeout=5
+client wait near {g1} {g2} {g3} 250 timeout=6
+client look actor BP_BaseMech_C 150
+sleep 1
+client shot 558-host-mech-idle
+# The host walks 2.5 s (a 4 s walk left the mech among walls, and later warps fell back, c558b377a); the client
+# re-aims and shoots at about 0.8 s and 1.8 s into the walk (the leg pose must differ between the two).
+& host key W 2500 timeout=10
+sleep 0.7
+client look actor BP_BaseMech_C 150
+client shot 558-host-mech-walk1
+sleep 0.9
+client look actor BP_BaseMech_C 150
+client shot 558-host-mech-walk2
+join host
+client look actor BP_BaseMech_C 150
+# --- 2. The host leaves (E held 2.5 s); the client looks at the empty mech (card 557).
+host mark
+host key E 2500 timeout=15
+host warp actor BP_BaseMech_C 400
+host wait log "cmd: \d+ warp: landed at \((-?\d+), (-?\d+), (-?\d+)\) after .*; own pawn from" since-mark timeout=5
+host mark
+host warp client BP_BaseMech_C 1200
+host wait log "cmd: \d+ warp: (?:landed at .*; server copy from|server copy \S+ .* -> .*SetActorLocation 1)" since-mark timeout=5
+sleep 1
+client look actor BP_BaseMech_C 150
+client shot 557-empty-mech-client
+# --- 3. The client enters the same mech (card 558 fix row), walks, fires and saws with shots during each.
+host mark
+host warp client BP_BaseMech_C 300
+# A warp with no seeing navmesh point logs the "server copy ... -> (...) ... SetActorLocation 1" fallback row instead (c558b377a).
+host wait log "cmd: \d+ warp: (?:landed at .*; server copy from|server copy \S+ .* -> .*SetActorLocation 1)" since-mark timeout=5
+client look actor BP_BaseMech_C 150
+sleep 1
+host mark
+client mark
+client key E
+host wait log "card075: host MechEnter from BP_PlayerController_C: mech BP_BaseMech_C at \d+ units" since-mark timeout=10
+client wait log "card297: client t=\d+ mech \d+ enter \(possessed\): .*arms tick \d+ -> \d+" since-mark timeout=10
+sleep 1
+client shot 558-client-idle
+& client key W 4000 timeout=10
+sleep 1
+client shot 558-client-walk1
+sleep 1.5
+client shot 558-client-walk2
+join client
+host clear 3000 kill
+client mark
+& client key LeftMouseButton 3000 timeout=10
+try client wait log "card297: client t=\d+ mech \S+ tag \+WeaponSystem.EquippedWeapon.Fire" since-mark timeout=5
+client shot 558-client-fire1
+sleep 0.5
+client shot 558-client-fire2
+join client
+& client key RightMouseButton 3000 timeout=10
+sleep 1
+client shot 558-client-saw1
+sleep 0.5
+client shot 558-client-saw2
+join client
+# --- Card 568 combat window (about 35 s): six code-spawned warriors 800 uu ahead of the client's mech (c447 card 319
+# steps); the client fires in 3 s bursts, shots of the NPCs near the client for choppy motion or LOD pops.
+client mark
+client look point 0 0 0
+try client wait log "cmd: \d+ look: point at 0 0 0 from (-?\d+) (-?\d+) (-?\d+):" since-mark timeout=5
+host mark
+host spawn bug {g1+800} {g2} {g3} 180
+host spawn bug {g1+800} {g2+200} {g3} 180
+host spawn bug {g1+800} {g2-200} {g3} 180
+host spawn bug {g1+1000} {g2+100} {g3} 180
+host spawn bug {g1+1000} {g2-100} {g3} 180
+host spawn bug {g1+1200} {g2} {g3} 180
+try host wait log "card125: host spawned" count=6 since-mark timeout=5
+client look 0 0
+client shot 568-npcs-1
+& client key LeftMouseButton 3000 timeout=10
+sleep 1.5
+client shot 568-npcs-2
+join client
+sleep 3
+client shot 568-npcs-3
+& client key LeftMouseButton 3000 timeout=10
+join client
+sleep 3
+& client key RightMouseButton 3000 timeout=10
+join client
+sleep 3
+client shot 568-npcs-4
+& client key LeftMouseButton 3000 timeout=10
+join client
+sleep 3
+& client key LeftMouseButton 3000 timeout=10
+join client
+sleep 3
+client shot 568-npcs-5
+host clear 3000 kill
+# --- 4. The client leaves; the host looks at the empty mech (card 557, host side).
+host mark
+client key E 2500 timeout=15
+host wait log "card075: host MechLeave from BP_PlayerController_C: mech BP_BaseMech_C" since-mark timeout=10
+sleep 2
+host look actor BP_BaseMech_C 150
+host shot 557-empty-mech-host
+client look actor BP_BaseMech_C 150
+client shot 557-empty-mech-client2
+# Digest round.
+host mark
+client mark
+host objectives
+host wait log "card132: host t=\d+ digest round \d+ \((command|timer)\) sent: " since-mark timeout=15
+client wait log "card132: client round \d+: actors \d+ host, \d+ client, mismatches " since-mark timeout=30

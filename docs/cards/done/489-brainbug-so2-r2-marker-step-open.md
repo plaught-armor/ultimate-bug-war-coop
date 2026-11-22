@@ -1,6 +1,6 @@
 # 489: c245 BrainBug_SO2_R2 marker step left open
 
-Opened 2026-11-18 08:44 from the b215-b217 c245 runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-18 08:44 from the b215-b217 c245 runs.
 
 ## Symptom
 All three c245 runs fail line 570 with "BrainBug_SO2_R2: marker step left open: no next switched-on presence with a navmesh point near the marker". SO2 still completes through the clears, so the boss run passes, but the R2 leg is never driven by its own step.

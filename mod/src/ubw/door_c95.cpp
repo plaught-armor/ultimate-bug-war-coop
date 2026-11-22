@@ -283,14 +283,16 @@ bool c95_send_one(void* pc, ChanOp op, const char* text) {
     return c95_send_text(pc, op, text);
 }
 
-C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool priority) {
+C95Fanout c95_send_all(const void* world, ChanOp op, const char* text, bool priority, const void* relevant) {
     static wchar_t wire[kChanTextFrame];
     C95Fanout f{};
     for (int s = 0; world != nullptr && s < kC17Slots; ++s) {
         void* const pc = g_get_player_controller(world, s);
         const C50Copy* const c = pc != nullptr && sprint_side(pc) == kSideServerCopy ? c50_copy(object_index(pc), false)
                                                                                      : nullptr;
-        if (c != nullptr && c->ponged && priority) {
+        if (c != nullptr && c->ponged && relevant != nullptr && !c434_has_channel(pc, relevant)) {
+            ++f.culled;
+        } else if (c != nullptr && c->ponged && priority) {
             ++f.to;
             const WireString w = chan_text_frame(op, text, wire);
             uint32_t ahead = 0;

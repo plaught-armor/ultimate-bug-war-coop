@@ -1,6 +1,6 @@
 # 482: client satchel E finds no interactor target (load race)
 
-Status: Open. Play blocker (Bridge chain stops).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Open. Play blocker (Bridge chain stops).
 
 ## Seen
 

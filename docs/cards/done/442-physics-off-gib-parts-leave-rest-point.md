@@ -2,7 +2,7 @@
 
 **Closed 2026-11-16 18:55 (senior): step 2 (hold sleeps the body) passes on b145 `851ac6a55c0aed2b`, run `c423b145a` (FED_C2M1): client rest checks 279/376/231 all within 2 uu, worst 0.0 uu, 0 `WARN card137` (b144a: worst 16.3 uu, 3 WARN). Not seen in the run, so not covered: an awake part falling after the hold ends.**
 
-Opened 2026-11-16 15:12 by the senior, from run `c423b138a` (b138, FED_C2M1; first written here as FED_C5M2, the logs show C2M1). Follows card 279 (accepted on b128
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 15:12 by the senior, from run `c423b138a` (b138, FED_C2M1; first written here as FED_C5M2, the logs show C2M1). Follows card 279 (accepted on b128
 with 1 residual part).
 
 ## Finding

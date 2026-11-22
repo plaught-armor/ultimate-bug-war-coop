@@ -1,6 +1,6 @@
 # Card 428: one corpse release row per corpse
 
-Opened 2026-11-16 11:30 by the senior, from the WARN classes of run `c423b124a` (b124, FED_C2M1).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-16 11:30 by the senior, from the WARN classes of run `c423b124a` (b124, FED_C2M1).
 
 ## Finding
 

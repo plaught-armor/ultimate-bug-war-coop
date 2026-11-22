@@ -1,6 +1,6 @@
 # Card 173: The remote player's walking footsteps, and the remote sounds still 2D
 
-Status: queued 2026-11-11, remainder of card 162 (playtest 2026-11-08 finding 2). Budget: static first, then one run.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, remainder of card 162 (playtest 2026-11-08 finding 2). Budget: static first, then one run.
 
 Read: docs/cards/done/162-remote-audio-attenuation.md "Report"; mod/src/ubw/fx_c136.cpp `c162_remote_atten`;
 mod/src/ubw/playlog.cpp `pl_remote_source`.

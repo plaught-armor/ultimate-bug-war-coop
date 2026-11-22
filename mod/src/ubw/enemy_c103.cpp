@@ -163,12 +163,21 @@ void detour_c103_select(void* component) {
     }
 }
 
+// Card 572 step 8: UADTargetComponent's primary target GUID (16 bytes), the key GetPrimaryTarget (exe+0x518F310)
+// hashes and finds in the target table (`add rcx, 0x190; mov edx, 0x10; call CityHash64`).
+constexpr size_t kC572PrimaryKey = 0x190;
+
 bool detour_c103_set(void* component, void* actor) {
     if (g_client_session) {
         return g_orig_c103_set(component, actor);
     }
     actor = const_cast<void*>(c108_target(component, actor));
+    uint8_t key_before[16]; // card 572 step 8: the primary target key a memo pick reads
+    memcpy(key_before, static_cast<const uint8_t*>(component) + kC572PrimaryKey, sizeof(key_before));
     const bool ok = g_orig_c103_set(component, actor);
+    if (memcmp(key_before, static_cast<const uint8_t*>(component) + kC572PrimaryKey, sizeof(key_before)) != 0) {
+        c572_input_bump(kC572InputPrimary);
+    }
     c103_pick_note(read_ptr(component, kComponentOwner), actor);
     C103Enemy* const e = g_c103_log ? c103_slot(component) : nullptr;
     if (e == nullptr || e->primary == actor) {
@@ -246,11 +255,21 @@ bool c108_any_up(const C43Roster& r) {
 // Card 108: while any player stands, a Downed or Out player is skipped both as the primary target and in the nearest
 // search; when every player is down, both rules take any player as before. Card 400: a pawn whose client is not in
 // yet is always skipped (-1 when no other player has a pawn).
+// Card 572 step 4: each slot's Downed and Out state is read once (it was read twice per slot, through c108_any_up and
+// then again in each search).
 int32_t c103_player_slot(const C43Roster& r, const void* enemy) {
-    const bool skip_down = c108_any_up(r);
+    bool live[kC43Max] = {}; // a pawn that is not Out
+    bool up[kC43Max] = {};   // and not Downed
+    bool any_up = false;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        live[s] = r.p[s].pawn != nullptr && !c400_out(r.p[s]);
+        up[s] = live[s] && !c108_down(r.p[s]);
+        any_up = any_up || up[s];
+    }
+    const bool* const ok = any_up ? up : live; // while any player stands, a Downed one is skipped
     const void* const primary = c103_pick_of(enemy);
     for (int32_t s = 0; s < kC43Max && primary != nullptr; ++s) {
-        if (r.p[s].pawn == primary && !(skip_down && c108_down(r.p[s])) && !c400_out(r.p[s])) {
+        if (r.p[s].pawn == primary && ok[s]) {
             return s;
         }
     }
@@ -258,7 +277,7 @@ int32_t c103_player_slot(const C43Roster& r, const void* enemy) {
     int32_t best = -1;
     double best_d = 0.0;
     for (int32_t s = 0; s < kC43Max; ++s) {
-        if (r.p[s].pawn == nullptr || (skip_down && c108_down(r.p[s])) || c400_out(r.p[s])) {
+        if (!ok[s]) {
             continue;
         }
         const double d = vec_dist(actor_location(r.p[s].pawn), at);
@@ -320,7 +339,7 @@ void c108_note_slot(const void* enemy, const C43Roster& r, int32_t s) {
 } // namespace
 
 void* c103_enemy_pc(const void* ctx, unsigned long long rva) {
-    if (g_client_session || g_is_in_game_thread == nullptr || !g_is_in_game_thread()) {
+    if (g_client_session) { // the game thread check is the caller's (c99_answer)
         return nullptr;
     }
     const void* const enemy = c103_enemy_of(ctx);

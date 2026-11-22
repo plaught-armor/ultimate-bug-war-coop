@@ -688,7 +688,7 @@ void c26_pong(const void* from_pc, uint32_t n) {
     }
     if (sent != 0) {
         c132_ledger_rtt(from_pc, static_cast<uint32_t>(now - sent));
-        pl_rtt(static_cast<uint32_t>(now - sent)); // card 155
+        pl_rtt(static_cast<uint32_t>(now - sent), c303_last_frame_ms()); // card 155, card 583 part 2
     }
 }
 
@@ -818,6 +818,14 @@ void c24_host_guard(void* world) {
         }
         if (pawn == nullptr) {
             log::line("card024: host relay dropped: pawn %d is gone (its weapon is not released)", r.pawn_id);
+            for (int s = 0; s < kC17Slots; ++s) { // card 587 diag: a PC now on a pawn whose Instigator is the trooper
+                const void* const pc = g_get_player_controller(world, s);
+                const void* const p = pc != nullptr ? read_ptr(pc, kControllerPawn) : nullptr;
+                const void* const inst = p != nullptr ? read_ptr(p, kActorInstigator) : nullptr;
+                if (inst != nullptr && inst != p && object_index(inst) == r.pawn_id) {
+                    c587_trooper_diag("card024 pawn gone", pc);
+                }
+            }
             if (r.kind == kFirePrimary) {
                 c276_end_line(r, nullptr, "pawn gone"); // card 276 diag
                 c181_clear(r.pawn_id, "a gone pawn", "pawn gone"); // card 181
@@ -944,6 +952,7 @@ void c24_step(void* engine) {
     c24_log_names(world, now);
     if (!g_client_session) {
         c24_host_guard(world);
+        c586_frame(world); // card 586: troopers held by a client's seat or missile
     } else {
         c76_client_imc(world);
         c120_client_step(g_get_player_controller(world, 0));

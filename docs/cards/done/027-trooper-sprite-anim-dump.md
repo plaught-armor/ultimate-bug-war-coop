@@ -1,6 +1,6 @@
 # Card 027: Dump the trooper sprite animation assets (male vs female stand-up)
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the "Runtime facts" line about `tools/run_pair.sh`, and row 025. Then read card 025's step 6 senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

@@ -1,6 +1,6 @@
 # Card 135: Players control cinematics and the "press any key to start" screen; tests skip by the button path
 
-Status: queued, remainder only. Already landed in play build 7044ed8c10577a0c: nothing is auto-skipped in play, tests skip through UBWCOOP_TEST_SKIP=1 (movieskip.cpp). Open: the "Open" and "Do" items about the press-to-start screen on both sides.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued, remainder only. Already landed in play build 7044ed8c10577a0c: nothing is auto-skipped in play, tests skip through UBWCOOP_TEST_SKIP=1 (movieskip.cpp). Open: the "Open" and "Do" items about the press-to-start screen on both sides.
 
 Read: card 067 (`WB_Loading_Screen_Final`, `ui continue`, `ShowAsyncLoadingScreen` / `HideAsyncLoadingScreen`),
 card 130 (`mod/src/ubw/cine_skip.cpp`), card 096 and card 120 (pause with a client connected). Memory rules

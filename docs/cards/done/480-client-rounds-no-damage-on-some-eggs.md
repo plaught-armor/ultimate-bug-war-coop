@@ -1,6 +1,6 @@
 # Card 480: Client rounds on some Sewers eggs apply no damage
 
-Opened 2026-11-17 17:35 from run `c245b194a` (b194 `a119f90574be9a2d`, C4M2 Sewers). Not a crash and not a play blocker yet, because the host can still shoot the eggs. It is carded, not chased.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-17 17:35 from run `c245b194a` (b194 `a119f90574be9a2d`, C4M2 Sewers). Not a crash and not a play blocker yet, because the host can still shoot the eggs. It is carded, not chased.
 
 ## Seen
 - The client fired one VeteranRifle round per press at eggs. A killed egg logs Health 200.0 -> -50.0 from one round.

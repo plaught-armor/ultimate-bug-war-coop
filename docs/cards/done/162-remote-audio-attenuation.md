@@ -1,6 +1,6 @@
 # Card 162: The other player's sounds play at their pawn
 
-Status: REPORTED, partly proven. Fix built (DLL 8dfc02cb3577e884). Runs c162-r2 (harness loss) and c162-r3 used; run budget spent. See "## Report".
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: REPORTED, partly proven. Fix built (DLL 8dfc02cb3577e884). Runs c162-r2 (harness loss) and c162-r3 used; run budget spent. See "## Report".
 
 Read: docs/playtest-2026-11-08.md finding 2, card 136 (effects manager), card 155 (audio line).
 

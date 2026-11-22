@@ -1,6 +1,6 @@
 # Card 038: Enemies die on the client
 
-Status: sent 2026-11-03.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: sent 2026-11-03.
 
 Read `docs/STATE.md` first: the "Mod code rules" section, the known issue "Enemies do not die on the client", and rows 023 and 037. Then read card 037's report and senior review. Repo root: `/path/to/ultimate-bug-war-coop`.
 

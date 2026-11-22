@@ -1,0 +1,70 @@
+# b454 proof run (card 600): FED_C3M1. Hand written, preamble from c595-c3m1-b447.txt.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons 1-83).
+# Order: pod landing shake (the level's load-time mech drop lands about 2.6 s after the hold ends, c582b453a), then
+# the mortar zone block (BP_MortarZone_C_3, away from the pod pad by C_1), then the tent spawner exit (card 600 code).
+# Predictions: docs/cards/600-player0-caller-3c7f202-not-remapped.md "b454 run predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c600-c3m1-b454.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C99_LOG=1" tools/run_pair.sh c600b454a 900
+voidsoft
+void unless host dll 0ed48e7e0c631437
+void unless client dll 0ed48e7e0c631437
+host wait state map=FED_C3M1 timeout=240 void
+client wait state map=FED_C3M1 pawn=client-own timeout=180
+# --- pod landing: the client stands about 1500 uu from the pod's goal (-77657, -23660, 412), inside the shake's
+# outer radius 3000 and outside the 300 uu landing blast. The warp goes in before the continue (world paused) and
+# again right after the hold ends, so the client is at the pad when the pod lands either way.
+client mark
+try host warp client point -76600 -22600 500
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C3M1 \(WB_Stack_C RequestGameUnpause\)" timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+try host warp client point -76600 -22600 500
+try host wait log "PlaySoundAtLocationFName MS_TACT_TacticalSupport_DropPod_Impact: context BP_TacSupp_Pod_MechDrop_C" timeout=40
+try client wait log "playlog: client t=\d+ audio row MS_TACT_TacticalSupport_DropPod_Impact" since-mark timeout=10
+try client wait log "card099: client CameraManager::StartCameraShake \S+ scale (?:0\.\d*[1-9]\d*|1\.00): .*caller exe\+0x403CE82" since-mark timeout=5
+client shot c600-pod-client
+failsoft
+host wait state pawn=host-own timeout=90
+host clear 4000 kill
+# --- mortar zone C_3 (-57766 7125 740): the host waits at the door floor (about 13000 uu away), the client stands
+# in the zone alone. Host rows: card099 remapped (place) with context BP_MortarZone_C and the client's PC; launch
+# rows for C_3 land within about 1500 uu of the client (read after the run).
+host mark
+client mark
+host warp actor point -68457 -645 1266
+host warp client BP_MortarZone_C_3 150
+try host wait log "card099: player 0 remapped \(place\): .*context BP_MortarZone_C" since-mark timeout=10
+sleep 8
+client shot c600-mortar-alone-client
+# Both inside, the client leaves: the exit is held, mortars keep falling on the host.
+host mark
+host warp actor BP_MortarZone_C_3 300
+sleep 2
+host warp client point -68300 -800 1266
+host wait log "card596: host t=\d+ exit held on BP_MortarZone_C_3: .*1 player inside" since-mark timeout=5
+sleep 8
+host shot c600-mortar-held-host
+# The host leaves too: the exit runs (last living player out).
+host mark
+host warp actor point -68457 -645 1266
+host wait log "card596: host t=\d+ exit on BP_MortarZone_C_3 by \S+ runs: last living player out" since-mark timeout=5
+host clear 4000 kill
+# --- card 600 code: both players at a tent spawner, the host leaves first (exit held), then the client (exit runs).
+# The spawner's PlayerDetection size is not known, so the waits are try: no row means the 200 uu stand was outside it.
+host mark
+try host warp client BP_TentSpawner_HumanGameplay_C 200
+try host warp actor BP_TentSpawner_HumanGameplay_C 250
+sleep 2
+host warp actor point -68457 -645 1266
+try host wait log "card600: host t=\d+ PlayerExit on \S+ \(BP_TentSpawner_HumanGameplay_C\) by \S+ held: 1 other player inside" since-mark timeout=5
+host mark
+host warp client point -68300 -800 1266
+try host wait log "card600: host t=\d+ PlayerExit on \S+ \(BP_TentSpawner_HumanGameplay_C\) by \S+ runs \(last living player out\): 0 other players inside" since-mark timeout=5
+sleep 2
+host shot c600-end-host
+client shot c600-end-client

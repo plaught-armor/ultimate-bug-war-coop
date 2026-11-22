@@ -1,6 +1,6 @@
 # Card 391: map-start `QueuedBits` burst follows the client's load hitch
 
-Status: open, traced from logs only (playtest window, no runs). Corrects card 390, which called this burst "the
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, traced from logs only (playtest window, no runs). Corrects card 390, which called this burst "the
 engine's own first actor replication". That was not supported.
 
 ## Evidence (`logs/c388b76-*`, `logs/c388b77-*`)

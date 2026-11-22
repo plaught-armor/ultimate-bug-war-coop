@@ -1,0 +1,129 @@
+# Card 573 C r.* GPU sizing on b401 386cb6c8fda71fd8 (run c573rb401a): FED_C1M1 FAST, lane 2, the c569 start through the
+# quiet window at the Assault_SO0 presence volume C_2 (tools/c573_capture.sh release file), then one console A/B per
+# candidate on both sides: a 15 s base phase, then per candidate a 15 s "on" phase and a 15 s "restore" phase.
+# Candidates (opt-in preset only, image quality trades): r.Shadow.MaxResolution 1024, r.ShadowQuality 0,
+# r.PostProcessAAQuality 0, fx.MaxCPUParticlesPerEmitter 100. Restore values are the UE5 BaseScalability values at
+# sg level 3 (r.Shadow.MaxResolution 2048, r.ShadowQuality 5, r.PostProcessAAQuality 4, fx.MaxCPUParticlesPerEmitter
+# 1000): the DLL cannot read a cvar back, so each restore phase is checked against the base phase in the GPU samples
+# (restore within noise of base = the restore value matched the game's own).
+# Analysis: logs/c573rb401a/run.gpu1s (tools/gpu1s_sampler.sh, uptime ms = game log ms); each phase is its host
+# card573 console row + 2 s until + 14 s; a phase with any other-job gfx over 5 % is void. Rank by GPU busy points
+# removed (base minus on). The sleeps below are the measurement phases themselves, not state waits.
+# Run: launch2.sh c573rb401a logs/c573rb401a tools/scenarios/c573-rsize-c1m1.txt "" (FPS_CAP=0; t.MaxFPS 60 by console).
+# Expected wall: about 6 min.
+voidsoft
+voidsoft
+void unless host dll 386cb6c8fda71fd8
+void unless client dll 386cb6c8fda71fd8
+host wait state map=FED_C1M1 timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c373-hud-start
+host clear 4000 kill
+# --- card 573 A: FPS_CAP=0 (no DXVK/VKD3D cap), the engine cap t.MaxFPS 60 on both sides here; the quiet window
+# itself is after round 00's first objective step (the b390 quiet2 point), keyed on a second host console row.
+host mark
+client mark
+host console t.MaxFPS 60
+client console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+client wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+# --- round 00: the live current step, until ShootingRange_SO3 is added
+unless host log "card049: host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO2\)" count=1 try host objective now
+unless host log "card049: host sent CompleteSubObjective\(ShootingRange_O1, ShootingRange_SO2\)" count=1 when host last "cmd: \d+ objective now(: \d+ row\(s\) under \S+, current \w+| -> failed)" "current (?!none;)\w+;" host objective do
+# --- card 573 A quiet window at the b390 quiet2 point (players at the Assault_SO0 presence volume C_2, about 25 s
+# after the pawn spawn): a second host t.MaxFPS 60 row is the trigger; tools/c573_capture.sh waits for row 2, then for
+# a clean 20 s (every other-job gfx read under 30 %), records 20 s of perf on both sides with window.gpu1s, and writes
+host mark
+host console t.MaxFPS 60
+host wait log "card573: .*console 't\.MaxFPS 60' sent" since-mark timeout=5
+# logs/c573rb401a.release (the c run tag; change it with the tag). No clean 20 s by trigger + 100 s: no file, run void.
+host wait file logs/c573rb401a.release timeout=120
+# --- card 573 C sizing: base phase
+client shot c573r-base
+sleep 15
+# --- r.Shadow.MaxResolution: on 1024, restore 2048
+host mark
+client mark
+host console r.Shadow.MaxResolution 1024
+client console r.Shadow.MaxResolution 1024
+host wait log "card573: .*console 'r\.Shadow\.MaxResolution 1024' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.Shadow\.MaxResolution 1024' sent" since-mark timeout=5
+sleep 14
+client shot c573r-shadowres-on
+sleep 1
+host mark
+client mark
+host console r.Shadow.MaxResolution 2048
+client console r.Shadow.MaxResolution 2048
+host wait log "card573: .*console 'r\.Shadow\.MaxResolution 2048' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.Shadow\.MaxResolution 2048' sent" since-mark timeout=5
+sleep 14
+client shot c573r-shadowres-restore
+sleep 1
+# --- r.ShadowQuality: on 0, restore 5
+host mark
+client mark
+host console r.ShadowQuality 0
+client console r.ShadowQuality 0
+host wait log "card573: .*console 'r\.ShadowQuality 0' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.ShadowQuality 0' sent" since-mark timeout=5
+sleep 14
+client shot c573r-shadowq-on
+sleep 1
+host mark
+client mark
+host console r.ShadowQuality 5
+client console r.ShadowQuality 5
+host wait log "card573: .*console 'r\.ShadowQuality 5' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.ShadowQuality 5' sent" since-mark timeout=5
+sleep 14
+client shot c573r-shadowq-restore
+sleep 1
+# --- r.PostProcessAAQuality: on 0, restore 4
+host mark
+client mark
+host console r.PostProcessAAQuality 0
+client console r.PostProcessAAQuality 0
+host wait log "card573: .*console 'r\.PostProcessAAQuality 0' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.PostProcessAAQuality 0' sent" since-mark timeout=5
+sleep 14
+client shot c573r-aa-on
+sleep 1
+host mark
+client mark
+host console r.PostProcessAAQuality 4
+client console r.PostProcessAAQuality 4
+host wait log "card573: .*console 'r\.PostProcessAAQuality 4' sent" since-mark timeout=5
+client wait log "card573: .*console 'r\.PostProcessAAQuality 4' sent" since-mark timeout=5
+sleep 14
+client shot c573r-aa-restore
+sleep 1
+# --- fx.MaxCPUParticlesPerEmitter: on 100, restore 1000
+host mark
+client mark
+host console fx.MaxCPUParticlesPerEmitter 100
+client console fx.MaxCPUParticlesPerEmitter 100
+host wait log "card573: .*console 'fx\.MaxCPUParticlesPerEmitter 100' sent" since-mark timeout=5
+client wait log "card573: .*console 'fx\.MaxCPUParticlesPerEmitter 100' sent" since-mark timeout=5
+sleep 14
+client shot c573r-fxcap-on
+sleep 1
+host mark
+client mark
+host console fx.MaxCPUParticlesPerEmitter 1000
+client console fx.MaxCPUParticlesPerEmitter 1000
+host wait log "card573: .*console 'fx\.MaxCPUParticlesPerEmitter 1000' sent" since-mark timeout=5
+client wait log "card573: .*console 'fx\.MaxCPUParticlesPerEmitter 1000' sent" since-mark timeout=5
+sleep 14
+client shot c573r-fxcap-restore
+sleep 1
+# --- end of sizing

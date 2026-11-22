@@ -1,0 +1,84 @@
+# b371 proof run 2 (FED_C2M1, FAST=1, lane 2): cards 557, 559, 562 on b371 baeebee09d3e7f59 (= b370 + card 564).
+# Preamble from gen_soak.py C2M1; the proof blocks follow `host clear 4000 kill`. No objective rounds.
+# Predictions are in each card under "Run c559b371a predictions".
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c371-c2m1.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C2M1?listen UBWCOOP_GOD=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1" tools/run_pair.sh c559b371a 1200
+voidsoft
+void unless host dll baeebee09d3e7f59
+void unless client dll baeebee09d3e7f59
+host wait state map=FED_C2M1 timeout=240 void
+client wait state map=FED_C2M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C2M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c371-hud-start
+host clear 4000 kill
+# --- card 559: the client throws its resupply flare (tac slot 0, filled by the card 106 charge command); the host's
+# server copy throws it. The client then takes a client-local weapon pickup from the drop by its own Use press.
+client mark
+host mark
+host charge client 0 20000 1
+client wait log "card104: client t=\d+ TacCharge " since-mark timeout=5
+client look 0 -35
+client key Four
+sleep 1.5
+client key LeftMouseButton
+host wait log "flare BP_SupportFlare_C ActivateFlare" since-mark timeout=25
+client wait log "copy of host \d+: \S+BP_TacSupp_Pod_Resupply_C at" since-mark timeout=20
+try client wait log "card098: client spawn (BP_ResupplyRack_\w+_C) " since-mark timeout=30
+client shot c371-559-drop-client
+try client wait log "card098: client spawn (BP_WeaponPickup_\w+_C) BP_WeaponPickup_\w+_C at \S+ \S+ \S+ placed 0" since-mark timeout=20
+try host warp client {g1} 80
+try client look actor {g1} 0 bounds focus={g1}
+client shot c371-559-before-use
+client mark
+host mark
+client key E
+try client wait log "card050: client t=\d+ Use press: interactor target BP_WeaponPickup_\w+_C_\d+ .*placed 0.*sent by class and point \(card 559\)" since-mark timeout=5
+try host wait log "card050: host t=\d+ relay for .*: (match|mismatch)" since-mark timeout=5
+client shot c371-559-after-use
+# 60 s hold: no card050 apply may remove the weapon (checked from the log after the run).
+sleep 60
+client inventory
+client shot c371-559-60s-later
+# --- card 557 + 562: a mech. The resupply drop may hold a MechSupport pickup (the playtest's did); the host takes
+# it, throws the mech drop on every tac slot charged, enters, stays 5 s (card 562: card490 rows for BP_BaseMech_C),
+# and leaves; the client looks at the empty mech (no Player tag) and at the host.
+host mark
+client mark
+try host warp actor BP_TacSuppPickup_MechSupport_C 80
+try host look actor BP_TacSuppPickup_MechSupport_C 0 bounds focus=BP_TacSuppPickup_MechSupport_C
+try host key E
+try host wait log "card032: host EquipTacticalSupportAbility: .*Config_TacSupp_MechSupport_C" since-mark timeout=5
+host charge 0 20000 1
+host charge 1 20000 1
+host look 0 -35
+host key Four
+sleep 1.5
+host key LeftMouseButton
+try host wait log "card075: host t=\d+ mechs 0 -> 1" since-mark timeout=90
+try host warp actor BP_BaseMech_C 300
+try host look actor BP_BaseMech_C 150
+try host key E
+try host wait log "card075: host MechEnter from" since-mark timeout=10
+sleep 5
+client look actor BP_BaseMech_C 150
+client shot c371-557-host-in-mech
+host mark
+try host key E 2500 timeout=15
+try host wait log "card075: host MechLeave from" since-mark timeout=10
+sleep 2
+client look actor BP_BaseMech_C 150
+client shot c371-557-empty-mech-client
+host look actor BP_BaseMech_C 150
+host shot c371-557-empty-mech-host
+client quit
+host quit

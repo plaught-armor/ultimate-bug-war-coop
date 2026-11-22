@@ -100,6 +100,21 @@ void detour_start_action(void* dropship, uint8_t startup, uint8_t nav_direction,
 StaticClassFn g_troops_dropship_class = nullptr; // ASTProceduralDropshipTroops
 StaticClassFn g_spline_class = nullptr;          // card 236: USplineComponent
 
+// Sets AActor::bAlwaysRelevant by reflection. Returns 1 when this call set it, 0 when it was already set, -1 when
+// the reflected bool is missing (dropships, card 140; player pawns, card 554).
+int32_t actor_always_relevant(void* actor) {
+    const uint8_t* const field = prop_find_prop(read_ptr(actor, kObjectClass), "bAlwaysRelevant");
+    if (field == nullptr || !prop_bool_ok(field)) {
+        return -1;
+    }
+    uint8_t* const at = static_cast<uint8_t*>(actor) + read_i32(field, kPropertyOffset) + field[kBoolByteOffset];
+    if ((*at & field[kBoolFieldMask]) != 0) {
+        return 0;
+    }
+    *at = static_cast<uint8_t>(*at | field[kBoolFieldMask]);
+    return 1;
+}
+
 namespace {
 
 constexpr int32_t kDsRows = 64;       // per map; FED_C1M1 places 22 troop dropships (hb54 inventory)
@@ -130,13 +145,7 @@ bool ds_frame(const char* name, unsigned state, char* out, size_t cap) {
 // points and landing blocker attached to it, which then sit far from the host's. bAlwaysRelevant keeps the
 // replicated movement flowing at any distance. Returns false when the reflected bool is missing.
 bool ds_host_always_relevant(void* dropship) {
-    const uint8_t* const field = prop_find_prop(read_ptr(dropship, kObjectClass), "bAlwaysRelevant");
-    if (field == nullptr || !prop_bool_ok(field)) {
-        return false;
-    }
-    uint8_t* const at = static_cast<uint8_t*>(dropship) + read_i32(field, kPropertyOffset) + field[kBoolByteOffset];
-    *at = static_cast<uint8_t>(*at | field[kBoolFieldMask]);
-    return true;
+    return actor_always_relevant(dropship) >= 0;
 }
 
 // Host: journal the state, then send it to every remote PC past its first Pong (the rest get the replay).
@@ -195,7 +204,8 @@ void detour_set_state(void* dropship, uint8_t state) {
 // A joining PC's first Pong gets one frame per placed dropship (troop and transport, read live, not from the state
 // journal: BeginPlay's SetState runs inside LoadMap, before c50_arm_map resets the journal, so a join after a quiet
 // start replayed 0 rows). Frame: "<name> <state> <bHidden> <mesh> <x> <y> <z> <dist> <speed> <nav> <startup> <target> <ended>
-// <pitch> <yaw> <roll> <kind> <spline>" (card 285: pitch, yaw and roll, the actor's world rotation in degrees)
+// <pitch> <yaw> <roll> <frame ms> <kind> <spline>" (card 285: pitch, yaw and roll, the actor's world rotation in degrees;
+// card 583: frame ms, the host's last frame time when the frame was built)
 // (card 190: startup +0x481, target point +0x482, spline ended +0x483; see DsLook),
 // mesh one letter
 // per kDsMeshes entry (v visible, h bHiddenInGame, i bVisible 0, b both, - no component), dist the spline distance,
@@ -280,6 +290,8 @@ struct DsSnapState {
     uint32_t navs, splines, spline_refused;               // client: NavDirection and spline writes, refusals
     uint32_t speed_bytes;                                 // client (card 190): startup, target and ended writes
     ULONGLONG load_ms;                                    // this side's map load (c132_dropship_arm_map)
+    ULONGLONG step_ms;                                    // host (card 583): the last c159_dropship_step
+    uint32_t frame_ms;                                    // host (card 583): the frame time before this step
 };
 
 DsSnapState g_ds_snap{}; // game thread only
@@ -415,10 +427,10 @@ double ds_tolerance(float speed) {
 bool ds_frame(char* text, size_t cap, const char* name, const DsLook& l, float speed, char kind) {
     // The spline identity goes last and runs to the end of the text: placed component names can hold spaces
     // ("Default Spline" on the troop dropships, run c165b).
-    const int n = snprintf(text, cap, "%s %u %u %s %.0f %.0f %.0f %.0f %.0f %u %u %u %u %.1f %.1f %.1f %c %s", name,
-                           l.state, l.hidden, l.mesh, l.at.x, l.at.y, l.at.z, static_cast<double>(l.dist),
+    const int n = snprintf(text, cap, "%s %u %u %s %.0f %.0f %.0f %.0f %.0f %u %u %u %u %.1f %.1f %.1f %u %c %s",
+                           name, l.state, l.hidden, l.mesh, l.at.x, l.at.y, l.at.z, static_cast<double>(l.dist),
                            static_cast<double>(speed), l.nav, l.startup, l.target, l.ended, l.rot.x, l.rot.y, l.rot.z,
-                           kind, l.spline);
+                           g_ds_snap.frame_ms, kind, l.spline);
     return n > 0 && static_cast<size_t>(n) < cap;
 }
 
@@ -612,7 +624,8 @@ DsLook c449_own_look(void* ds, const char* name, const DsLook& host, char kind) 
 
 // Client: a snapshot frame. J and L: log the copy's values against the host's, then apply what differs, the
 // distance led by speed x (rtt / 2). C: compare only, within ds_tolerance(speed).
-void ds_client_snapshot(void* ds, const char* name, const DsLook& host, float speed, char kind, const void* world) {
+void ds_client_snapshot(void* ds, const char* name, const DsLook& host, float speed, char kind, uint32_t host_frame_ms,
+                        const void* world) {
     const DsLook own = c449_own_look(ds, name, host, kind); // card 449
     const double off = vec_dist(own.at, host.at);
     const double tol = ds_tolerance(speed);
@@ -624,27 +637,33 @@ void ds_client_snapshot(void* ds, const char* name, const DsLook& host, float sp
     // target on most L frames, which is the frame's own timing noise (141 uu is one 60 fps frame), and the fixed
     // 100 uu limit re-placed it on 372 of 473 frames. The limit grows by kDsSlackMs of travel; parked it is 100.
     const double dist_tol = kDsTolerance + fabs(static_cast<double>(speed)) * kDsSlackMs / 1000.0;
-    const bool same = own.state == host.state && own.hidden == host.hidden && strcmp(own.mesh, host.mesh) == 0 &&
-                      own.nav == host.nav && own.startup == host.startup && own.target == host.target &&
-                      strcmp(own.spline, host.spline) == 0 && off <= tol;
+    const bool same_fields = own.state == host.state && own.hidden == host.hidden &&
+                             strcmp(own.mesh, host.mesh) == 0 && own.nav == host.nav && own.startup == host.startup &&
+                             own.target == host.target && strcmp(own.spline, host.spline) == 0;
+    const bool same = same_fields && off <= tol;
+    // Card 583 part 1: a C frame built one long host frame before the compare is that frame's travel behind
+    // (c551b384a: 3400 uu at 7413 uu/s, the 459 ms frame), so the check compares the led target's distance with
+    // dist_tol plus the host's last frame of travel, not the location with ds_tolerance.
+    const double check_tol = dist_tol + fabs(static_cast<double>(speed)) * host_frame_ms / 1000.0;
     const double rot_off = ds_rot_off(own.rot, host.rot);
     const bool at_rest = host.state != kDsInFlight;
     const bool rot_bad = at_rest && rot_off > kDsRotTolDeg; // card 285: in flight the spline tick owns it
     if (kind == 'C') {
-        const bool match = same && !rot_bad;
+        const bool match = same_fields && dist_off <= check_tol && !rot_bad;
         ++g_ds_snap.checks;
         (match ? g_ds_snap.matched : g_ds_snap.mismatched) += 1;
         log::line("%scard159: client t=%llu dropship %s check: state %u/%u hidden %u/%u mesh %s/%s, %.0f uu off "
                   "(tolerance %.0f, speed %.0f, rtt %u), rotation %.1f deg off (%s; pitch %.1f/%.1f yaw %.1f/%.1f "
                   "roll %.1f/%.1f), spline distance %.0f/%.0f startup %u/%u target %u/%u ended "
-                  "%u/%u nav %u/%u spline %s/%s (client/host): %s",
+                  "%u/%u nav %u/%u spline %s/%s (client/host), led distance %.0f off (tolerance %.0f, host frame %u "
+                  "ms): %s",
                   match ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()), name, own.state, host.state,
                   own.hidden, host.hidden, own.mesh, host.mesh, off, tol, static_cast<double>(speed), pl_rtt_floor(),
                   rot_off, at_rest ? "at rest" : "in flight, not compared", own.rot.x, host.rot.x, own.rot.y,
                   host.rot.y, own.rot.z, host.rot.z,
                   static_cast<double>(own.dist), static_cast<double>(host.dist), own.startup, host.startup,
                   own.target, host.target, own.ended, host.ended, own.nav, host.nav, own.spline, host.spline,
-                  match ? "match" : "differs");
+                  dist_off, check_tol, host_frame_ms, match ? "match" : "differs");
         return;
     }
     DsLiveRow* const row = ds_row(ds, true);
@@ -768,16 +787,17 @@ void c132_dropship_receive(void* pc, const WireString* s) {
     unsigned ended = 0;
     char spline[kDsSplineChars] = {};
     Vec3 rot{};
+    unsigned frame_ms = 0;
     ++g_ds.received;
     const int got = chan_text(s, text, sizeof(text)) > 0
-                        ? sscanf_s(text, "%64s %u %u %3s %lf %lf %lf %f %f %u %u %u %u %lf %lf %lf %1s %129[^\n]",
+                        ? sscanf_s(text, "%64s %u %u %3s %lf %lf %lf %f %f %u %u %u %u %lf %lf %lf %u %1s %129[^\n]",
                                    name, static_cast<unsigned>(sizeof(name)), &state, &hidden, mesh,
                                    static_cast<unsigned>(sizeof(mesh)), &at.x, &at.y, &at.z, &dist, &speed, &nav,
-                                   &startup, &target, &ended, &rot.x, &rot.y, &rot.z, kind,
+                                   &startup, &target, &ended, &rot.x, &rot.y, &rot.z, &frame_ms, kind,
                                    static_cast<unsigned>(sizeof(kind)), spline,
                                    static_cast<unsigned>(sizeof(spline)))
                         : 0;
-    const bool snap = got == 18 && (kind[0] == 'J' || kind[0] == 'C' || kind[0] == 'L') &&
+    const bool snap = got == 19 && (kind[0] == 'J' || kind[0] == 'C' || kind[0] == 'L') &&
                       strlen(mesh) == kDsMeshCount && hidden <= 1 && nav <= 0xFF && startup <= 0xFF &&
                       target <= 0xFF && ended <= 0xFF;
     if ((got != 2 && !snap) || state > 0xFF) {
@@ -810,7 +830,7 @@ void c132_dropship_receive(void* pc, const WireString* s) {
         memcpy(host.mesh, mesh, sizeof(host.mesh));
         memcpy(host.spline, spline, sizeof(host.spline));
         host.rot = rot;
-        ds_client_snapshot(ds, name, host, speed, kind[0], g_actor_get_world(pc));
+        ds_client_snapshot(ds, name, host, speed, kind[0], frame_ms, g_actor_get_world(pc));
         c132_ledger_result(C132Result::Applied, nullptr);
         return;
     }
@@ -991,6 +1011,9 @@ void c159_dropship_step(void* engine) {
         return;
     }
     const ULONGLONG now = GetTickCount64();
+    const ULONGLONG gap = g_ds_snap.step_ms != 0 ? now - g_ds_snap.step_ms : 0; // card 583: once per frame
+    g_ds_snap.frame_ms = static_cast<uint32_t>(gap < 0xFFFFFFFFull ? gap : 0xFFFFFFFFull);
+    g_ds_snap.step_ms = now;
     for (int32_t i = 0; i < kC17Slots; ++i) {
         void* const pc = c31_weak_get(g_ds_snap.check_pc[i]);
         if (pc == nullptr || now < g_ds_snap.check_due[i]) {
@@ -1389,6 +1412,7 @@ C399SetTransformFn g_c399_set_transform = nullptr; // AActor::SetActorTransform
 C399DetachFn g_c399_detach = nullptr;              // AActor::DetachFromActor
 C399ViewBlendFn g_c399_view_blend = nullptr;       // APlayerController::SetViewTargetWithBlend
 C399GetViewFn g_c399_get_view = nullptr;     // APlayerController::GetViewTarget
+bool g_gate_c461_c539 = false; // set in read_card_flags: UBWCOOP_DIAG or ubwperf wants the row (cards 539/542)
 C461MoveFn g_orig_c461_move = nullptr;       // UPrimitiveComponent::MoveComponentImpl (card 461, diagnostic)
 bool g_c461_armed = false;                    // card 461: a release watch is open
 
@@ -2120,6 +2144,205 @@ void c461_warp_watch(void* pawn, int32_t slot, ULONGLONG now, int32_t impart) {
     c461_watch(pawn, slot, now, impart);
 }
 
+// Card 595: OnInteraction (0x051D0470) boards PC 0 and starts the level script's end or ride for everyone, and card
+// 399 then seats every other player wherever it stands. The host holds the press until every Up or Downed player has
+// asked to board this dropship (its own press, or a client Use relayed through kC54Relays); the last request runs the
+// original once. Out and dead players (and a slot with no pawn) do not block; card 399 carries them. User rule
+// 2026-11-21: a player Downed during the hold (or at its start) blocks it, its card 043 bleedout is capped once to
+// kC595BleedS, and its ask is cleared, so a revived player must press Use again; at Out the next step releases.
+// The held press leaves the original unrun: no +0x748/+0x749 write, no broadcast, no possession, so no skip input.
+C595InteractFn g_orig_c595_interaction = nullptr;
+
+namespace {
+
+constexpr size_t kC595Iface = 0x708; // OnInteraction's this: dropship + 0x708 (lea -0x708(%rcx) at +0x13)
+constexpr uint32_t kC595HeldLines = 16;
+
+struct C595Hold {
+    C31Weak dropship; // serial 0: nothing held
+    uint32_t asked;   // roster slot bits that asked to board
+    uint32_t downed;  // roster slot bits seen Downed in this hold (their bleedout is capped)
+    ULONGLONG since_ms;
+};
+C595Hold g_c595{}; // game thread, host
+uint32_t g_c595_held_lines = 0;
+uint32_t g_c595_client_lines = 0;
+constexpr size_t kC595Interactable = 0x748; // bIsInteractable: CanInteract's byte, not replicated (no CPF_Net)
+constexpr float kC595BleedS = 10.0f;        // user rule 2026-11-21: bleedout of a player Downed at the evac
+
+uint32_t c595_bits(uint32_t mask) {
+    uint32_t n = 0;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        n += (mask >> s) & 1u;
+    }
+    return n;
+}
+
+// The slots that must ask: a PlayerController with a pawn that is Up or Downed (not Out or Dead).
+uint32_t c595_needed(const C43Roster& r) {
+    uint32_t mask = 0;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        const C43Life life = r.p[s].pawn != nullptr ? c43_life(r.p[s].pawn) : C43Life::Dead;
+        const bool blocks = r.p[s].pc != nullptr && (life == C43Life::Up || life == C43Life::Downed);
+        mask |= blocks ? 1u << s : 0u;
+    }
+    return mask;
+}
+
+// Per slot in an active hold: a newly Downed player gets its card 043 bleedout capped once to kC595BleedS and its ask
+// cleared; a Downed player that went Out or Dead leaves the downed bits. Returns whether one bled out this pass.
+bool c595_scan_downed(void* dropship, const C43Roster& r, ULONGLONG now) {
+    bool bled = false;
+    for (int32_t s = 0; s < kC43Max; ++s) {
+        const uint32_t bit = 1u << s;
+        const C43Life life = r.p[s].pawn != nullptr ? c43_life(r.p[s].pawn) : C43Life::Dead;
+        if (life != C43Life::Downed) {
+            bled = bled || ((g_c595.downed & bit) != 0 && life != C43Life::Up);
+            g_c595.downed &= ~bit;
+            continue;
+        }
+        if ((g_c595.downed & bit) != 0) {
+            continue;
+        }
+        g_c595.downed |= bit;
+        g_c595.asked &= ~bit;
+        const int32_t i = c43_find(object_index(r.p[s].pawn));
+        const float before = i >= 0 ? g_c43.e[i].secs_left : -1.0f;
+        if (i >= 0 && g_c43.e[i].secs_left > kC595BleedS) {
+            g_c43.e[i].secs_left = kC595BleedS;
+        }
+        log::line("%scard595: host t=%llu evac %s: %s downed during the hold, bleedout capped to %.0f s (%.1f s left "
+                  "before, slot %d ask cleared)",
+                  i >= 0 ? "" : "WARN ", static_cast<unsigned long long>(now), object_name(dropship).text,
+                  object_name(r.p[s].pawn).text, static_cast<double>(kC595BleedS), static_cast<double>(before), s);
+    }
+    return bled;
+}
+
+// Runs the held original once when no needed slot is left to ask; returns whether it ran.
+// Card 601: after the host's original OnInteraction runs, every client runs its own copy's original. Card 595 skips
+// the client's original at its press, so without this the client never broadcasts +0x728 and its level script
+// outro chain (music, outro conversation, C3M2 nuke LevelSequence and shake) never plays. EnterDropship (card 015),
+// EndLevel (card 260) and the objective calls (card 140) stay skipped on the client.
+void c601_send_board(void* dropship, ULONGLONG now) {
+    char name[kChanNameMax + 1];
+    if (!c50_placed(dropship) || c50_level_key(dropship, name, sizeof(name)) <= 0) {
+        log::line("WARN card601: host t=%llu %s boarded but has no placed name: clients keep no outro",
+                  static_cast<unsigned long long>(now), object_name(dropship).text);
+        return;
+    }
+    const C95Fanout f = c95_send_all(g_actor_get_world(dropship), ChanOp::DropshipBoard, name, true);
+    log::line("%scard601: host t=%llu boarding of %s sent to %d of %d PCs", f.sent == f.to ? "" : "WARN ",
+              static_cast<unsigned long long>(now), name, f.sent, f.to);
+}
+
+bool c595_try_release(void* dropship, void* interactor, const C43Roster& r, ULONGLONG now, const char* why) {
+    const uint32_t needed = c595_needed(r);
+    if ((needed & ~g_c595.asked) != 0) {
+        return false;
+    }
+    log::line("card595: host t=%llu evac %s released: %u of %u living players asked (mask 0x%x of 0x%x) after %llu ms, "
+              "%s; the original OnInteraction runs once",
+              static_cast<unsigned long long>(now), object_name(dropship).text, c595_bits(g_c595.asked & needed),
+              c595_bits(needed), g_c595.asked, needed, static_cast<unsigned long long>(now - g_c595.since_ms), why);
+    g_c595 = C595Hold{};
+    g_orig_c595_interaction(static_cast<uint8_t*>(dropship) + kC595Iface, interactor);
+    c601_send_board(dropship, now);
+    return true;
+}
+
+} // namespace
+
+// Client: ChanOp::DropshipBoard, the placed name of a transport the host boarded. Runs the client copy's original
+// OnInteraction once (the detour is bypassed); a copy whose +0x749 (player inside) is already set has run it.
+void c601_board_receive(void* pc, const WireString* s) {
+    char name[kChanNameMax + 1];
+    const ULONGLONG now = GetTickCount64();
+    void* const ds = chan_text(s, name, sizeof(name)) > 0 && g_troops_dropship_class != nullptr &&
+                             g_transport_dropship_class != nullptr
+                         ? ds_find_placed(g_actor_get_world(pc), name)
+                         : nullptr;
+    if (ds == nullptr || !is_a(ds, g_transport_dropship_class()) || g_orig_c595_interaction == nullptr) {
+        log::line("WARN card601: client t=%llu boarding of %s: no placed transport dropship has that name, no outro",
+                  static_cast<unsigned long long>(now), ds == nullptr ? "(unread)" : object_name(ds).text);
+        return;
+    }
+    if (static_cast<const uint8_t*>(ds)[kC595Interactable + 1] != 0) {
+        log::line("card601: client t=%llu boarding of %s: own copy already has a player inside, not run again",
+                  static_cast<unsigned long long>(now), name);
+        return;
+    }
+    g_orig_c595_interaction(static_cast<uint8_t*>(ds) + kC595Iface, nullptr);
+    log::line("card601: client t=%llu boarding of %s from the host: own original ran (outro chain)",
+              static_cast<unsigned long long>(now), name);
+}
+
+void detour_c595_interaction(void* iface, void* interactor) {
+    if (iface == nullptr) {
+        g_orig_c595_interaction(iface, interactor);
+        return;
+    }
+    if (g_client_session) {
+        // Client: the original would also set +0x749 and broadcast +0x728 on the client's script copy, which starts
+        // the local outro (C3M1 @18514: horde, music, objectives, StartAction) while the host holds. Only the prompt
+        // clears here; the press reaches the host by the kC54Relays transport row (card 054 ChanOp::Use).
+        void* const dropship = static_cast<uint8_t*>(iface) - kC595Iface;
+        static_cast<uint8_t*>(dropship)[kC595Interactable] = 0;
+        if (note_event_cap(g_c595_client_lines, kC595HeldLines, "card595 client")) {
+            log::line("card595: client t=%llu Use on %s relayed, own original skipped",
+                      static_cast<unsigned long long>(GetTickCount64()), object_name(dropship).text);
+        }
+        return;
+    }
+    void* const dropship = static_cast<uint8_t*>(iface) - kC595Iface;
+    const ULONGLONG now = GetTickCount64();
+    const C43Roster r = c43_roster(g_actor_get_world(dropship));
+    void* const pawn = interactor != nullptr ? read_ptr(interactor, kComponentOwner) : nullptr;
+    const int32_t slot = c43_slot(r, object_index(pawn));
+    if (slot < 0) {
+        log::line("WARN card595: host t=%llu evac %s: OnInteraction from %s (interactor %p) is no roster player's; the "
+                  "original runs unheld",
+                  static_cast<unsigned long long>(now), object_name(dropship).text, object_name(pawn).text, interactor);
+        g_orig_c595_interaction(iface, interactor);
+        c601_send_board(dropship, now);
+        return;
+    }
+    if (c31_weak_get(g_c595.dropship) != dropship) {
+        g_c595 = C595Hold{};
+        c31_weak_set(g_c595.dropship, dropship);
+        g_c595.since_ms = now;
+    }
+    const bool again = (g_c595.asked >> slot & 1u) != 0;
+    g_c595.asked |= 1u << slot;
+    c595_scan_downed(dropship, r, now); // the hold's start caps players already Downed
+    if (c595_try_release(dropship, interactor, r, now, again ? "a repeated press" : "the last press")) {
+        return;
+    }
+    const uint32_t needed = c595_needed(r);
+    if (note_event_cap(g_c595_held_lines, kC595HeldLines, "card595 held")) {
+        log::line("card595: host t=%llu evac %s held: %u of %u aboard (slot %d %s %s; mask 0x%x of 0x%x)",
+                  static_cast<unsigned long long>(now), object_name(dropship).text, c595_bits(g_c595.asked & needed),
+                  c595_bits(needed), slot, object_name(pawn).text, again ? "asked again" : "asked", g_c595.asked,
+                  needed);
+    }
+}
+
+void c595_step(const C43Roster& r, ULONGLONG now) {
+    if (g_c595.dropship.serial == 0) {
+        return;
+    }
+    void* const dropship = c31_weak_get(g_c595.dropship);
+    if (dropship == nullptr) {
+        log::line("card595: host t=%llu held evac dropship is gone (mask 0x%x asked); the hold is dropped",
+                  static_cast<unsigned long long>(now), g_c595.asked);
+        g_c595 = C595Hold{};
+        return;
+    }
+    const bool bled = c595_scan_downed(dropship, r, now);
+    c595_try_release(dropship, nullptr, r, now, // the original ignores rdx
+                     bled ? "a downed player bled out" : "no other living player is left to ask");
+}
+
 // Host, per frame (c46_step): boards each other player's pawn while the host rides, releases it when the host is off.
 void c399_step(void* world, ULONGLONG now) {
     if (g_client_session || world == nullptr) {
@@ -2132,6 +2355,7 @@ void c399_step(void* world, ULONGLONG now) {
     g_c399_next_ms = now + kC399StepMs;
     c399_prune(now);
     const C43Roster r = c43_roster(world);
+    c595_step(r, now); // card 595: a held boarding, before the ride check
     const uint8_t* const ride = c399_host_ride(r);
     for (int32_t s = 1; s < kC43Max; ++s) {
         void* const pawn = r.p[s].pawn;
@@ -2162,8 +2386,7 @@ void c461_base_text(const void* pawn, char* buf, size_t cap) {
 bool detour_c461_move(void* comp, const void* delta, const void* rotation, bool sweep, void* hit, int32_t flags,
                       uint8_t teleport) {
     if (!g_c461_armed) {
-        return (g_c539_on || g_c542_on) ? c539_move(comp, delta, rotation, sweep, hit, flags, teleport)
-                         : g_orig_c461_move(comp, delta, rotation, sweep, hit, flags, teleport);
+        return perf_link_c461_move(comp, delta, rotation, sweep, hit, flags, teleport); // card 578: ubwperf 539/542
     }
     const int32_t s = c461_slot_of_root(comp);
     if (s < 0) {

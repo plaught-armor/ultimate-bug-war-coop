@@ -24,7 +24,6 @@
 
 namespace ubw::hooks {
 
-bool g_c161_pe = false; // a door is tracked: detour_process_event calls c161_pe
 bool g_c507_vm = false; // client, a door is tracked: detour_c507_local_script compares door functions
 LocalScriptFn g_orig_c507_local_script = nullptr;
 
@@ -38,6 +37,12 @@ constexpr int32_t kC161PeSeen = 128;       // (door, function) pairs remembered 
 constexpr int32_t kC161ParmsMax = 64;      // bytes: the "Open Door" / "Close Door" parms buffer
 constexpr uint8_t kC161StateMax = 3;       // EMoveType: Closed 0, Open 1, Opening 2, Closing 3
 constexpr uint8_t kC161NoHost = 0xFF;      // client: no host state received for this door yet
+
+// b461 card 573: an actor's bit in C161State::pe_mask. UObjects are 16-byte aligned, so bits 4 and up vary.
+uint64_t c161_pe_bit(const void* object) {
+    const uintptr_t p = reinterpret_cast<uintptr_t>(object);
+    return uint64_t{1} << (((p >> 4) ^ (p >> 10)) & 63u);
+}
 constexpr uint32_t kC161OwnLines = 40;
 constexpr ULONGLONG kC270HoldMs = 500;     // client: a montage-settled DoorState waits this long for the host's row
 constexpr uint32_t kC270HoldLines = 40;    // hold lines per map
@@ -88,6 +93,7 @@ struct C161PeSeen {
 struct C161State {
     C161Door d[kC161Doors];
     int32_t n;
+    uint64_t pe_mask; // b461 card 573: one bit per tracked door actor (c161_pe_bit); a clear bit skips the door scan
     void* cls;
     int32_t state_at; // DoorState offset, -1 unresolved
     ULONGLONG scan_due;
@@ -183,6 +189,7 @@ void c161_add(void* actor) {
     }
     c31_weak_set(d.weak, actor);
     d.actor = actor;
+    g_c161.pe_mask |= c161_pe_bit(actor);
     for (int32_t f = 0; f < kC161RefusedN; ++f) {
         d.fn[f] = fname_cached(g_c161_fname[f], kC161Refused[f]) != 0 ? g_find_function(actor, g_c161_fname[f])
                                                                        : nullptr;
@@ -233,7 +240,7 @@ void c161_scan(const void* world) {
             c161_add(a);
         }
     }
-    g_c161_pe = g_c161.n > 0;
+    pe_gate_set(kPeGate_c161_pe, g_c161.n > 0);
     g_c507_vm = g_client_session && g_c161.vm_fn_n > 0;
 }
 
@@ -599,8 +606,11 @@ bool c161_seen(const void* door, const void* fn) {
 
 } // namespace
 
-// Hot path (g_c161_pe): true refuses the call. A pointer compare per tracked door.
+// Hot path (kPeGate_c161_pe): true refuses the call. A pointer compare per tracked door.
 bool c161_pe(const void* object, const void* function) {
+    if ((g_c161.pe_mask & c161_pe_bit(object)) == 0) {
+        return false; // b461 card 573: not a tracked door (most calls); no walk over the door table
+    }
     const C161Door* d = nullptr;
     for (int32_t i = 0; i < g_c161.n && d == nullptr; ++i) {
         d = g_c161.d[i].actor == object ? &g_c161.d[i] : nullptr;
@@ -690,7 +700,14 @@ void detour_c507_local_script(void* context, void* stack, void* result) {
             return; // card 507: the client's own door trigger, refused (the host owns the door)
         }
     }
+    if (g_c606_vm && c606_vm(context, stack)) {
+        return; // card 606: the client's own horde zone Begin / End, refused (the host's row runs it)
+    }
+    const void* const node = c582_tracker_armed() ? read_ptr(stack, kFrameNode) : nullptr;
     g_orig_c507_local_script(context, stack, result);
+    if (node != nullptr) {
+        c582_tracker_local(context, node); // card 582 G4, host: a pickup tracker's delegate binds for every pawn
+    }
 }
 
 void c161_step(void* engine) {
@@ -735,21 +752,106 @@ void c288_trigger_at(Vec3 at, bool objective) {
     g_c288 = C288Trigger{GetTickCount64(), at, objective ? ++g_c288_groups : 0u};
 }
 
+C29InteractFn g_c602_on_interaction = nullptr;
+
+namespace {
+
+// Card 602: ASTSwitch::OnInteraction (exe+0x50F78A0, disassembled) takes the interactable interface at actor +0x2C8
+// and never reads its interactor. It returns without broadcasting when the reactivation timer handle (interface
+// +0xA0) is set, or when the lock byte (interface +0x40) is set while the component at interface +0x10 has its byte
+// +0xF0 set (only a denied sound plays); otherwise it broadcasts OnPressSuccessful (actor +0x2E8).
+constexpr size_t kC602Iface = 0x2C8;
+constexpr size_t kC602Timer = 0xA0;
+constexpr size_t kC602Lock = 0x40;
+constexpr size_t kC602LockComp = 0x10;
+constexpr size_t kC602LockCompByte = 0xF0;
+
+bool c602_fires(const void* sw) {
+    if (sw == nullptr || g_c54_switch_class == nullptr || !is_a(sw, g_c54_switch_class())) {
+        return false;
+    }
+    const uint8_t* const iface = static_cast<const uint8_t*>(sw) + kC602Iface;
+    if (read_ptr(iface, kC602Timer) != nullptr) {
+        return false;
+    }
+    const uint8_t* const comp = static_cast<const uint8_t*>(read_ptr(iface, kC602LockComp));
+    return iface[kC602Lock] == 0 || (comp != nullptr && comp[kC602LockCompByte] == 0);
+}
+
+} // namespace
+
 // Card 492 fix 2, host: a press of `target` by `pawn` is about to run its original (instant: c102_interact; timed:
 // detour_c133_completed and c133_host_done). A switch (its class has ASTSwitch's OnPressSuccessful property, of
 // delegate type SwitchPressedDelegate: BP_Switch_C, BP_PanelSwitch_WithoutScreen_C) closes doors in the same Blueprint call (C3M2 Switch C_3 @5595, C5M1 Switch C_5
 // @29072, C5M2 PanelSwitch C_1 @14353), so the press sets the card 288 trigger as a presence does.
-void c492_switch_press(const void* target, const void* pawn) {
+bool c492_switch_press(const void* target, const void* pawn) {
     // b239: the property is OnPressSuccessful (NewProp_OnPressSuccessful of ASTSwitch); b237/b238 looked for the
     // delegate type name SwitchPressedDelegate, found none on any switch, and no press set the trigger.
     if (g_client_session || target == nullptr ||
         prop_find_prop(read_ptr(target, kObjectClass), "OnPressSuccessful") == nullptr) {
-        return;
+        return false;
     }
     c288_presence_fired(pawn);
     log::line("card492: host t=%llu switch press %s (%s) by %s: card 288 trigger set",
               static_cast<unsigned long long>(GetTickCount64()), object_name(target).text, class_name(target).text,
               object_name(pawn).text);
+    return c602_fires(target);
+}
+
+// Card 602: the client's level script binds the OnPressSuccessful of its own switch copies (C3M2 Switch C_2 @24456 ->
+// Plant_Generator_Reset -> GeneratorsOnCheck, the generator glow), and only a local OnInteraction broadcasts it. Card
+// 054 runs a client's press on both machines; a host press ran on the host only, so the client's copy stayed
+// unpressed and every graph bound to it (material parameters, the switch's own state) stayed undone there. After a
+// host press that broadcast, every other client runs its own copy's OnInteraction (the presser's client ran its own
+// press already).
+void c602_send_press(const void* target, const void* pawn) {
+    char name[kChanNameMax + 1];
+    const ULONGLONG now = GetTickCount64();
+    if (!c50_placed(target) || c50_level_key(target, name, sizeof(name)) <= 0) {
+        log::line("WARN card602: host t=%llu switch press %s has no placed name: clients keep their copy unpressed",
+                  static_cast<unsigned long long>(now), object_name(target).text);
+        return;
+    }
+    const void* const world = g_actor_get_world(target);
+    int32_t to = 0;
+    int32_t sent = 0;
+    for (int s = 0; world != nullptr && s < kC17Slots; ++s) {
+        void* const pc = g_get_player_controller(world, s);
+        const C50Copy* const c = pc != nullptr && sprint_side(pc) == kSideServerCopy ? c50_copy(object_index(pc), false)
+                                                                                     : nullptr;
+        if (c == nullptr || !c->ponged || read_ptr(pc, kControllerPawn) == pawn) {
+            continue; // not a ready client, or the presser's own client (its local press ran)
+        }
+        ++to;
+        sent += c95_send_one(pc, ChanOp::SwitchPress, name) ? 1 : 0;
+    }
+    log::line("%scard602: host t=%llu switch press %s by %s sent to %d of %d other clients",
+              sent == to ? "" : "WARN ", static_cast<unsigned long long>(now), name, object_name(pawn).text, sent, to);
+}
+
+// Client: ChanOp::SwitchPress, the placed name of a switch the host pressed. Runs the copy's OnInteraction once; a
+// copy whose own gate refuses (its reactivation timer pending, or locked) is logged and not forced.
+void c602_press_receive(void* pc, const WireString* s) {
+    char name[kChanNameMax + 1];
+    const ULONGLONG now = GetTickCount64();
+    const StaticClassFn* const cls[] = {&g_c54_switch_class};
+    void* const sw = chan_text(s, name, sizeof(name)) > 0 && g_c54_switch_class != nullptr
+                         ? c50_find_placed(g_actor_get_world(pc), cls, 1, name)
+                         : nullptr;
+    if (sw == nullptr || g_c602_on_interaction == nullptr) {
+        log::line("WARN card602: client t=%llu switch press %s from the host: no placed switch has that name",
+                  static_cast<unsigned long long>(now), sw == nullptr ? "(unread)" : name);
+        return;
+    }
+    if (!c602_fires(sw)) {
+        log::line("WARN card602: client t=%llu switch press %s from the host: own copy refuses (reactivation timer "
+                  "pending or locked), not run",
+                  static_cast<unsigned long long>(now), name);
+        return;
+    }
+    g_c602_on_interaction(static_cast<uint8_t*>(sw) + kC602Iface, nullptr);
+    log::line("card602: client t=%llu switch press %s from the host: own copy's OnInteraction ran (OnPressSuccessful)",
+              static_cast<unsigned long long>(now), name);
 }
 
 // Client: the host's DoorOp for a name no ASTDoor has: "<name> <DoorState digit> [<PawnBuffer>]" (the journal
@@ -822,7 +924,7 @@ void c161_map_end() {
     g_c161 = C161State{}; // the class is looked up again: it may unload with the map
     g_c288 = C288Trigger{}; // card 288: no presence of the old map counts as a trigger
     g_c161.state_at = state_at; // one class layout: the offset holds
-    g_c161_pe = false;
+    pe_gate_set(kPeGate_c161_pe, false);
     g_c507_vm = false;
 }
 
@@ -833,7 +935,7 @@ void c161_arm_map() {
     g_c161 = C161State{};
     g_c288 = C288Trigger{};
     g_c161.state_at = state_at;
-    g_c161_pe = false;
+    pe_gate_set(kPeGate_c161_pe, false);
     g_c507_vm = false;
 }
 

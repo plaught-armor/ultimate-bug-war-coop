@@ -949,11 +949,37 @@ struct C40State {
 };
 C40State g_c40{}; // game thread only; reset per map by c40_arm_map
 
+// Card 582 G3 (b450, UBWCOOP_C99_LOG): each damage Process and each OnDamageTaken ProcessEvent on a
+// BP_KillableBuilding_Base subclass, both sides, with the instigator, causer and amount. Capped per building per
+// second (kC582HitRowsPerS), not first call only like card 161's PE rows, so a second hit on a door shows.
+constexpr uint32_t kC582HitRowsPerS = 6;
+constexpr ULONGLONG kC582HitWindowMs = 1000;
+constexpr uint32_t kC582HitBuildings = 16; // buildings with a live rate window; a full table replaces round robin
+constexpr uint32_t kC582HitClasses = 64;   // class answers cached per map; a full cache walks the supers each time
+
+struct C582HitRate {
+    const void* actor; // identity only
+    ULONGLONG since;
+    uint32_t rows;
+};
+
+struct C582Hits {
+    const void* cls[kC582HitClasses];
+    bool building[kC582HitClasses];
+    uint32_t classes;
+    C582HitRate rate[kC582HitBuildings];
+    uint32_t next;
+    uint32_t dropped; // rows past the per-second cap, this map
+};
+C582Hits g_c582_hits{}; // game thread; reset per map by c40_arm_map
+uint64_t g_c582_damage_fname = 0; // FName "OnDamageTaken", kept across maps
+
 void c40_arm_map() {
     if (g_c40.hits != 0) {
         log::line("card040: map totals: %u hits traced, %u enemy hits past the cap", g_c40.hits, g_c40.untraced);
     }
     g_c40 = C40State{};
+    g_c582_hits = C582Hits{};
 }
 
 const void* c40_context(const void* params) {
@@ -1046,6 +1072,86 @@ void c40_player_hit(void* handler, void* params, int32_t slot) {
     }
 }
 
+
+bool c582_building(const void* actor) {
+    const void* const cls = actor != nullptr ? read_ptr(actor, kObjectClass) : nullptr;
+    if (cls == nullptr) {
+        return false;
+    }
+    C582Hits& h = g_c582_hits;
+    for (uint32_t i = 0; i < h.classes; ++i) {
+        if (h.cls[i] == cls) {
+            return h.building[i];
+        }
+    }
+    const bool building = c73_class_is(cls, "BP_KillableBuilding_Base_C");
+    if (h.classes < kC582HitClasses) {
+        h.cls[h.classes] = cls;
+        h.building[h.classes] = building;
+        ++h.classes;
+    }
+    return building;
+}
+
+// True when `actor` has a row left in its current one-second window.
+bool c582_hit_row_ok(const void* actor, ULONGLONG now) {
+    C582Hits& h = g_c582_hits;
+    C582HitRate* r = nullptr;
+    for (uint32_t i = 0; i < kC582HitBuildings && r == nullptr; ++i) {
+        r = h.rate[i].actor == actor ? &h.rate[i] : nullptr;
+    }
+    for (uint32_t i = 0; i < kC582HitBuildings && r == nullptr; ++i) {
+        r = h.rate[i].actor == nullptr ? &h.rate[i] : nullptr;
+    }
+    if (r == nullptr) {
+        r = &h.rate[h.next];
+        h.next = (h.next + 1) % kC582HitBuildings;
+    }
+    if (r->actor != actor || now - r->since >= kC582HitWindowMs) {
+        *r = C582HitRate{actor, now, 0};
+    }
+    if (r->rows >= kC582HitRowsPerS) {
+        ++h.dropped;
+        return false;
+    }
+    ++r->rows;
+    return true;
+}
+
+void c582_building_process(void* handler, void* params) {
+    const void* const target = c40_target(params);
+    const float before = c40_set_health(params);
+    const auto* const ctx = static_cast<const uint8_t*>(c40_context(params));
+    const void* const inst = ctx != nullptr ? g_weak_get(ctx + kC40CtxInstigator) : nullptr;
+    const void* const causer = ctx != nullptr ? g_weak_get(ctx + kC40CtxCauser) : nullptr;
+    const auto name = object_name(target);
+    const auto cls = class_name(target);
+    g_orig_c40_process(handler, params);
+    const ULONGLONG now = GetTickCount64();
+    if (!c582_hit_row_ok(target, now)) {
+        return;
+    }
+    log::line("card582: %s t=%llu building hit %s (%s): damage %.2f, Health %.1f -> %.1f; instigator %s %s (%s), causer "
+              "%s %s (%u rows over the cap this map)",
+              side(), static_cast<unsigned long long>(now), name.text, cls.text, read_f32(params, kC40ParamsDamage),
+              before, c40_set_health(params), class_name(inst).text, object_name(inst).text,
+              inst != nullptr ? kSprintSideText[sprint_side(inst)] : "none", class_name(causer).text,
+              object_name(causer).text, g_c582_hits.dropped);
+}
+
+// Card 582 G3 (b450): ProcessEvent of OnDamageTaken on a building, the Blueprint side of the same hit. g_c99_log only.
+void c582_building_pe(const void* object, const void* function) {
+    if (function == nullptr || read_u64(function, kObjectName) != fname_cached(g_c582_damage_fname, L"OnDamageTaken") ||
+        !c582_building(object)) {
+        return;
+    }
+    const ULONGLONG now = GetTickCount64();
+    if (c582_hit_row_ok(object, now)) {
+        log::line("card582: %s t=%llu building %s (%s) PE OnDamageTaken", side(), static_cast<unsigned long long>(now),
+                  object_name(object).text, class_name(object).text);
+    }
+}
+
 void detour_c40_process(void* handler, void* params) {
     const int32_t slot = g_client_session ? -1 : pl_player_slot(c40_target(params));
     if (slot >= 0) {
@@ -1054,6 +1160,10 @@ void detour_c40_process(void* handler, void* params) {
     }
     const bool enemy = g_gate_c40 && g_c40_trace && !g_client_session && g_c40.params == nullptr && c40_target(params) != nullptr &&
                        c37_enemy(c40_target(params));
+    if (!enemy && g_c99_log && c582_building(c40_target(params))) {
+        c582_building_process(handler, params); // card 582 G3 b450: per-hit building damage row
+        return;
+    }
     if (!enemy || g_c40.hits >= kC40Hits) {
         g_c40.untraced += enemy ? 1u : 0u;
         g_orig_c40_process(handler, params);
@@ -1413,10 +1523,10 @@ void c38_log_counts(const char* when) {
     log::line("card038: %s %s: game-logic calls HandleDeathEvent %u, NPC StartDying %u, ASTEnemyBase::StartDying %u, "
               "EnemyKilledByGameplayTag %u, ReleaseAllTickets %u, DeregisterAI %u, TryTakeCorpseTicket %u, "
               "StartOverkillState %u, ReleaseCorpseTicket %u, HandleDying %u, OverkillDamageEffectReceived %u; mod "
-              "visual calls BugAnimPhys OnDeath %u, TryPlayDeathAnimation %u, Dying state and HandleDying %u (client copies' local Falling held at the host's mode %u times, drifted copies set back to the host's z %u times, not set back (encroaching) %u times); card 131 corpses "
+              "visual calls BugAnimPhys OnDeath %u, TryPlayDeathAnimation %u, Dying state and HandleDying %u (client copies' local Falling held at the host's mode %u times, drifted copies set back to the host's z %u times (%u of them at the encroachment adjustment), not set back (encroaching) %u times; card 603 stale floors forced %u times, %u repeats not forced); card 131 corpses "
               "first seen dead %u, revives undone %u, barks blocked %u; dead tracked %u, peak %u of %u, pruned %u",
               side(), when, n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], n[8], n[9], n[10], g_c38.calls_bug,
-              g_c38.calls_npc, g_c38.calls_dying, g_c38.held, g_c38.drift, g_c38.drift_skipped, g_c38.calls_corpse, g_c38.calls_revive, g_c38.barks_blocked, g_c38.dead_count, g_c38.dead_peak, kC38Max, g_c38.pruned);
+              g_c38.calls_npc, g_c38.calls_dying, g_c38.held, g_c38.drift, g_c38.drift_adjusted, g_c38.drift_skipped, g_c38.floor_forced, g_c38.floor_repeats, g_c38.calls_corpse, g_c38.calls_revive, g_c38.barks_blocked, g_c38.dead_count, g_c38.dead_peak, kC38Max, g_c38.pruned);
 }
 
 // True when the client's death edge already ran for `actor`.
@@ -2244,7 +2354,7 @@ void detour_spawn_gore_decals(void* context, const void* data, const Vec3* locat
 void* detour_spawn_decal_attached(void* manager, void* material, const Vec3* size, void* component, uint64_t socket,
                                   const Vec3* location, const Vec3* rotation, uint8_t attach, float life) {
     if (c132_decal_suppress(material)) {
-        return nullptr; // client: the host's Decal rows bring its gore decals
+        return nullptr; // client: the host's Decal rows bring every decal (card 566)
     }
     c132_decal_before(manager);
     C136Call c{C136Point::DecalAttached};
@@ -2284,7 +2394,7 @@ void* detour_spawn_decal_attached(void* manager, void* material, const Vec3* siz
 void* detour_spawn_decal_at(void* manager, const void* context, void* material, const Vec3* size,
                             const Vec3* location, const Vec3* rotation, float life) {
     if (c132_decal_suppress(material)) {
-        return nullptr; // client: the host's Decal rows bring its gore decals
+        return nullptr; // client: the host's Decal rows bring every decal (card 566)
     }
     c132_decal_before(manager);
     C136Call c{C136Point::DecalAt};
@@ -2423,6 +2533,10 @@ uint8_t c132_host_mode(const uint8_t* cmc) {
 }
 
 void detour_set_movement_mode(void* cmc, uint8_t mode, uint8_t custom_mode) {
+    const uint8_t from = static_cast<const uint8_t*>(cmc)[kCmcMovementMode];
+    if (from != mode && (from == kMoveFalling || mode == kMoveFalling)) {
+        c584_note_mode(cmc, from, mode); // card 584 diagnostic: own trooper Falling stretches
+    }
     if (!g_client_session || mode != kMoveFalling) {
         g_orig_set_movement_mode(cmc, mode, custom_mode);
         return;
@@ -2447,6 +2561,7 @@ void detour_set_movement_mode(void* cmc, uint8_t mode, uint8_t custom_mode) {
 SimulateMovementFn g_orig_simulate_movement = nullptr;
 constexpr double kC132DriftZ = 200.0;     // uu
 constexpr uint32_t kC132DriftLogs = 16;   // logged corrections; the rest are counted
+constexpr double kC603AdjustUu = 50.0;    // card 603: largest encroachment adjustment a set-back takes
 constexpr size_t kRepMovementUnset = 0;   // C132Drift offsets not resolved yet
 
 struct C132Drift {
@@ -2716,6 +2831,88 @@ void c328_trace_row(const void* owner, const uint8_t* cmc) {
               c328_float(floor, fs, "LineDist"), montage != nullptr ? object_name(montage).text : "none", root);
 }
 
+// Card 603 (b457), client: a simulated copy at rest re-uses a stale line-trace floor. SimulateMovement calls
+// FindFloor(..., bCanUseCachedLocation = Velocity.IsZero()). The velocity is zero when the host's replicated ground
+// velocity is zero (SimulateMovement zeroes it; bSimGravityDisabled does the same, so it is not needed for this), and
+// with a blocking movement base FindFloor then returns CurrentFloor unchanged, with no sweep (exe 0x143a2b35b..37d:
+// bAlwaysCheckFloor +0x556 bit 2, bCanUseCachedLocation, bForceNextFloorCheck +0x2e9 bit 0x10, bJustTeleported +0x554
+// bit 0x20). The floor stays walkable, so the card 132 Falling hold is not involved. AdjustFloorHeight uses a
+// line-trace floor's LineDist, moves the capsule by 2.15 - LineDist and adds the move to FloorDist only, so the same
+// move repeats every frame: LineDist -7.4 lifted guid 0x600 by 9.55 uu a frame (c602b456b card 328 trace, about
+// 570 uu/s, the card 603 climb). After the movement step, a walking copy with zero velocity whose CurrentFloor is a
+// walkable line-trace floor outside [MIN_FLOOR_DIST, MAX_FLOOR_DIST] gets bForceNextFloorCheck, so its next
+// SimulateMovement recomputes the floor at its real place (UpdateFloorFromAdjustment). A set-back sets the bit too,
+// because CurrentFloor was taken at the old place.
+constexpr size_t kCmcForceFloorByte = 0x2e9;
+constexpr uint8_t kCmcForceFloorBit = 0x10;
+constexpr uint32_t kFloorWalkableLine = 6; // FFindFloorResult flags at +0: bBlockingHit 1, bWalkableFloor 2, bLineTrace 4
+constexpr size_t kFloorLineDist = 0x8;     // float LineDist (FloorDist at +0x4)
+constexpr float kMinFloorDist = 1.9f;      // UCharacterMovementComponent MIN_FLOOR_DIST
+constexpr float kMaxFloorDist = 2.4f;      // MAX_FLOOR_DIST
+constexpr uint32_t kC603FloorRows = 8;     // logged forced floor checks per map; the rest are counted
+constexpr uint32_t kC603LastSlots = 64;    // last forced floor per copy (power of two; a collision costs one more force)
+constexpr float kC603RepeatUu = 0.5f;      // b461: a floor state within this of the last forced one is a repeat
+
+// Card 603 (b460): the last floor each copy was forced on. c604b459a: the recomputed floor of a copy at rest can give
+// the same out-of-range LineDist again (guid 4b2 LineDist 2.7 FloorDist -0.8, every frame), the engine's own steady
+// result, so a force only goes when the copy's floor state changed since its last one.
+struct C603Last {
+    const void* cmc; // nullptr: empty
+    float line;
+    float dist;
+};
+C603Last g_c603_last[kC603LastSlots] = {};
+
+// True when this copy was already forced on this exact floor state; otherwise remembers it.
+bool c603_repeat(const void* cmc, float line, float dist) {
+    const uint32_t i = static_cast<uint32_t>((reinterpret_cast<uintptr_t>(cmc) * 0x9E3779B97F4A7C15ULL) >> 58) &
+                       (kC603LastSlots - 1);
+    C603Last& r = g_c603_last[i];
+    // b461: within kC603RepeatUu, not exact. c604b460a: a copy at rest flipped LineDist 11.6 <-> 11.7 (FloorDist 1.9)
+    // and each 0.1 uu flip forced again (52 forced against a bar of 40).
+    if (r.cmc == cmc && fabsf(r.line - line) <= kC603RepeatUu && fabsf(r.dist - dist) <= kC603RepeatUu) {
+        ++g_c38.floor_repeats;
+        return true;
+    }
+    r = C603Last{cmc, line, dist};
+    return false;
+}
+
+void c603_force_floor(uint8_t* c) {
+    c[kCmcForceFloorByte] |= kCmcForceFloorBit;
+}
+
+void c603_floor_check(uint8_t* c, const void* owner) {
+    if (!g_c328_floor_read) {
+        (void)c328_current_floor_comp(c); // reflects CurrentFloor once
+    }
+    if (g_c328_floor_struct == nullptr || c[kCmcMovementMode] != kMoveWalking ||
+        (c[kCmcForceFloorByte] & kCmcForceFloorBit) != 0) {
+        return;
+    }
+    Vec3 vel = {};
+    memcpy(&vel, c + kMoveVelocity, sizeof(vel));
+    const uint8_t* const floor = c + g_c328_floor;
+    const float line = read_f32(floor, kFloorLineDist);
+    uint32_t flags = 0;
+    memcpy(&flags, floor, sizeof(flags));
+    if (vel.x != 0.0 || vel.y != 0.0 || vel.z != 0.0 || (flags & kFloorWalkableLine) != kFloorWalkableLine ||
+        (line >= kMinFloorDist && line <= kMaxFloorDist)) {
+        return;
+    }
+    if (c603_repeat(c, line, read_f32(floor, kFloorLineDist - 4))) {
+        return;
+    }
+    c603_force_floor(c);
+    if (g_c38.floor_forced++ < kC603FloorRows) {
+        log::line("card603: client t=%llu guid %llx %s at rest on a stale line-trace floor (LineDist %.1f, FloorDist "
+                  "%.1f, z %.1f): next floor check forced (%u this map)",
+                  static_cast<unsigned long long>(GetTickCount64()), static_cast<unsigned long long>(c41_guid(owner)),
+                  object_name(owner).text, line, read_f32(floor, kFloorLineDist - 4), actor_location(owner).z,
+                  g_c38.floor_forced);
+    }
+}
+
 void c132_drift_clamp(void* cmc) {
     auto* const c = static_cast<uint8_t*>(cmc);
     if (g_c38.trace_left != 0 && read_ptr(cmc, kCmcCharacterOwner) == g_c38.trace_owner) {
@@ -2726,6 +2923,7 @@ void c132_drift_clamp(void* cmc) {
         return; // also not an NPC simulated proxy
     }
     void* const owner = read_ptr(cmc, kCmcCharacterOwner);
+    c603_floor_check(c, owner);
     if (!c132_drift_offsets(owner)) {
         return;
     }
@@ -2750,21 +2948,30 @@ void c132_drift_clamp(void* cmc) {
     const int encroach = world != nullptr && g_c46_encroaching != nullptr
                              ? (g_c46_encroaching(world, owner, &probe, &rot, &adjust) ? 1 : 0)
                              : -1;
+    // Card 603 (c601b455a): the host's place itself touched the landscape by a few uu (adjustment z +6.5 on all 16
+    // rows of guid 3c2), so every set-back was skipped (114 of 115 in the run) while the copy climbed about 500 uu/s
+    // with zero velocity; guid 0x49e died 798 uu above the host's body. A small adjustment is the engine's own free
+    // place next to the host's location and is taken; a big one (card 328's +199.8 push-out) is still skipped.
+    const bool small = encroach == 1 && fabs(adjust.x) <= kC603AdjustUu && fabs(adjust.y) <= kC603AdjustUu &&
+                       fabs(adjust.z) <= kC603AdjustUu;
     char outcome[96];
     snprintf(outcome, sizeof(outcome), "%s (encroaching %d, adjustment (%.1f, %.1f, %.1f)) at",
-             encroach == 1 ? "skipped (encroaching)" : "set back", encroach, adjust.x, adjust.y, adjust.z);
+             encroach != 1 ? "set back" : (small ? "set back at the adjustment" : "skipped (encroaching)"), encroach,
+             adjust.x, adjust.y, adjust.z);
     if (g_c38.drift + g_c38.drift_skipped < kC132DriftLogs) {
         c328_drift_row(owner, at, rep, mode, vel, age, outcome);
     }
-    if (encroach == 1) {
+    if (encroach == 1 && !small) {
         ++g_c38.drift_skipped;
         return;
     }
     ++g_c38.drift;
-    at.z = rep.z;
+    g_c38.drift_adjusted += small ? 1u : 0u;
+    at = small ? Vec3{probe.x + adjust.x, probe.y + adjust.y, probe.z + adjust.z} : Vec3{at.x, at.y, rep.z};
     vel.z = 0.0;
     memcpy(c + kMoveVelocity, &vel, sizeof(vel));
     g_set_actor_location(owner, &at, false, nullptr, kTeleportPhysics);
+    c603_force_floor(c); // card 603: CurrentFloor was taken at the old place
     if (g_c38.trace_left == 0 && g_c38.traces < kC328TraceMax) {
         ++g_c38.traces;
         g_c38.trace_owner = owner;
@@ -2775,7 +2982,73 @@ void c132_drift_clamp(void* cmc) {
     }
 }
 
+// Card 581, client: an attached character (a turret rider: AttachCharacterToTurret only stops movement, it never
+// sets mode None) is a SimulatedProxy here, so SimulateMovement made it fall from the seat offset and overlap the
+// wrong presences until the attachment put it back. Its attach parent owns its transform, so it is not simulated.
+static constexpr uint32_t kC581Actors = 16; // distinct skipped actors with a first-skip row, per map
+static struct {
+    const void* actor[kC581Actors];
+    uint32_t actors;
+    uint32_t calls;
+    uint32_t rejects;     // client presence begin overlaps by an attached player body (card245 path)
+    uint32_t reject_rows; // first-reject rows written this map
+} g_c581; // game thread only; per map
+static constexpr uint32_t kC581RejectRows = 8; // presence reject rows per map
+
+static bool c581_attached(const void* cmc) {
+    const void* const owner = read_ptr(cmc, kCmcCharacterOwner);
+    const void* const root = owner != nullptr ? read_ptr(owner, kActorRootComponent) : nullptr;
+    return root != nullptr && c140_attach_parent(root) != nullptr;
+}
+
+static void c581_note_skip(const void* cmc) {
+    ++g_c581.calls;
+    const void* const owner = read_ptr(cmc, kCmcCharacterOwner);
+    bool seen = false;
+    for (uint32_t i = 0; i < g_c581.actors; ++i) {
+        seen = seen || g_c581.actor[i] == owner;
+    }
+    if (seen || g_c581.actors >= kC581Actors) {
+        return;
+    }
+    g_c581.actor[g_c581.actors++] = owner;
+    // The parent component is the seat's root (CollisionCylinder); its owner actor names the seat.
+    const void* const seat = g_get_attach_parent_actor != nullptr ? g_get_attach_parent_actor(owner) : nullptr;
+    log::line("card581: client t=%llu %s attached to %s: SimulateMovement skipped (first skip, actor %u)",
+              static_cast<unsigned long long>(GetTickCount64()), object_name(owner).text,
+              seat != nullptr ? object_name(seat).text
+                              : object_name(c140_attach_parent(read_ptr(owner, kActorRootComponent))).text,
+              g_c581.actors);
+}
+
+// Card 581, client: a begin overlap by an attached player body is not passed to the presence. The attachment owns
+// where that body is (c587b421a: 28 gate-passed rows at a fixed (-115, 0, 0) while the seat copy was not yet placed),
+// and the host decides presence entries.
+void c581_note_reject(const void* presence, const void* body, const void* parent) {
+    ++g_c581.rejects;
+    if (g_c581.reject_rows >= kC581RejectRows) {
+        return;
+    }
+    ++g_c581.reject_rows;
+    log::line("card581: client t=%llu presence %s begin overlap by %s attached to %s: rejected (reject %u)",
+              static_cast<unsigned long long>(GetTickCount64()), object_name(presence).text, object_name(body).text,
+              object_name(parent).text, g_c581.rejects);
+}
+
+void c581_map_end() {
+    if (g_client_session) {
+        log::line("card581: client attached characters not simulated: %u calls, %u actors; presence overlaps "
+                  "rejected: %u",
+                  g_c581.calls, g_c581.actors, g_c581.rejects);
+    }
+    g_c581 = {};
+}
+
 void detour_simulate_movement(void* cmc, float delta) {
+    if (g_client_session && c581_attached(cmc)) {
+        c581_note_skip(cmc);
+        return;
+    }
     g_orig_simulate_movement(cmc, delta);
     if (g_client_session) {
         c132_drift_clamp(cmc);
@@ -4207,8 +4480,104 @@ Vec3 c132_drawn_location(const void* npc, uint32_t* source) {
     return at;
 }
 
-// Client: plays `name` on the NPC's sequence player with no callbacks. False when the player is absent or lacks `name`.
+// ---- Card 565: the client copy returns to its locomotion sequence when a relayed sequence ends ----
+// On the host a trooper leaves Attack01 / Flinch / Taunt through AnimationEnded: its FSM listener changes state and the
+// new state's enter plays Walk / Run (exe+0x51A0A00, force 0) or the Blueprint plays Idle (TryPlayIdleAnimation,
+// force 1). The client copy has no FSM and its state does not change, so a relayed sequence played with no end
+// callback held its last frame until the copy's own state next changed. Now the relayed play binds the same end
+// callback the copy's own plays bind ({NPC, AnimationEnded}); detour_c41_ended finds the NPC's entry and plays the
+// locomotion sequence the copy was on before the relay (Idle when it was already on a relay sequence).
+// The native AnimationEnded only broadcasts NPC+0x960; it is called only when that delegate has no listener, so a
+// client-side listener never sees an end the copy's own code did not start.
+// An entry is cleared, without a resume, by any other TryPlay on the NPC (its own state change wins), and skipped when
+// the NPC is Dying / Dead / Overkilled or no longer on the relayed sequence (a death or rest pose took it).
+constexpr uint32_t kC565Entries = 64; // NPCs with a relayed sequence playing at once (a full table skips the bind)
+constexpr uint32_t kC565Lines = 12;
+struct C565Entry {
+    void* npc;       // null = free slot
+    C31Weak weak;    // the same NPC: an entry whose NPC was destroyed (EndPlay) no longer resolves and is free
+    uint64_t resume; // FName to play when the relayed sequence ends
+    uint64_t relay;  // FName of the relayed sequence now playing
+};
+struct C565State {
+    C565Entry e[kC565Entries];
+    uint32_t bound;      // relayed plays with the end callback
+    uint32_t unbound;    // relayed plays with no entry (3D NPC or a full table): played with no callback
+    uint32_t idle_fallback; // entries whose copy was already on a relay sequence: resume Idle
+    uint32_t ends;       // AnimationEnded on an NPC with an entry
+    uint32_t in_play;    // ends fired inside a relayed play (the interrupted sequence): ignored
+    uint32_t resumed;
+    uint32_t cleared;    // entries cleared by the copy's own TryPlay
+    uint32_t skipped_dead;
+    uint32_t skipped_moved; // the copy was no longer on the relayed sequence
+    uint32_t native_called; // ends passed to the native AnimationEnded (0x960 had no listener)
+    uint32_t native_skipped; // ends not passed on (0x960 had a listener)
+    uint32_t lines;
+    bool playing;        // inside a relayed play (game thread)
+};
+C565State g_c565{};
+
+bool c41_is_relay_name(uint64_t name) {
+    for (uint32_t i = 0; i < kC41AttackSeqs; ++i) {
+        if (name != 0 && g_c41r.fname[i] == name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// The live entry of `npc`, or with npc null a free slot. A slot whose NPC no longer resolves is freed here
+// (counted as skipped dead: the NPC was destroyed before its relayed sequence ended).
+C565Entry* c565_find(const void* npc) {
+    for (uint32_t i = 0; i < kC565Entries; ++i) {
+        C565Entry& e = g_c565.e[i];
+        if (e.npc != nullptr && c31_weak_get(e.weak) != e.npc) {
+            e = C565Entry{};
+            ++g_c565.skipped_dead;
+        }
+        if (e.npc == npc) {
+            return &e;
+        }
+    }
+    return nullptr;
+}
+
+// The entry for a relayed play of `relay` on `npc` (kept when one exists: its resume name is from before the first
+// relay), or null when the table is full or the NPC is not a sprite (IsNPC2D) trooper: a 3D bug's copy returns to its
+// locomotion through its own animation graph, and card 041 proved its relayed attacks.
+C565Entry* c565_entry_for(void* npc, uint64_t relay) {
+    static uint64_t idle = 0;
+    if (g_is_npc_2d == nullptr || !g_is_npc_2d(npc)) {
+        return nullptr;
+    }
+    C565Entry* e = c565_find(npc);
+    if (e == nullptr) {
+        e = c565_find(nullptr);
+        if (e == nullptr) {
+            return nullptr;
+        }
+        const uint64_t current = c41_current(npc);
+        const bool on_relay = current == 0 || c41_is_relay_name(current);
+        g_c565.idle_fallback += on_relay ? 1u : 0u;
+        *e = C565Entry{npc, {}, on_relay ? fname_cached(idle, L"Idle") : current, 0};
+        c31_weak_set(e->weak, npc);
+    }
+    e->relay = relay;
+    return e;
+}
+
+void c565_clear(const void* npc) {
+    C565Entry* const e = g_client_session ? c565_find(npc) : nullptr;
+    if (e != nullptr) {
+        *e = C565Entry{};
+        ++g_c565.cleared;
+    }
+}
+
+// Client: plays `name` on the NPC's sequence player, with the {NPC, AnimationEnded} end callback when an entry is
+// free (card 565), else with none. False when the player is absent or lacks `name`.
 bool c41_play_visual(void* npc, uint64_t name) {
+    static uint64_t ended_name = 0;
     void* const player = read_ptr(npc, kNpcSeqPlayer);
     const auto ready = player != nullptr ? reinterpret_cast<SeqHasKeyFn>(read_ptr(read_ptr(player, 0), kSeqVtHasKey))
                                          : nullptr;
@@ -4216,13 +4585,83 @@ bool c41_play_visual(void* npc, uint64_t name) {
         return false;
     }
     const auto play = reinterpret_cast<SeqPlayFn>(read_ptr(read_ptr(player, 0), kSeqVtPlay));
+    C565Entry* const entry = c565_entry_for(npc, name);
+    struct {
+        C31Weak npc;
+        uint64_t func;
+    } cb{};
+    static_assert(sizeof(cb) == kDelegateBytes, "callback entry is 16 bytes");
     C41EmptyArray frame{};
     C41EmptyArray end{};
+    if (entry != nullptr) {
+        cb.npc = entry->weak;
+        cb.func = fname_cached(ended_name, L"AnimationEnded");
+        end = C41EmptyArray{&cb, 1, 1};
+    }
+    g_c565.bound += entry != nullptr ? 1u : 0u;
+    g_c565.unbound += entry == nullptr ? 1u : 0u;
+    g_c565.playing = true;
     play(player, name, &frame, &end, kC41PlayRate);
-    if (frame.data != nullptr || end.data != nullptr) {
+    g_c565.playing = false;
+    if (frame.data != nullptr || (entry == nullptr && end.data != nullptr)) {
         log::line("WARN card041: client visual play left callback arrays %p %p (expected empty)", frame.data, end.data);
     }
     return true;
+}
+
+// Client, detour_c41_ended: true when the end was handled here (the caller then skips the native AnimationEnded).
+bool c565_on_ended(void* npc) {
+    C565Entry* const e = c565_find(npc);
+    if (e == nullptr) {
+        return false;
+    }
+    ++g_c565.ends;
+    if (g_c565.playing) {
+        ++g_c565.in_play; // the sequence a relayed play replaced: the entry stays for the new one
+        return true;
+    }
+    const C565Entry was = *e;
+    *e = C565Entry{};
+    const uint8_t state = static_cast<const uint8_t*>(npc)[kNpcBaseState];
+    const uint64_t current = c41_current(npc);
+    const bool dead = state >= kNpcStateDying;
+    const bool moved = !dead && current != 0 && current != was.relay;
+    g_c565.skipped_dead += dead ? 1u : 0u;
+    g_c565.skipped_moved += moved ? 1u : 0u;
+    const bool resume = !dead && !moved && g_orig_c41_try_play != nullptr;
+    if (resume) {
+        g_orig_c41_try_play(npc, was.resume, true);
+        ++g_c565.resumed;
+    }
+    const uint8_t* const arr = static_cast<const uint8_t*>(npc) + kNpcEndDelegate;
+    const bool listened = array_num(arr, 0) > 0;
+    g_c565.native_called += listened ? 0u : 1u;
+    g_c565.native_skipped += listened ? 1u : 0u;
+    if (g_c565.lines < kC565Lines) {
+        ++g_c565.lines;
+        log::line("card565: client %s %s guid 0x%llx: relayed %s ended (state %u, current %s): %s %s; end delegate %d "
+                  "listeners", class_name(npc).text, object_name(npc).text,
+                  static_cast<unsigned long long>(c41_guid(npc)), fname_text(&was.relay).text, state,
+                  fname_text(&current).text, resume ? "resumed" : (dead ? "skipped dead" : "skipped moved"),
+                  fname_text(&was.resume).text, array_num(arr, 0));
+    }
+    return listened;
+}
+
+void c565_totals(const char* when) {
+    const C565State& c = g_c565;
+    if (c.bound + c.unbound + c.ends == 0) {
+        return;
+    }
+    uint32_t pending = 0;
+    for (uint32_t i = 0; i < kC565Entries; ++i) {
+        pending += c.e[i].npc != nullptr ? 1u : 0u;
+    }
+    log::line("card565: client %s: relayed plays bound %u (unbound %u, entries made on a relay sequence: Idle %u); "
+              "ends %u (inside a relayed play %u), resumed %u, cleared by own play %u, skipped dead %u, skipped moved "
+              "%u, pending %u; native AnimationEnded called %u, skipped (listener bound) %u", when, c.bound, c.unbound,
+              c.idle_fallback, c.ends, c.in_play, c.resumed, c.cleared, c.skipped_dead, c.skipped_moved, pending,
+              c.native_called, c.native_skipped);
 }
 
 // --- Card 434 step 4 (diagnostic, client) ---
@@ -4536,6 +4975,8 @@ void c41_relay_arm_map() {
     }
     g_c434c = C434Client{};
     g_c434c.arm_ms = GetTickCount64(); // card 528: the arm window starts here
+    c565_totals("map totals");
+    g_c565 = C565State{}; // entries hold raw NPC pointers: never across a map
     const C41Relay keep = g_c41r;
     g_c41r = C41Relay{};
     g_c41_held_n = 0; // card 436: a held row does not cross a map
@@ -4546,6 +4987,7 @@ void c41_relay_arm_map() {
 void detour_c41_try_play(void* npc, uint64_t name, bool force) {
     if (npc != nullptr) {
         c41_send_attack(npc, name, force);
+        c565_clear(npc); // card 565: the copy's own play wins over a pending resume
     }
     if (g_c41_trace && npc != nullptr) {
         c41_trace(npc, name, force ? 1 : 0, -1.0f, exe_rva(_ReturnAddress()));
@@ -4579,6 +5021,9 @@ void detour_c41_frame(void* npc) {
 void detour_c41_ended(void* npc) {
     if (g_c41_trace) {
         c41_cb_line(kC41Ended, npc, 0, exe_rva(_ReturnAddress()));
+    }
+    if (g_client_session && npc != nullptr && c565_on_ended(npc)) {
+        return; // card 565: a client listener on +0x960 is not told of an end the copy's own code did not start
     }
     g_orig_c41_ended(npc);
 }
@@ -4954,10 +5399,14 @@ void c132_log_significance_view(const void* world, void* pc) {
               read_i32(pc, kPcSignificanceNum));
 }
 
+// Card 568 (the 30 Hz significance throttle) lives in ubwperf.dll since card 578: perf_link_c568_due.
 void client_significance_step(void* engine) {
     void* const world = g_client_session && engine != nullptr ? g_get_game_world(engine) : nullptr;
     void* const pc = world != nullptr ? own_pc(world) : nullptr;
     if (pc == nullptr || g_update_significance == nullptr) {
+        return;
+    }
+    if (!perf_link_c568_due(1, world)) {
         return;
     }
     if (world != g_significance_world) {
@@ -5120,6 +5569,9 @@ void detour_c321_combat_tick(void* game_mode, float dt) {
 
 void detour_c132_update_significance(void* game_mode) {
     void* const world = !g_client_session && game_mode != nullptr ? g_actor_get_world(game_mode) : nullptr;
+    if (world != nullptr && !perf_link_c568_due(0, world)) {
+        return; // card 568: between 30 Hz runs the manager keeps its last values
+    }
     void* const host_pc = world != nullptr ? g_get_player_controller(world, 0) : nullptr;
     if (host_pc == nullptr || g_add_significance_location == nullptr || !is_a(host_pc, g_st_pc_class())) {
         g_update_significance(game_mode); // +0xA70 is an ASTPlayerController field (c132s: the client's crash)
@@ -5950,15 +6402,11 @@ void c42_step(void* engine) {
     }
     c137_gib_tick(now); // card 137 step 6b
     c532_tick(now);     // card 532: NpcTarget flush (host), pending rows (client)
-    c531_tick(now);     // card 531: GetSaveId cache totals
     c535_tick(now);     // card 535: FindFloor skip totals
-    c536_tick(now);     // card 536: FindComponentByClass cache totals
-    c538_tick(now);     // card 538: DoesTargetMeetConditions repeat counts
-    c539_tick(now);     // card 539: client NPC proxy sweep counts
+    perf_link_tick(engine, now); // card 578: ubwperf.dll's cards 536, 538, 539, 548 and 544
+    c99_frame_tick();   // card 572: GetPlayerController memo frame
     c534_tick(now);     // card 534: world query cost rows (diag)
     c545_tick(now);     // card 545: Blueprint Kismet query rows (diag)
-    c548_tick(now);     // card 548: player primitive UpdateOverlapsImpl rows (diag)
-    c544_tick(engine);  // card 544: dynamic tree padding, once
     if (!g_client_session && g_c42o.n != 0) {
         c42_owed_step(engine, now); // card 269
     }

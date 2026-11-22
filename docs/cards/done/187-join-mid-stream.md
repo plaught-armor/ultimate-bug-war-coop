@@ -1,6 +1,6 @@
 # Card 187: A client that joins while a corpse is still moving follows it
 
-Status: queued 2026-11-11, from card 152 (c152-r3 window 2). Budget: three runs, shared build and run with card 186.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from card 152 (c152-r3 window 2). Budget: three runs, shared build and run with card 186.
 
 Read: `docs/cards/done/152-ragdoll-fall-stream.md` (r3 prediction 7, problem 4), `mod/src/ubw/pose_c132.cpp`
 (`pose_wait_gate`, `pose_wait_tick`, the journal replay of pose rows).

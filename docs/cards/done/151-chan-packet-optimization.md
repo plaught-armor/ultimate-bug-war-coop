@@ -1,6 +1,6 @@
 # Card 151: Smaller mod channel packets
 
-Status: queued 2026-11-08, from card 140 runs 3 and 4 (the user: "im sure we can also find ways to optimize our
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-08, from card 140 runs 3 and 4 (the user: "im sure we can also find ways to optimize our
 packets"). Budget: three runs. Bandwidth, not gameplay. Follows card 150 (binary rows).
 
 Read: card 140 Run 3 and Run 4 results, card 150 Result, card 136 (E rows), `chan.cpp`, the card 150 encoder.

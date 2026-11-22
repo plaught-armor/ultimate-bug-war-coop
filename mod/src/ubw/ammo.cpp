@@ -495,10 +495,18 @@ size_t c274_magazine_text(const void* pawn, char* out, size_t used, size_t cap, 
 // Host: each magazine pair of a client's AmmoMirror text onto the equipped weapon of its server copy, when that weapon
 // holds the same ammunition type. Only raises: the copy lags the client by the rounds in flight, so a lower count is
 // the client's newer state the copy has not fired yet.
+static int32_t c274_magazine_set(const void* pawn, void* weapon, const char* text, bool raise_only, const char* what);
 void c274_magazine_apply(const void* pawn, const char* text, const char* what) {
     void* const weapon = sprint_side(pawn) == kSideServerCopy ? c274_weapon(pawn) : nullptr;
+    (void)c274_magazine_set(pawn, weapon, text, true, what);
+}
+
+// Each magazine pair of `text` onto `weapon` where a behaviour holds the same ammunition type: raise-only (the host
+// copy, card 274) or exact (card 570: the client's own weapon after a checkpoint rejoin). Returns the pairs matched.
+static int32_t c274_magazine_set(const void* pawn, void* weapon, const char* text, bool raise_only, const char* what) {
+    int32_t matched = 0;
     if (weapon == nullptr || g_set_equipped_ammo == nullptr) {
-        return;
+        return 0;
     }
     const char* p = text;
     for (int32_t i = 0; i < kC71MaxTags + kC274Behaviours && *p != '\0'; ++i) {
@@ -506,7 +514,7 @@ void c274_magazine_apply(const void* pawn, const char* text, const char* what) {
         int32_t want = 0;
         int used = 0;
         if (sscanf_s(p, "%64s %d%n", tag_text, static_cast<unsigned>(sizeof(tag_text)), &want, &used) != 2) {
-            return; // c72_apply logged the bad pair
+            return matched; // c72_apply logged the bad pair
         }
         p += used;
         p += *p == ' ' ? 1 : 0;
@@ -519,16 +527,80 @@ void c274_magazine_apply(const void* pawn, const char* text, const char* what) {
                 continue;
             }
             const int32_t before = g_c274_magazine_count(weapon, b);
-            if (want > before) {
+            ++matched;
+            if (want > before || (!raise_only && want != before)) {
                 g_set_equipped_ammo(weapon, tag, want, b);
                 if (note_event_cap(g_c274_lines, kC274Lines, "card274")) {
-                    log::line("card274: host copy magazine %s %d to %d (%s, %s, behaviour %u, %s)", tag_text + 1,
+                    log::line("card274: %s magazine %s %d to %d (%s, %s, behaviour %u, %s)",
+                              raise_only ? "host copy" : "client own", tag_text + 1,
                               before, g_c274_magazine_count(weapon, b), object_name(pawn).text,
                               object_name(weapon).text, b, what);
                 }
             }
             break;
         }
+    }
+    return matched;
+}
+
+// Card 570, client: the own weapon's magazine at a Reload, set again on the new pawn after the rejoin (the Reload
+// text carries the reserve map, not the magazine, and a respawned weapon starts full). Only the equipped weapon's.
+struct C570Magazine {
+    char text[kChanTextMax + 1];
+    int32_t pawn_id;    // the pawn the text came from; the set waits for a different one
+    ULONGLONG until_ms; // the set gives up then (WARN)
+};
+static C570Magazine g_c570_magazine{};
+static C570Magazine g_c570_noted{}; // the own magazine at its last change (until_ms unused): a Reload can come after
+                                    // the own pawn is gone (run c570b386a: "no own pawn" 6 ms before the Reload)
+static constexpr ULONGLONG kC570MagazineMs = 60000;
+
+// Client, from c72_client_step when the magazine sum changes (a shot or a reload, not every frame).
+// A frame with no magazine weapon (a dying pawn's weapon goes first) keeps the last note.
+void c570_magazine_note(const void* pawn) {
+    int32_t rounds = 0;
+    char text[sizeof(g_c570_noted.text)];
+    if (pawn != nullptr && c274_magazine_text(pawn, text, 0, sizeof(text), &rounds) > 0) {
+        memcpy(g_c570_noted.text, text, strlen(text) + 1);
+        g_c570_noted.pawn_id = object_index(pawn);
+    }
+}
+
+void c570_magazine_keep(const void* pawn, ULONGLONG now) {
+    int32_t rounds = 0;
+    g_c570_magazine = C570Magazine{};
+    if (pawn != nullptr && c274_magazine_text(pawn, g_c570_magazine.text, 0, sizeof(g_c570_magazine.text), &rounds) > 0) {
+        g_c570_magazine.pawn_id = object_index(pawn);
+    } else if (g_c570_noted.text[0] != '\0') {
+        g_c570_magazine = g_c570_noted; // the pawn went first: its last noted magazine
+    }
+    if (g_c570_magazine.text[0] != '\0') {
+        g_c570_magazine.until_ms = now + kC570MagazineMs;
+    }
+    log::line("card570: client t=%llu Reload keeps own magazine: %s", static_cast<unsigned long long>(now),
+              g_c570_magazine.text[0] != '\0' ? g_c570_magazine.text : "(none)");
+}
+
+void c570_magazine_step(const void* pawn, ULONGLONG now) {
+    if (g_c570_magazine.text[0] == '\0') {
+        return;
+    }
+    if (now >= g_c570_magazine.until_ms) {
+        log::line("WARN card570: client t=%llu kept magazine \"%s\" not set: no matching weapon on a new pawn in %llu "
+                  "ms", static_cast<unsigned long long>(now), g_c570_magazine.text,
+                  static_cast<unsigned long long>(kC570MagazineMs));
+        g_c570_magazine = C570Magazine{};
+        return;
+    }
+    // c397b398a: a pawn held in the old world before the travel took the set, and the new map's pawn kept 60.
+    if (pawn == nullptr || object_index(pawn) == g_c570_magazine.pawn_id || c294_restart_pending()) {
+        return;
+    }
+    if (c274_magazine_set(pawn, c274_weapon(pawn), g_c570_magazine.text, false, "card570 Reload") > 0) {
+        log::line("card570: client t=%llu kept magazine set on %s: %s", static_cast<unsigned long long>(now),
+                  object_name(pawn).text, g_c570_magazine.text);
+        c574_weapon_status_refresh(pawn, read_ptr(pawn, kMiWeaponInventory));
+        g_c570_magazine = C570Magazine{};
     }
 }
 

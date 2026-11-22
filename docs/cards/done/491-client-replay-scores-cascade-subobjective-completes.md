@@ -1,6 +1,6 @@
 # 491 Client replay scores cascade sub-objective completes the host does not score
 
-Opened 2026-11-18 10:59 by the senior, from the junior's card 323 report on c245b221a and c245b222a.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-18 10:59 by the senior, from the junior's card 323 report on c245b221a and c245b222a.
 
 ## Finding
 At BrainBug_SO2 the client replays CompleteSubObjective for SO2_R2, SO2 and SO2_L2 (a cascade) and gains 25000, while the host gains 10000. The client shows +15000 for about 167 ms, then the card 323 settle sets it down by 15000. Seen at 659765354 (c245b222a) and 659384711 (c245b221a): same spot, same amount.

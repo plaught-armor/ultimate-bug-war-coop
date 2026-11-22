@@ -1,0 +1,90 @@
+# b456 combined run (cards 602, 603, 573): FED_C3M2. Hand written; preamble and PowerPlant steps from c263-c3m2-plant.txt.
+# Rules: docs/STATE.md "Gameplay test scenario rules", docs/reference/objective-routines.md (lessons).
+# Order: map start, PowerPlant marker and SO1 (presence C_52: the PowerPlant encounter starts and Switch C_2 is enabled
+# @24446 -> @15107), a short real-fire fight (card 603 client hits and ragdolls; card 573 rows with live bugs and
+# corpses), then the host presses Switch C_2 itself (card 602), then client and host shots of StaticMeshActor_12.
+# Predictions: docs/cards/602-c3m2-generator-glow-client-check.md, docs/cards/603-client-ragdoll-root-drift-on-hit.md
+# and docs/cards/573-perf-mod-cpu-gpu-utilization.md, sections "b456 run predictions" / "Predictions (b456 ...)".
+# fire test
+# Real fire is allowed: card 603 needs client hits. Kills by code only before the switch press.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c602-c3m2-b456.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C3M2?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C99_LOG=1" tools/run_pair.sh c602b456a 900
+# Expected wall: about 6 min.
+voidsoft
+void unless host dll 57b8fb78ceeb7366
+void unless client dll 57b8fb78ceeb7366
+host wait state map=FED_C3M2 timeout=240 void
+client wait state map=FED_C3M2 timeout=180 void
+try host ui continue
+client wait log "card135: client t=\d+ screen prompt ready" timeout=60
+client mark
+client ui continue
+client wait log "card067: dump \d+ in FED_C3M2 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=60
+host wait state pawn=host-own timeout=120
+client wait state pawn=client-own timeout=120
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+host wait log "card049: host t=\d+ Add\w*Objectives?\((?:\w+, )?PowerPlant_SO1(?:, \w+)?\)" timeout=120
+# --- PowerPlant SO1: the marker first (c263e lesson 24), then presence C_52 by its routine. C_52 also enables
+# Switch C_2 (@24446 -> @15107), with no condition.
+try host objective do PowerPlant_Marker
+unless host log "(card049: host t=\d+ Complete\w*Objective\((\w+, )?PowerPlant_SO1\)|card097: host t=\d+ native CompleteObjective (\w+/)?PowerPlant_SO1 )" count=1 host objective do PowerPlant_SO1
+# c602b456a: SO2 is shown (bools 11) at map start in b456, so the c263 "bools 01" wait timed out; the C_52 run is the gate.
+host wait log "card(?:245: host/standalone t=\d+ presence BP_PlayerPresence_C_52 OnTriggerEntered by \S+: (?!held)|300: host t=\d+ closure BP_PlayerPresence_C_52 (?!wanted))" timeout=30
+# --- fight: 4 rounds of real fire (card 603 client hits, card 573 live and dead bug rows). Each round places both
+# players 1500 uu short of the nearest live warrior (c263b/c263i).
+host mark
+client mark
+try host warp actor BP_AI_WarriorBug_C 1500 live
+try host warp client BP_AI_WarriorBug_C 1500 live
+sleep 2
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+try host warp actor BP_AI_WarriorBug_C 1500 live
+try host warp client BP_AI_WarriorBug_C 1500 live
+sleep 2
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+try host warp client BP_AI_WarriorBug_C 1500 live
+client ammo fill
+host ammo fill
+both clear 2500 10 max-left=99
+# A 10 s hold with corpses on the ground: card 573 windows with ragdoll calls.
+sleep 12
+host clear 4000 kill
+# --- card 602: the host presses Switch C_2 itself. The client stands 600 uu off (it does not press).
+host mark
+client mark
+host warp actor BP_Switch_C_2 150
+host warp client BP_Switch_C_2 600
+sleep 1
+host look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2
+host shot c602-switch-stand-host
+host key E 3200
+try host wait log "card602: host t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? by \S+ sent to 1 of 1 other clients" since-mark timeout=8
+try client wait log "card602: client t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? from the host: own copy's OnInteraction ran" since-mark timeout=3
+# Second try if the first look missed the switch (no host row).
+unless host log "card602: host t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? " count=1 host look actor BP_Switch_C_2 0 bounds focus=BP_Switch_C_2
+unless host log "card602: host t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? " count=1 host key E 3200
+host wait log "card602: host t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? by \S+ sent to 1 of 1 other clients" since-mark timeout=8
+client wait log "card602: client t=\d+ switch press BP_Switch_C_2(?:@[0-9a-f]+)? from the host: own copy's OnInteraction ran" since-mark timeout=3
+try host wait log "card049: host t=\d+ Complete\w*Objective\((?:\w+, )?PowerPlant_SO2\)" timeout=10
+sleep 2
+# --- generator glow: both players look at StaticMeshActor_12 from 1200 uu.
+host warp client StaticMeshActor_12 1200
+host warp actor StaticMeshActor_12 1300
+sleep 2
+client look actor StaticMeshActor_12 0 bounds
+host look actor StaticMeshActor_12 0 bounds
+client shot c602-generator-client
+host shot c602-generator-host
+sleep 12
+host shot c602-end-host
+client shot c602-end-client

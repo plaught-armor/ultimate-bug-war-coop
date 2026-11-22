@@ -1,0 +1,193 @@
+# Cards 584, 564 and 583 on b432 dwmapi 06c5597f6e2354bb + ubwperf 909a773818dd0874, FED_C1M1 FAST, lane 2.
+# Steps: c551-c1m1-jumps.txt (c373 preamble, 10 alternate jumps, rules lessons 1-75), then a walk and a sprint by
+# the client in the host's view, then quit (quit-time rows need it, lesson 74).
+# Prediction 584 (b411 diag): one "card584: <side> t=... own Landed" row per own landing, 10 per side. Clean jumps
+# read 1 falling enter and 1 leave. A client air time over the heavy threshold where the host reads under it on the
+# same jump height means the client's own heavy pick comes from a longer Falling stretch (a correction between jumps).
+# Prediction 564 (b371 fix): client backpedals (S) 5 s, then sprints (LeftShift + W) 2 s toward the host. The host's
+# card028 rows for the client's body: the walk has at most 2 key changes and no key held under 300 ms; the sprint has
+# one change into Run and one out.
+# Prediction 583 (b411/b414): the client's playlog rtt rows count "after a long frame" above 0 during the FAST loads,
+# the floor stays under 100 ms, and no card159 C/L check WARN pair appears.
+# Run: systemd-run --user --scope -q -p MemoryMax=12G taskset -c 4-7,12-15 nice -n 10 env LANE=2
+#      SCENARIO=tools/scenarios/c584-c1m1-b432.txt FAST=1
+#      HOST_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_TRAVEL=/Game/Maps/FED/FED_C1M1?listen UBWCOOP_GOD=1 UBWCOOP_C99_LOG=1"
+#      CLIENT_EXTRA_ENV="UBWCOOP_DIAG=1 UBWCOOP_C99_LOG=1" tools/run_pair.sh c584b432a 600
+# Expected wall: about 4 min.
+voidsoft
+void unless host dll 06c5597f6e2354bb
+void unless client dll 06c5597f6e2354bb
+host wait state map=FED_C1M1 timeout=240 void
+client wait state map=FED_C1M1 pawn=client-own timeout=180
+try client wait log "card120: client t=\d+ minimap origin \S+ \(BP_PlayerCharacterMI_C\) set" timeout=60
+try host ui continue
+try client wait log "card135: client t=\d+ screen prompt ready" timeout=30
+client mark
+try client ui continue
+try client wait log "card067: dump \d+ in FED_C1M1 \(WB_Stack_C RequestGameUnpause\)" since-mark timeout=30
+try host wait log "card320: host t=\d+ hold off after \d+ ms \(all confirmed\)" timeout=60
+failsoft
+host wait state pawn=host-own timeout=90
+client shot c373-hud-start
+host clear 4000 kill
+# --- card 551 diag (C99 log): players about 350 uu apart, facing each other. Jumps alternate: the host jumps and
+# waits for its own landing row (card490 MovementMode 1), 1 s quiet gap, then the client does the same; 10 each.
+# Each landing owns its window, so a StartCameraShake row on the watcher's side inside the other's window is the bug.
+host warp actor BP_PlayerCharacterMI_C 350
+host look actor BP_PlayerCharacterMI_C 0
+client look actor BP_PlayerCharacterMI_C 0
+host shot c373-551-facing-host
+client shot c373-551-facing-client
+# jump 1 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 1 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 2 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 2 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 3 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 3 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 4 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 4 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 5 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 5 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 6 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 6 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 7 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 7 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 8 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 8 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 9 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 9 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 10 host
+host mark
+client mark
+host key SpaceBar 100
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 3" since-mark timeout=3
+host wait log "card490: host t=\d+ pc 0 BP_PlayerCharacterMI_C role 3: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# jump 10 client
+host mark
+client mark
+client key SpaceBar 100
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 3" since-mark timeout=3
+client wait log "card490: client t=\d+ pc 0 BP_PlayerCharacterMI_C role 2: .*MovementMode 1" since-mark timeout=5
+sleep 1
+# --- card 564: the client walks back (S) 5 s, then sprints 2 s toward the host, in the host's view.
+client look actor BP_PlayerCharacterMI_C 0
+host look actor BP_PlayerCharacterMI_C 0
+host mark
+client key S 5000
+sleep 1
+host look actor BP_PlayerCharacterMI_C 0
+client look actor BP_PlayerCharacterMI_C 0
+client key W 2000 LeftShift 2000
+sleep 1
+host shot c564-after-sprint-host
+host quit
+client quit

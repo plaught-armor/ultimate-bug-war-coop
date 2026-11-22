@@ -1,6 +1,6 @@
 # 497: Client marks Research_SO2 and Research_Marker2 complete before the host
 
-Status: open (written 2026-11-18 18:26, senior). Batch into the next build.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open (written 2026-11-18 18:26, senior). Batch into the next build.
 
 ## Finding
 

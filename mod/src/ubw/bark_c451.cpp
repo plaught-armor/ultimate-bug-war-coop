@@ -49,6 +49,7 @@ struct C451Relay {
     uint32_t rows;        // rows written
     uint32_t sent[2];     // host: rows sent per kind
     uint32_t skipped;     // host: player or unaddressable speakers
+    uint32_t culled;      // host, card 585: rows not sent to a client with no channel for the speaker
     uint32_t relayed[2];  // client: broadcasts per kind
     uint32_t dropped;     // client: rows not applied
     uint32_t own;         // client: its own broadcasts (expected 0)
@@ -113,13 +114,16 @@ void c451_host_send(int kind, const uint8_t* bark) {
     const int32_t line = read_i32(bark, kC451LineChoice);
     char text[kC50PathMax + 48];
     snprintf(text, sizeof(text), "%c %llx %d %s", kC451Kinds[kind], static_cast<unsigned long long>(guid), line, path);
-    const C95Fanout f = c95_send_all(world, ChanOp::Bark, text);
+    // Card 585: a client with no channel for the speaker cannot resolve its guid, and the bark is range-checked and
+    // attenuated by distance (card 451), so such a client could not hear it anyway.
+    const C95Fanout f = c95_send_all(world, ChanOp::Bark, text, false, speaker);
     g_c451r.sent[kind] += f.sent > 0 ? 1u : 0u;
+    g_c451r.culled += static_cast<uint32_t>(f.culled);
     if (c451_row_ok()) {
-        log::line("%scard451: host t=%llu bark %s %s line %d speaker %s guid 0x%llX sent to %d of %d",
+        log::line("%scard451: host t=%llu bark %s %s line %d speaker %s guid 0x%llX sent to %d of %d, culled %d",
                   f.sent == f.to ? "" : "WARN ", static_cast<unsigned long long>(GetTickCount64()),
                   kC451KindNames[kind], object_name(type).text, line, object_name(speaker).text,
-                  static_cast<unsigned long long>(guid), f.sent, f.to);
+                  static_cast<unsigned long long>(guid), f.sent, f.to, f.culled);
     }
 }
 
@@ -190,9 +194,10 @@ void c451_receive(void* pc, const WireString* s) {
 // first loads of a client (c448b230a: its pre-join tally read "host").
 void c451_relay_summary() {
     const C451Relay& r = g_c451r;
-    log::line("card451: %s relay tally: sent started %u finished %u, not sent %u; relayed started %u finished %u, "
+    log::line("card451: %s relay tally: sent started %u finished %u, not sent %u, culled %u; "
+              "relayed started %u finished %u, "
               "dropped %u, own broadcasts %u",
-              g_client_session ? "client" : "host or pre-join", r.sent[0], r.sent[1], r.skipped, r.relayed[0],
+              g_client_session ? "client" : "host or pre-join", r.sent[0], r.sent[1], r.skipped, r.culled, r.relayed[0],
               r.relayed[1], r.dropped, r.own);
 }
 

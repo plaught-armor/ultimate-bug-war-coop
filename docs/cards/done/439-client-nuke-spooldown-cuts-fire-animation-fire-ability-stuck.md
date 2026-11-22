@@ -1,6 +1,6 @@
 # 439 — Client nuke: SpoolDown starts before the Fire animation ends, fire ability stays active
 
-Status: open, cause half known (2026-11-16 13:57). The first text of this card blamed a trigger release inside
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: open, cause half known (2026-11-16 13:57). The first text of this card blamed a trigger release inside
 the Fire animation. That was wrong: `c423b129a`, `c423b131a` and `c423b133a` held the trigger 6500 ms and two of
 them show the fault. The hold length is not the trigger.
 

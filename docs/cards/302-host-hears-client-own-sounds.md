@@ -1,4 +1,5 @@
 # 302 The host still hears some of the client's own sound effects
+Status 2026-11-22: open only for the hearing check in a playtest.
 
 Playtest 2026-11-13 (user plays as client; the host player reports): "host still hears some sound effects from
 the client, fix that". Which sounds is an open question to the user.

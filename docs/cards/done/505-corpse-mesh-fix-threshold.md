@@ -1,6 +1,6 @@
 # 505: Client corpses frozen 5 to 50 uu off their bodies are left drawn off the host's place
 
-Opened 2026-11-19 by the senior, from a static trace of the c243b273a client log (b273).
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: Opened 2026-11-19 by the senior, from a static trace of the c243b273a client log (b273).
 
 ## Finding
 

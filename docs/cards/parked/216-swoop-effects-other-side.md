@@ -1,4 +1,5 @@
 # Card 216: A player's Swoop effects do not all reach the other side
+Status 2026-11-22: parked, out of scope (bug mode, user rule 2026-11-19). The status below is as first written.
 
 Status: queued 2026-11-12, from run c212-r1 (DLL `6d7f5193580ad2cd`). Static first, then one run on BUG_C1M1
 (scenario c212-r1 is the base).

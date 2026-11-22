@@ -358,18 +358,17 @@ struct C376 {
 C376 g_c376{};
 } // namespace
 
-bool g_c376_pe = false;
 
 // From detour_request_pause / detour_request_unpause, after the game's call; `requester` is live.
 void c376_note_pause(void* requester, bool paused) {
     if (strcmp(class_name(requester).text, "WB_Stack_C") != 0) {
         return;
     }
-    g_c376_pe = paused && g_client_session; // a session lost with the menu open disarms at the unpause
+    pe_gate_set(kPeGate_c376_pe, paused && g_client_session); // a session lost with the menu open disarms at the unpause
     g_c376.skip_cls = nullptr;
 }
 
-// Hot path while g_c376_pe (a client's menu is open): every ProcessEvent. True: the call is not run.
+// Hot path while kPeGate_c376_pe (a client's menu is open): every ProcessEvent. True: the call is not run.
 bool c376_pe(void* object, void* function) {
     const void* const cls = read_ptr(object, kObjectClass);
     if (cls == g_c376.skip_cls) {

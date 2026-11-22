@@ -1,6 +1,6 @@
 # Card 190: A client that joins while dropships fly sees them where the host has them
 
-Status: queued 2026-11-11, from c186-r1 (junior finding 3). Trace first. Budget: three runs.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: queued 2026-11-11, from c186-r1 (junior finding 3). Trace first. Budget: three runs.
 
 ## Why
 c186-r1 rejoin with dropships in flight, client log: card159 dropship check x3 ("BP_ProceduralDropshipTroops_C_0

@@ -410,11 +410,16 @@ bool resolve_setup_input_sites() {
 SpawnSoundAttachedFn g_orig_spawn_sound_attached = nullptr;
 uint32_t g_spawn_sound_skips = 0; // game thread only
 
-void* detour_spawn_sound_attached(void* component, uint64_t attach_point, uint64_t tag, Vec3 location,
+void* detour_spawn_sound_attached(void* component, uint64_t sound_name, uint64_t attach_point, Vec3 location,
                                   bool stop_when_destroyed, float volume, float pitch, float start_time,
                                   void* attenuation, void* concurrency, bool auto_destroy) {
     if (component != nullptr) {
-        return g_orig_spawn_sound_attached(component, attach_point, tag, location, stop_when_destroyed, volume, pitch,
+        // Card 582 G3: a listed sound attached to a server copy goes to that client instead (player_c99.cpp).
+        if (c455_attached_relay(component, sound_name, attach_point, location, stop_when_destroyed, volume, pitch,
+                                start_time, auto_destroy, exe_rva(_ReturnAddress()))) {
+            return nullptr;
+        }
+        return g_orig_spawn_sound_attached(component, sound_name, attach_point, location, stop_when_destroyed, volume, pitch,
                                            start_time, attenuation, concurrency, auto_destroy);
     }
     if (note_skip(g_spawn_sound_skips, "SpawnSoundAttachedToComponentWithAIAwareness")) {

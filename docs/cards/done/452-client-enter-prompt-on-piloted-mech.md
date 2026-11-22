@@ -1,6 +1,6 @@
 # 452: client is offered ENTER on a mech another player pilots
 
-Status: patch written (`c452_patch.py`), handed to the junior for b152; FED_C4M1 proof owed.
+Status: finished (in done/; outcome at the end of the card or in CARDLOG). Status as first written: patch written (`c452_patch.py`), handed to the junior for b152; FED_C4M1 proof owed.
 "E ENTER M7" on the mech the host pilots).
 
 ## Fault (static trace)

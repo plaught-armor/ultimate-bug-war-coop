@@ -49,6 +49,7 @@ Scenario lines (blank lines and lines starting with # are skipped):
   host spawn bug <x> <y> <z> <yaw> [<kind>] one BP_AI_<kind> there (WarriorBug default), facing yaw degrees (card 125)
   both god all|host                          host: only the host's own pawn under UBWCOOP_GOD (card 132)
   host stamina on|off                        card 490: the host infinite stamina option for this session
+  <role> console <words>                    card 573 (b392+): APlayerController::ConsoleCommand on that side's PC, 1-6 words
   host discard <n>                           the client copy's next n rounds (1-10) become misses: claims take made rounds (281)
   host down host|client|client2            put that player into card 043 Downed, the lethal-hit entry (card 109;
                                            client2: roster slot 2, card 209)
@@ -150,7 +151,7 @@ import sys
 import time
 
 DEFAULT_BIN = "/path/to/ultimate-bug-war-coop/game/StarshipTroopers_UBW/Binaries/Win64"
-COMMANDS = {"key", "axis", "shot", "quit", "goto", "look", "ui", "disconnect", "objectives", "warp", "door", "objective", "kill", "charge", "down", "travel", "crash", "spawn", "autoplay", "speed", "inventory", "offshot", "god", "winkey", "clear", "ammo", "levelcall", "discard", "stamina", "grenade"}  # levelcall: b184 test-only level script call; ammo: `ammo fill` (card 243 run A decision, test only)
+COMMANDS = {"key", "axis", "shot", "quit", "goto", "look", "ui", "disconnect", "objectives", "warp", "door", "objective", "kill", "charge", "down", "travel", "crash", "spawn", "autoplay", "speed", "inventory", "offshot", "god", "winkey", "clear", "ammo", "levelcall", "discard", "stamina", "grenade", "console", "resupplylevel"}  # levelcall: b184 test-only level script call; ammo: `ammo fill` (card 243 run A decision, test only); resupplylevel: card 556 b440 test only
 CMD_TIMEOUT_S = 10.0
 CLEAR_TIMEOUT_S = 100.0  # card 265: the game ends a clear at 90 s
 GOTO_TIMEOUT_S = 620.0
@@ -601,6 +602,29 @@ def wait_log(role, args, timeout_s):
     return (True, line.strip()[:160]) if line else (False, f"timeout after {timeout_s:.0f} s")
 
 
+DRIVE_START_S = time.time()  # wait file: a file older than this replay is a stale one from an earlier run
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def wait_file(role, args, timeout_s):
+    """`wait file <path>`: the file (relative to the repo) exists and was written after this replay started. An
+    outside script releases the step this way (c569b395b: the capture script writes it after 20 clean seconds,
+    replacing a fixed quiet hold)."""
+    if len(args) != 1:
+        return False, "wait file takes one path"
+    path = os.path.join(REPO_DIR, args[0])
+
+    def test():
+        try:
+            return os.stat(path).st_mtime >= DRIVE_START_S
+        except OSError:
+            return False
+
+    if wait_until(test, timeout_s):
+        return True, f"file {args[0]}"
+    return False, f"timeout after {timeout_s:.0f} s; no fresh {args[0]}"
+
+
 def wait_near(role, args, timeout_s):
     """`wait near x y z r`: the state's own-pawn x y z is within r uu of the point (card 107)."""
     if len(args) != 4:
@@ -865,6 +889,9 @@ def look_gate_void(roles, words, detail):
 # current step's kind and actor[0] row), then the kind's routine (its tries run the go). A kind with no routine yet is a VOID.
 NOW_CUR_RX = re.compile(r"cmd: (\d+) objective now: parent \S+; current (\S+) kind (\w+)")
 NOW_ACTOR_RX = re.compile(r"cmd: (\d+) objective now:   actor\[0\] (\S+) \((\S+)\)")
+# c569b390b: after FED_C1M1 Assault entry the script hides Assault_SO0 (marker 0, never completed) and the
+# DLL still names it current while Assault_SO2 is the doable, marker-1 sibling; objective do expects that sibling first.
+NOW_DOABLE_RX = re.compile(r"cmd: (\d+) objective now: parent \S+; doable (\S+) kind (\w+) .*marker 1$")
 HOLE_RX = re.compile(r"cmd: (\d+) look: hole (\S+) \(\S+\) at (-?\d+) (-?\d+) (-?\d+), nearest of")
 AIM_RX = re.compile(r"cmd: (\d+) aim: (?:hit (\S+) \(.*?\)(?: guid 0x[0-9a-f]+)? at (-?\d+) (-?\d+) (-?\d+), "
                     r"(\d+) uu, pitch (-?[\d.]+)|no hit)")
@@ -966,6 +993,34 @@ def done_since(host, step, start):
     return any(re.search(done_rx(step), line) for line in log_lines(role_log(host))[start:])
 
 
+# Lesson 55 (c569b392a FED_C1M1 Assault_SO0): entering a step's volume can make the level script hand the step off.
+# It hides the step (`SetObjectiveVisibility(step) bools 00`), adds siblings and completes one of them
+# (Assault_SO1, the same presence C_2) in the same ms; the step itself never gets a Complete row. A hide followed
+# within HANDOFF_MS by a sibling's CompleteSubObjective under the same parent counts as the step's done. The 15 s
+# marker blinks (Assault_SO2, ShootingRange_SO0 bools 11/01) never hide with 00.
+# Lesson 56 (c569b392a ShootingRange_SO0, presence C_24): the hand-off can be an Add instead. Entering C_24 hides
+# the step (bools 00) and adds ShootingRange_SO1 (the Morita pickup) 2 ms later; SO0 only completes at the range's
+# end (card097 ObjectiveComplete), so every earlier soak VOIDed it. A sibling Add after the hide counts the same.
+HANDOFF_MS = 50
+HIDE_RX = r"card049: host t=(\d+) SetObjectiveVisibility\({}\) bools 00"
+SIB_DONE_RX = re.compile(r"card049: host t=(\d+) (?:Complete|Add|AddCount)SubObjective\((\w+), (\w+)\)")
+
+
+def handed_off(host, step, start):
+    """The sibling step id the script completed or added right after hiding <step> since line <start>, else None."""
+    lines = log_lines(role_log(host))
+    parents = [m.group(1) for m in map(re.compile(rf"AddSubObjective\((\w+), {step}\)").search, lines) if m]
+    if not parents:
+        return None
+    hide_rx = re.compile(HIDE_RX.format(step))
+    hides = [int(m.group(1)) for m in map(hide_rx.search, lines[start:]) if m]
+    for m in map(SIB_DONE_RX.search, lines[start:]):
+        if m and m.group(2) == parents[-1] and m.group(3) != step and \
+                any(0 <= int(m.group(1)) - t <= HANDOFF_MS for t in hides):
+            return m.group(3)
+    return None
+
+
 # Card 504 stay phase (senior design 2026-11-19, lesson 10): kind marker steps complete on presence, on their wave
 # end (C2M1 LOS_O01_SO01: card503 wave end, Complete in the same ms as a clear) or by script after a hold (C2M1
 # LOS_O04_SO02: 57.6-70.0 s after both players entered, c504b2-b4). One routine covers all three.
@@ -978,6 +1033,10 @@ def done_since(host, step, start):
 # periods in a row (kills or waves every period or two), nor did c504b4 C2M1 LOS_O04_SO02's 59 s hold.
 STAY_S = 300          # hard cap of the last try's stay
 STAY_QUIET = 3        # periods in a row with no kill and no wave/encounter row end the stay
+# Card 604 (c604b458a line 229, lesson 96): Stadium_SO2 closes after the stadium fight chain plus a fixed 20 + 18 + 5 s
+# show (lesson 81) that has no kill and no wave row. With few bugs the stay went quiet at 47 s, 3 s before the close
+# (c604b459a closed at 50 s because its kills kept the stay going). A quiet stay ends only after this long.
+STAY_QUIET_MIN_S = 60
 STAY_KILL_RX = re.compile(r"cmd: \d+ clear kill: (\d+) killed")
 STAY_WAVE_RX = re.compile(r"card111: wave budget |card245: host t=\d+ StartEncounter on ")
 STAY_EVERY_S = 5      # stay period: one `clear 4000 kill`, then up to 5 s on the step's done row
@@ -1016,7 +1075,7 @@ def stay(roles, step, start, cap_s=STAY_S):
         killed = sum(int(m.group(1)) for x in period for m in [STAY_KILL_RX.search(x)] if m)
         waves = sum(1 for x in period if STAY_WAVE_RX.search(x))
         quiet = 0 if killed or waves else quiet + 1
-        if quiet >= STAY_QUIET:
+        if quiet >= STAY_QUIET and time.monotonic() - t0 >= STAY_QUIET_MIN_S:
             return False, False, f"stay quiet {time.monotonic() - t0:.0f} s, {k} clears, {quiet} periods with no " \
                                  f"kill and no wave row, no done row"
         for w, at in stands.items():
@@ -1086,6 +1145,8 @@ def routine_presence(roles, step, actor, prefix, kind="presence"):
         # Lesson 4 (c504s2): a script can complete the step after a try gave up; a new go would warp onto the next step.
         if n > 1 and done_since(host, step, start):
             return True, f"objective do: presence {step} {actor} complete before try {n}"
+        if n > 1 and handed_off(host, step, start):
+            return True, f"objective do: presence {step} {actor} handed off to {handed_off(host, step, start)} before try {n}"
         gate = step_go(host)
         send(host, command_line("shot", [shot_tag(step, n)], prefix)[0])
         drift = GO_DRIFT_RX.search(gate or "")
@@ -1106,6 +1167,9 @@ def routine_presence(roles, step, actor, prefix, kind="presence"):
             ok, detail = send(host, f"objective wait {step} {STEP_WAIT_S}", STEP_WAIT_S + CMD_TIMEOUT_S)
             if ok and not marker_held(host, step, start, kind):
                 return True, f"objective do: presence {step} {actor} complete on try {n} (presence)"
+            sib = None if ok else handed_off(host, step, start)
+            if sib:
+                return True, f"objective do: presence {step} {actor} handed off to {sib} on try {n} (script hid it, then completed or added {sib})"
             if ok:
                 detail = f"guide marker ended, no visibility row in {MARKER_HIDE_S} s"
         # Card 516: fix 1 (c514a Bridge_Marker, 311 s at the try-1 stand) limited the home go to kind presence, which
@@ -1482,6 +1546,18 @@ def objective_do_once(roles, args, prefix, seen):
     cur, act = seq_rows(host, seq, NOW_CUR_RX), seq_rows(host, seq, NOW_ACTOR_RX)
     if not ok or not cur:
         return False, f"VOID objective do: no current step ({detail})"
+    doable = seq_rows(host, seq, NOW_DOABLE_RX)
+    if cur[0].string.rstrip().endswith("marker 0") and doable and not args:
+        # Hidden current step with a visible doable sibling: `objective expect` makes the sibling current, so the
+        # routine's `objective go` stands at the sibling's volume, then `objective now` is read again.
+        eok, edetail = send(host, f"objective expect {doable[0].group(2)}")
+        if not eok:
+            return False, f"VOID objective do: expect doable {doable[0].group(2)} over hidden current: {edetail}"
+        ok, detail = send(host, "objective now")
+        seq = host.sent
+        cur, act = seq_rows(host, seq, NOW_CUR_RX), seq_rows(host, seq, NOW_ACTOR_RX)
+        if not ok or not cur:
+            return False, f"VOID objective do: no current step after expect ({detail})"
     step, kind = cur[0].group(2), cur[0].group(3)
     if args and step != args[0]:  # never run a routine on a step the line did not name
         return False, f"VOID objective do: asked {args[0]}, current step is {step}"
@@ -1591,9 +1667,10 @@ def run_step(roles, words, prefix):
         return True, f"marked at log line {role.mark}"
     if verb == "stall":
         return stall(role, args, role.bin_dir)
-    if verb == "wait" and args and args[0] in ("state", "log", "near", "stand", "goto"):
+    if verb == "wait" and args and args[0] in WAIT_KINDS:
         rest, timeout_s = split_timeout(args[1:], GOTO_TIMEOUT_S if args[0] == "goto" else WAIT_TIMEOUT_S)
-        fn = {"state": wait_state, "log": wait_log, "near": wait_near, "stand": wait_stand, "goto": wait_goto}[args[0]]
+        fn = {"state": wait_state, "log": wait_log, "near": wait_near, "stand": wait_stand, "goto": wait_goto,
+              "file": wait_file}[args[0]]
         return fn(role, rest, timeout_s)
     return False, f"unknown step: {' '.join(words)}"
 
@@ -1710,7 +1787,7 @@ def load(path):
 
 
 LINT_ROLES = ("host", "client", "client2")  # client2: card 209, run_pair.sh CLIENT2=1
-WAIT_KINDS = ("state", "log", "near", "stand", "goto")
+WAIT_KINDS = ("state", "log", "near", "stand", "goto", "file")
 
 
 SHOT_NAME = re.compile(r"[A-Za-z0-9_-]{1,40}")  # mod/src/cmdfile.cpp: shot names are 1-40 chars of [A-Za-z0-9_-]
@@ -1793,9 +1870,14 @@ def lint_step(words):
     if verb == "halt":
         return None if not args else "halt takes no arguments"
     if verb == "wait" and args and args[0] in WAIT_KINDS:
-        for a in args[1:]:
-            if args[0] == "log" and not a.startswith(("count=", "timeout=")) and a not in ("new", "since-mark"):
-                re.compile(a)
+        # c551b376a: an unquoted regex split into words, each compiled, and parse said 0 bad; wait_log needs one.
+        rxs = [a for a in args[1:] if not a.startswith(("count=", "timeout=")) and a not in ("new", "since-mark")]
+        if args[0] == "log" and len(rxs) != 1:
+            return "wait log takes one quoted regex, count >= 1 and an optional new or since-mark"
+        if args[0] == "file" and len(rxs) != 1:
+            return "wait file takes one path"
+        for a in rxs if args[0] == "log" else ():
+            re.compile(a)
         return None
     return None if verb in ("mark", "stall") else f"unknown verb {verb}"
 
