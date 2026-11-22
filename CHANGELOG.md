@@ -28,7 +28,8 @@ Player-facing changes per public release of UBW Co-op, newest first. All players
 
 ### Changed
 
-- The performance work ships as its own `ubwperf.dll`. The launcher installs it.
+- The performance work ships as its own `ubwperf.dll`, which the co-op mod loads to reduce CPU work. It changes no
+  graphics settings. The launcher installs it, and co-op still runs without it.
 - One-shot sounds too far away to matter are no longer sent to the client, which saves bandwidth.
 
 ### Known issues

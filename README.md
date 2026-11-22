@@ -28,6 +28,15 @@ What all players share:
 The session survives mission changes and checkpoint restarts. A client that loses the connection retries for
 about 60 seconds. A client that quits joins again by hand.
 
+## What is ubwperf.dll?
+
+`ubwperf.dll` is the mod's performance half. Co-op itself is `dwmapi.dll`, which loads `ubwperf.dll` from the same
+folder. It lowers the game's CPU work in fights with many bugs by caching repeated lookups and by cutting some
+navigation, collision, update and idle-thread work. It changes no graphics settings and adds no features.
+
+The launcher installs it. Without it co-op still runs, without those savings. See
+[Performance module](docs/guide/how-it-works.md#performance-module) for each change and its side effects.
+
 ## Quick start
 
 1. Download the zip from the [Releases](../../releases) page and unzip it.

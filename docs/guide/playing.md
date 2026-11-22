@@ -30,6 +30,16 @@ Always type the port. An address without one uses 7777, and the launcher hosts o
 The host can press **I** at the main menu to turn infinite stamina on or off for the sessions it hosts. It is off
 by default and is remembered.
 
+## The two DLLs
+
+The launcher installs two files next to the game executable:
+
+- `dwmapi.dll` is the co-op mod.
+- `ubwperf.dll` is its performance module. It reduces CPU work and changes no graphics settings. If it is missing,
+  co-op still runs without those savings and the mod log says `no ubwperf.dll`.
+
+Keep both from the same release. [Performance module](how-it-works.md#performance-module) lists what it changes.
+
 ## During a session
 
 - The session stays up across missions, restarts and the host's QUIT to the hangar.
